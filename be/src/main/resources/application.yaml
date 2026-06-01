@@ -1,0 +1,76 @@
+spring:
+  application:
+    name: planwise
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://hikari2004.ddns.net:5417/planwise}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:Duykhanh@0915232119}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate          # Schema đã tạo bằng schema.sql, chỉ validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        default_schema: public
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:your-google-client-id}
+            client-secret: ${GOOGLE_CLIENT_SECRET:your-google-client-secret}
+            scope:
+              - email
+              - profile
+            redirect-uri: "{baseUrl}/api/v1/oauth2/callback/{registrationId}"
+        provider:
+          google:
+            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+            token-uri: https://oauth2.googleapis.com/token
+            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+            user-name-attribute: sub
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:ZmFrZS1zZWNyZXQtZm9yLWRldi1tdXN0LWJlLWF0LWxlYXN0LTI1Ni1iaXRzLWxvbmctcGxhbndpc2U=}
+    access-token-expiration-ms: 900000        # 15 phút
+    refresh-token-expiration-ms: 604800000    # 7 ngày
+
+  oauth2:
+    authorized-redirect-uris:
+      - http://localhost:5173/auth/callback
+      - http://localhost:3000/auth/callback
+
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+      - http://localhost:3000
+
+  momo:
+    partner-code: ${MOMO_PARTNER_CODE:MOMO}
+    access-key: ${MOMO_ACCESS_KEY:F8B67A475B632}
+    secret-key: ${MOMO_SECRET_KEY:KbG5whHcj2YglHexR752538c64}
+    api-url: ${MOMO_API_URL:https://test-payment.momo.vn/v2/gateway/api/create}
+    redirect-url: ${MOMO_REDIRECT_URL:http://localhost:5173/payment/result}
+    ipn-url: ${MOMO_IPN_URL:http://localhost:8080/api/v1/subscriptions/momo-ipn}
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+logging:
+  level:
+    com.exe201.planwise: DEBUG
+    org.springframework.security: INFO
+    org.hibernate.SQL: WARN

@@ -1,0 +1,29 @@
+package com.exe201.planwise.goal.dto;
+
+import com.exe201.planwise.goal.enums.GoalCategory;
+import com.exe201.planwise.goal.enums.GoalPeriod;
+import com.exe201.planwise.goal.enums.GoalType;
+import jakarta.validation.constraints.Size;
+
+import java.time.LocalDate;
+
+public record UpdateGoalRequest(
+        @Size(max = 255, message = "Tiêu đề không được vượt quá 255 ký tự")
+        String title,
+
+        String description,
+
+        GoalCategory category,
+
+        GoalType goalType,
+
+        GoalPeriod period,
+
+        LocalDate targetDate,
+
+        Integer progress,
+
+        String color,
+
+        Boolean isCompleted
+) {}

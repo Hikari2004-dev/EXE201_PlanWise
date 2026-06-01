@@ -1,0 +1,211 @@
+package com.exe201.planwise.habit.service;
+
+import com.exe201.planwise.exception.AppException;
+import com.exe201.planwise.exception.ErrorCode;
+import com.exe201.planwise.habit.dto.*;
+import com.exe201.planwise.habit.entity.Habit;
+import com.exe201.planwise.habit.enums.HabitFrequency;
+import com.exe201.planwise.habit.repository.HabitRepository;
+import com.exe201.planwise.user.entity.User;
+import com.exe201.planwise.user.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@Slf4j
+@RequiredArgsConstructor
+public class HabitService {
+
+    private static final int FREE_HABIT_LIMIT = 3;
+
+    private final HabitRepository habitRepository;
+    private final UserRepository userRepository;
+
+    @Transactional(readOnly = true)
+    public HabitListResponse getHabits(UUID userId) {
+        User user = findUser(userId);
+        List<Habit> habits = habitRepository.findByUserIdOrderBySortOrderAsc(userId);
+        List<HabitDto> habitDtos = habits.stream().map(HabitDto::from).toList();
+        return HabitListResponse.of(habitDtos, user.isPremium());
+    }
+
+    @Transactional(readOnly = true)
+    public List<HabitDto> getActiveHabits(UUID userId) {
+        return habitRepository.findByUserIdAndIsActiveTrueOrderBySortOrderAsc(userId)
+                .stream().map(HabitDto::from).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public HabitDto getHabitById(UUID userId, UUID habitId) {
+        Habit habit = findHabitAndValidateOwnership(habitId, userId);
+        return HabitDto.from(habit);
+    }
+
+    @Transactional
+    public HabitDto createHabit(UUID userId, CreateHabitRequest request) {
+        User user = findUser(userId);
+
+        if (!user.isPremium()) {
+            long currentCount = habitRepository.countByUserId(userId);
+            if (currentCount >= FREE_HABIT_LIMIT) {
+                throw new AppException(ErrorCode.HABIT_LIMIT_EXCEEDED);
+            }
+        }
+
+        Habit habit = Habit.builder()
+                .user(user)
+                .title(request.title())
+                .description(request.description())
+                .frequency(request.frequency())
+                .targetCount(request.targetCount())
+                .color(request.color())
+                .build();
+
+        habit = habitRepository.save(habit);
+        log.info("Created habit {} for user {}", habit.getId(), userId);
+
+        return HabitDto.from(habit);
+    }
+
+    @Transactional
+    public HabitDto updateHabit(UUID userId, UUID habitId, UpdateHabitRequest request) {
+        Habit habit = findHabitAndValidateOwnership(habitId, userId);
+
+        if (request.title() != null) {
+            habit.setTitle(request.title());
+        }
+        if (request.description() != null) {
+            habit.setDescription(request.description());
+        }
+        if (request.frequency() != null) {
+            habit.setFrequency(request.frequency());
+        }
+        if (request.targetCount() != null) {
+            habit.setTargetCount(request.targetCount());
+        }
+        if (request.color() != null) {
+            habit.setColor(request.color());
+        }
+        if (request.isActive() != null) {
+            habit.setActive(request.isActive());
+        }
+        if (request.sortOrder() != null) {
+            habit.setSortOrder(request.sortOrder());
+        }
+
+        habit = habitRepository.save(habit);
+        log.info("Updated habit {}", habitId);
+
+        return HabitDto.from(habit);
+    }
+
+    @Transactional
+    public void deleteHabit(UUID userId, UUID habitId) {
+        Habit habit = findHabitAndValidateOwnership(habitId, userId);
+        habitRepository.delete(habit);
+        log.info("Deleted habit {} for user {}", habitId, userId);
+    }
+
+    @Transactional
+    public HabitDto toggleCompletion(UUID userId, UUID habitId, LocalDate date) {
+        Habit habit = findHabitAndValidateOwnership(habitId, userId);
+
+        if (habit.isCompletedOn(date)) {
+            habit.unmarkCompleted(date);
+            updateStreakAfterUncompletion(habit, date);
+        } else {
+            habit.markCompleted(date);
+            updateStreakAfterCompletion(habit, date);
+        }
+
+        habit = habitRepository.save(habit);
+        log.info("Toggled habit {} completion for date {}", habitId, date);
+
+        return HabitDto.from(habit);
+    }
+
+    @Transactional
+    public HabitDto markCompleted(UUID userId, UUID habitId, LocalDate date) {
+        Habit habit = findHabitAndValidateOwnership(habitId, userId);
+
+        if (!habit.isCompletedOn(date)) {
+            habit.markCompleted(date);
+            updateStreakAfterCompletion(habit, date);
+            habit = habitRepository.save(habit);
+        }
+
+        return HabitDto.from(habit);
+    }
+
+    @Transactional
+    public HabitDto unmarkCompleted(UUID userId, UUID habitId, LocalDate date) {
+        Habit habit = findHabitAndValidateOwnership(habitId, userId);
+
+        if (habit.isCompletedOn(date)) {
+            habit.unmarkCompleted(date);
+            updateStreakAfterUncompletion(habit, date);
+            habit = habitRepository.save(habit);
+        }
+
+        return HabitDto.from(habit);
+    }
+
+    private void updateStreakAfterCompletion(Habit habit, LocalDate date) {
+        short currentStreak = habit.getCurrentStreak();
+
+        if (habit.getFrequency() == HabitFrequency.daily) {
+            LocalDate yesterday = date.minusDays(1);
+            if (habit.isCompletedOn(yesterday) || currentStreak == 0) {
+                habit.setCurrentStreak((short) (currentStreak + 1));
+                if (habit.getCurrentStreak() > habit.getBestStreak()) {
+                    habit.setBestStreak(habit.getCurrentStreak());
+                }
+            }
+        } else if (habit.getFrequency() == HabitFrequency.weekly) {
+            LocalDate lastWeekStart = date.minusWeeks(1).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            if (habit.isCompletedOn(lastWeekStart) || currentStreak == 0) {
+                habit.setCurrentStreak((short) (currentStreak + 1));
+                if (habit.getCurrentStreak() > habit.getBestStreak()) {
+                    habit.setBestStreak(habit.getCurrentStreak());
+                }
+            }
+        }
+    }
+
+    private void updateStreakAfterUncompletion(Habit habit, LocalDate date) {
+        if (habit.getFrequency() == HabitFrequency.daily) {
+            LocalDate yesterday = date.minusDays(1);
+            if (!habit.isCompletedOn(yesterday)) {
+                habit.setCurrentStreak((short) 0);
+            }
+        } else if (habit.getFrequency() == HabitFrequency.weekly) {
+            LocalDate lastWeekStart = date.minusWeeks(1).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            if (!habit.isCompletedOn(lastWeekStart)) {
+                habit.setCurrentStreak((short) 0);
+            }
+        }
+    }
+
+    private User findUser(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    private Habit findHabitAndValidateOwnership(UUID habitId, UUID userId) {
+        Habit habit = habitRepository.findById(habitId)
+                .orElseThrow(() -> new AppException(ErrorCode.HABIT_NOT_FOUND));
+
+        if (!habit.getUser().getId().equals(userId)) {
+            throw new AppException(ErrorCode.HABIT_NOT_FOUND);
+        }
+        return habit;
+    }
+}
