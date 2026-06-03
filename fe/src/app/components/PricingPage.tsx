@@ -56,22 +56,29 @@ export function PricingPage() {
 
       if (response.ok) {
         const data = await response.json();
+
         if (data.payUrl) {
           window.location.href = data.payUrl;
-        } else {
-          throw new Error("No payment URL received");
+          return;
         }
+
+        throw new Error("No payment URL received");
       } else {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.message || "Failed to initiate payment");
+
+        throw new Error(
+          errData.message || "Failed to initiate payment"
+        );
       }
     } catch (err: any) {
       console.error("Purchase error:", err);
+
       setError(
-        language === "vi" 
-          ? `Lỗi thanh toán: ${err.message || "Không thể kết nối đến Momo"}` 
-          : `Payment error: ${err.message || "Failed to connect to Momo"}`
+        language === "vi"
+          ? `Lỗi thanh toán: ${err.message || "Không thể kết nối đến VNPay"}`
+          : `Payment error: ${err.message || "Failed to connect to VNPay"}`
       );
+
       setPurchaseLoading(null);
     }
   };
@@ -85,12 +92,12 @@ export function PricingPage() {
 
   const t = {
     title: language === "vi" ? "Mở Khóa Toàn Bộ Sức Mạnh PlanWise" : "Unlock the Full Power of PlanWise",
-    subtitle: language === "vi" 
-      ? "Lên kế hoạch thông minh hơn, xây dựng thói quen bền vững và bứt phá mục tiêu cùng gói Premium." 
+    subtitle: language === "vi"
+      ? "Lên kế hoạch thông minh hơn, xây dựng thói quen bền vững và bứt phá mục tiêu cùng gói Premium."
       : "Plan smarter, build lasting habits, and crush your goals with our Premium plans.",
     freeLabel: language === "vi" ? "Tài khoản hiện tại" : "Current Account",
     popularLabel: language === "vi" ? "Phổ biến nhất" : "Most Popular",
-    upgradeBtn: language === "vi" ? "Nâng cấp ngay qua MoMo" : "Upgrade now with MoMo",
+    upgradeBtn: language === "vi" ? "Nâng cấp ngay" : "Upgrade now",
     activeBtn: language === "vi" ? "Đang sử dụng" : "Currently Active",
     expiresAt: language === "vi" ? "Hết hạn vào:" : "Expires on:",
     billingInterval: (months: number) => {
@@ -113,7 +120,7 @@ export function PricingPage() {
   return (
     <div className="flex-1 overflow-y-auto bg-slate-950 text-slate-100 p-6 md:p-12">
       <div className="max-w-6xl mx-auto space-y-12">
-        
+
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-bold uppercase tracking-wider animate-pulse">
@@ -159,8 +166,8 @@ export function PricingPage() {
                 <div
                   key={plan.id}
                   className={`relative flex flex-col justify-between rounded-3xl p-6 transition-all duration-300 border backdrop-blur-md hover:-translate-y-2
-                    ${isPopular 
-                      ? "bg-gradient-to-b from-indigo-950/40 via-indigo-950/20 to-slate-950/40 border-indigo-500/40 shadow-xl shadow-indigo-950/30" 
+                    ${isPopular
+                      ? "bg-gradient-to-b from-indigo-950/40 via-indigo-950/20 to-slate-950/40 border-indigo-500/40 shadow-xl shadow-indigo-950/30"
                       : "bg-slate-900/30 border-white/[0.05] hover:border-white/10"
                     }`}
                 >
@@ -174,13 +181,13 @@ export function PricingPage() {
                     <div className="text-slate-400 font-bold text-sm tracking-wide uppercase">
                       {plan.name}
                     </div>
-                    
+
                     <div className="space-y-1">
                       <div className="text-3xl font-black text-white tracking-tight">
                         {formatPrice(plan.price)}
                       </div>
                       <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider">
-                        {plan.durationMonths === 12 
+                        {plan.durationMonths === 12
                           ? (language === "vi" ? "1 Năm" : "1 Year")
                           : `${plan.durationMonths} ${language === "vi" ? "Tháng" : "Months"}`}
                       </div>
@@ -192,7 +199,7 @@ export function PricingPage() {
                   </div>
 
                   <div className="mt-8">
-                    {user?.isPremium ? (
+                    {false ? (
                       <button
                         disabled
                         className="w-full py-3 px-4 rounded-xl text-center text-xs font-bold bg-slate-800 text-slate-500 border border-white/[0.05]"
@@ -282,7 +289,7 @@ export function PricingPage() {
           <h2 className="text-xl md:text-2xl font-bold text-center text-white" style={{ fontFamily: "'Outfit', sans-serif" }}>
             {t.featuresComparison}
           </h2>
-          
+
           <div className="overflow-x-auto rounded-2xl border border-white/[0.05] bg-slate-900/10">
             <table className="w-full text-left border-collapse">
               <thead>

@@ -55,12 +55,13 @@ public class MomoPaymentService {
 
         String orderId = "PLANWISE_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
         String requestId = UUID.randomUUID().toString();
-        String orderInfo = "Nang cap Premium PlanWise - Gói " + plan.getName();
-        String extraData = ""; // Có thể gửi email hoặc metadata
+        String orderInfo = "Nang cap Premium PlanWise";
+        String extraData = "";
         long amount = plan.getPrice().longValue();
 
         // 1. Tạo chữ ký số
-        // Format: accessKey=$accessKey&amount=$amount&extraData=$extraData&ipnUrl=$ipnUrl&orderId=$orderId&orderInfo=$orderInfo&partnerCode=$partnerCode&redirectUrl=$redirectUrl&requestId=$requestId&requestType=captureWallet
+        // Format:
+        // accessKey=$accessKey&amount=$amount&extraData=$extraData&ipnUrl=$ipnUrl&orderId=$orderId&orderInfo=$orderInfo&partnerCode=$partnerCode&redirectUrl=$redirectUrl&requestId=$requestId&requestType=captureWallet
         String rawSignature = "accessKey=" + momoConfig.getAccessKey() +
                 "&amount=" + amount +
                 "&extraData=" + extraData +
@@ -72,13 +73,20 @@ public class MomoPaymentService {
                 "&requestId=" + requestId +
                 "&requestType=captureWallet";
 
+        log.info("MOMO PartnerCode: {}", momoConfig.getPartnerCode());
+        log.info("MOMO AccessKey: {}", momoConfig.getAccessKey());
+        log.info("MOMO ApiUrl: {}", momoConfig.getApiUrl());
+        log.info("MOMO RedirectUrl: {}", momoConfig.getRedirectUrl());
+        log.info("MOMO IpnUrl: {}", momoConfig.getIpnUrl());
+        log.info("MOMO RawSignature: {}", rawSignature);
+
         String signature = signHmacSHA256(rawSignature, momoConfig.getSecretKey());
+
+        log.info("MOMO Signature: {}", signature);
 
         // 2. Build Request Body
         MomoPaymentRequest request = MomoPaymentRequest.builder()
                 .partnerCode(momoConfig.getPartnerCode())
-                .partnerName("PlanWise")
-                .storeId("PlanWiseStore")
                 .requestId(requestId)
                 .amount(amount)
                 .orderId(orderId)
@@ -94,7 +102,8 @@ public class MomoPaymentService {
         // 3. Gọi API Momo Sandbox
         try {
             log.info("Sending payment request to Momo for order: {}", orderId);
-            MomoPaymentResponse response = restTemplate.postForObject(momoConfig.getApiUrl(), request, MomoPaymentResponse.class);
+            MomoPaymentResponse response = restTemplate.postForObject(momoConfig.getApiUrl(), request,
+                    MomoPaymentResponse.class);
 
             if (response == null || response.getResultCode() != 0) {
                 String errorMsg = response != null ? response.getMessage() : "Momo API returned empty response";
@@ -118,7 +127,9 @@ public class MomoPaymentService {
 
         } catch (Exception e) {
             log.error("Error calling Momo Payment API", e);
-            throw new AppException(ErrorCode.MOMO_PAYMENT_FAILED, "Lỗi kết nối tới cổng thanh toán Momo");
+            throw new AppException(
+                    ErrorCode.MOMO_PAYMENT_FAILED,
+                    "Lỗi kết nối tới cổng thanh toán Momo: " + e.getMessage());
         }
     }
 
@@ -137,11 +148,13 @@ public class MomoPaymentService {
 
         // 2. Tìm Transaction
         PaymentTransaction transaction = paymentTransactionRepository.findByOrderId(ipn.getOrderId())
-                .orElseThrow(() -> new AppException(ErrorCode.TRANSACTION_NOT_FOUND, "Không tìm thấy giao dịch: " + ipn.getOrderId()));
+                .orElseThrow(() -> new AppException(ErrorCode.TRANSACTION_NOT_FOUND,
+                        "Không tìm thấy giao dịch: " + ipn.getOrderId()));
 
         // Nếu giao dịch đã hoàn thành trước đó (đã SUCCESS hoặc FAILED) thì bỏ qua
         if (!"PENDING".equals(transaction.getStatus())) {
-            log.info("Transaction {} already processed with status: {}", transaction.getOrderId(), transaction.getStatus());
+            log.info("Transaction {} already processed with status: {}", transaction.getOrderId(),
+                    transaction.getStatus());
             return;
         }
 
@@ -155,7 +168,8 @@ public class MomoPaymentService {
 
             // Kích hoạt/Gia hạn gói Premium
             activateUserSubscription(transaction.getUser(), transaction.getPlan());
-            log.info("Successfully activated Premium for user: {} with plan: {}", transaction.getUser().getEmail(), transaction.getPlan().getName());
+            log.info("Successfully activated Premium for user: {} with plan: {}", transaction.getUser().getEmail(),
+                    transaction.getPlan().getName());
         } else {
             // Thanh toán thất bại hoặc bị hủy
             transaction.setStatus("FAILED");
@@ -170,7 +184,8 @@ public class MomoPaymentService {
     @Transactional
     public void mockIpnCallback(String orderId) {
         PaymentTransaction transaction = paymentTransactionRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new AppException(ErrorCode.TRANSACTION_NOT_FOUND, "Không tìm thấy giao dịch: " + orderId));
+                .orElseThrow(() -> new AppException(ErrorCode.TRANSACTION_NOT_FOUND,
+                        "Không tìm thấy giao dịch: " + orderId));
 
         if (!"PENDING".equals(transaction.getStatus())) {
             throw new AppException(ErrorCode.BAD_REQUEST, "Giao dịch đã được xử lý từ trước.");
@@ -193,7 +208,8 @@ public class MomoPaymentService {
 
         UserSubscription subscription;
         if (activeSubOpt.isPresent()) {
-            // Gia hạn: ngày bắt đầu giữ nguyên, ngày kết thúc cộng thêm số tháng của gói mới
+            // Gia hạn: ngày bắt đầu giữ nguyên, ngày kết thúc cộng thêm số tháng của gói
+            // mới
             subscription = activeSubOpt.get();
             subscription.setEndDate(subscription.getEndDate().plusMonths(plan.getDurationMonths()));
             subscription.setPlan(plan);
@@ -218,7 +234,8 @@ public class MomoPaymentService {
     private boolean validateMomoSignature(MomoIPNRequest ipn) {
         AppProperties.Momo momoConfig = appProperties.getMomo();
 
-        // Format: accessKey=$accessKey&amount=$amount&extraData=$extraData&message=$message&orderId=$orderId&orderInfo=$orderInfo&partnerCode=$partnerCode&requestId=$requestId&resultCode=$resultCode&transId=$transId&responseTime=$responseTime
+        // Format:
+        // accessKey=$accessKey&amount=$amount&extraData=$extraData&message=$message&orderId=$orderId&orderInfo=$orderInfo&partnerCode=$partnerCode&requestId=$requestId&resultCode=$resultCode&transId=$transId&responseTime=$responseTime
         String rawSignature = "accessKey=" + momoConfig.getAccessKey() +
                 "&amount=" + ipn.getAmount() +
                 "&extraData=" + (ipn.getExtraData() != null ? ipn.getExtraData() : "") +

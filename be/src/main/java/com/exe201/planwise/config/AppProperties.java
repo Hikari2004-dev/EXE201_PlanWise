@@ -17,6 +17,7 @@ public class AppProperties {
     private final OAuth2 oauth2 = new OAuth2();
     private final Cors cors = new Cors();
     private final Momo momo = new Momo();
+    private final Vnpay vnpay = new Vnpay();
 
     @Getter
     @Setter
@@ -31,10 +32,20 @@ public class AppProperties {
 
     @Getter
     @Setter
+    public static class Vnpay {
+        private String tmnCode;
+        private String hashSecret;
+        private String payUrl;
+        private String returnUrl;
+        private String ipnUrl;
+    }
+
+    @Getter
+    @Setter
     public static class Jwt {
         private String secret;
-        private long accessTokenExpirationMs  = 900_000L;       // 15 phút
-        private long refreshTokenExpirationMs = 604_800_000L;   // 7 ngày
+        private long accessTokenExpirationMs = 900_000L;
+        private long refreshTokenExpirationMs = 604_800_000L;
     }
 
     @Getter
