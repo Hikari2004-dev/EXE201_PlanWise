@@ -2,7 +2,7 @@ import { NavLink } from "react-router";
 import {
   LayoutDashboard, Calendar, CheckSquare, FolderKanban,
   ChevronLeft, ChevronRight, User, Tag, Plus, Target,
-  Activity, Globe, BarChart2, Sparkles, Moon, Sun, LogOut
+  Activity, Globe, BarChart2, Sparkles, Moon, Sun, LogOut, X
 } from "lucide-react";
 import { useState } from "react";
 import { useData } from "../context/DataContext";
@@ -14,6 +14,8 @@ import { useAuth } from "../context/AuthContext";
 interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
+  isMobile?: boolean;
+  onClose?: () => void;
 }
 
 const MARCH_2026 = { startDay: 0, totalDays: 31, today: 12 };
@@ -62,12 +64,15 @@ function MiniCalendar() {
   );
 }
 
-export function Sidebar({ isOpen, onToggle }: SidebarProps) {
+export function Sidebar({ isOpen, onToggle, isMobile = false, onClose }: SidebarProps) {
   const { categories, language, setLanguage } = useData();
   const toggleLanguage = () => setLanguage(language === "vi" ? "en" : "vi");
   const { theme, setTheme } = useTheme();
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const { user, logout } = useAuth();
+
+  // On mobile, sidebar is always "open" (expanded) when visible
+  const effectiveOpen = isMobile ? true : isOpen;
 
   const navItems = [
     { path: "/",          label: language === "vi" ? "Bảng điều khiển"        : "Dashboard",       icon: LayoutDashboard },
@@ -82,37 +87,59 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   return (
     <div
       className={`relative flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out
-        ${isOpen ? "w-[230px]" : "w-16"}
+        ${isMobile
+          ? "fixed inset-y-0 left-0 z-50 w-[260px] shadow-2xl shadow-black/50"
+          : effectiveOpen ? "w-[230px]" : "w-16"
+        }
         bg-[#0F1629] border-r border-white/[0.05]`}
     >
       {/* ── Logo ── */}
       <div className="flex items-center gap-3 px-4 py-4 border-b border-white/[0.06] h-16">
-        <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-900/40">
+        <div className={`w-8 h-8 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-900/40 ${user?.isPremium ? "ring-2 ring-amber-400/60 ring-offset-1 ring-offset-[#0F1629]" : ""}`}>
           <Sparkles size={14} className="text-white" />
         </div>
-        {isOpen && (
-          <div className="min-w-0">
-            <div className="text-white font-black text-[15px] tracking-tight leading-tight" style={{ fontFamily: "'Outfit', 'Inter', sans-serif" }}>
-              Plan<span className="text-indigo-400">Wise</span>
+        {effectiveOpen && (
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <div className="text-white font-black text-[15px] tracking-tight leading-tight" style={{ fontFamily: "'Outfit', 'Inter', sans-serif" }}>
+                Plan<span className="text-indigo-400">Wise</span>
+              </div>
+              {user?.isPremium && (
+                <span className="relative inline-flex items-center gap-0.5 bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 text-[7px] font-extrabold px-1.5 py-[2px] rounded-md uppercase tracking-wider shadow-sm shadow-amber-500/30 shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="currentColor" className="opacity-80"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm0 2h14v2H5v-2z"/></svg>
+                  PREMIUM
+                </span>
+              )}
             </div>
             <div className="text-slate-500 text-[9px] uppercase tracking-[0.15em] font-bold mt-0.5">
               {language === "vi" ? "Quản lý thời gian" : "Time manager"}
             </div>
           </div>
         )}
+        {/* Mobile close button */}
+        {isMobile && (
+          <button
+            onClick={onClose}
+            className="ml-auto w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-rose-600 hover:text-white hover:border-rose-500 transition-all"
+          >
+            <X size={14} />
+          </button>
+        )}
       </div>
 
-      {/* ── Collapse toggle ── */}
-      <button
-        onClick={onToggle}
-        className="absolute -right-3 top-[26px] w-6 h-6 bg-[#1e2a45] border border-white/10 rounded-full flex items-center justify-center text-slate-400 shadow-lg hover:bg-indigo-600 hover:text-white hover:border-indigo-500 z-20 transition-all"
-      >
-        {isOpen ? <ChevronLeft size={11} /> : <ChevronRight size={11} />}
-      </button>
+      {/* ── Collapse toggle (desktop only) ── */}
+      {!isMobile && (
+        <button
+          onClick={onToggle}
+          className="absolute -right-3 top-[26px] w-6 h-6 bg-[#1e2a45] border border-white/10 rounded-full flex items-center justify-center text-slate-400 shadow-lg hover:bg-indigo-600 hover:text-white hover:border-indigo-500 z-20 transition-all"
+        >
+          {effectiveOpen ? <ChevronLeft size={11} /> : <ChevronRight size={11} />}
+        </button>
+      )}
 
       {/* ── Navigation ── */}
       <nav className="py-5 px-2.5 space-y-0.5">
-        {isOpen && (
+        {effectiveOpen && (
           <div className="px-2.5 mb-2">
             <span className="text-[9px] text-slate-600 uppercase tracking-widest font-bold">
               {language === "vi" ? "Điều hướng" : "Main"}
@@ -123,6 +150,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
           <NavLink
             key={path}
             to={path}
+            onClick={() => isMobile && onClose?.()}
             end={path === "/"}
             className={({ isActive }) => {
               const isPricing = path === "/pricing";
@@ -149,12 +177,12 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
               return (
                 <>
                   <Icon size={16} className={`flex-shrink-0 ${isPricing ? "text-amber-400" : (isActive ? "text-indigo-400" : "")}`} />
-                  {isOpen && (
+                  {effectiveOpen && (
                     <span className={`text-[13px] font-semibold tracking-tight ${isPricing ? "text-amber-300 font-bold" : (isActive ? "text-indigo-200" : "")}`}>
                       {label}
                     </span>
                   )}
-                  {isOpen && isActive && (
+                  {effectiveOpen && isActive && (
                     <div className={`ml-auto w-1.5 h-1.5 rounded-full ${isPricing ? "bg-amber-400" : "bg-indigo-400"}`} />
                   )}
                 </>
@@ -165,10 +193,10 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       </nav>
 
       {/* ── Divider ── */}
-      {isOpen && <div className="mx-4 border-t border-white/[0.05] my-1" />}
+      {effectiveOpen && <div className="mx-4 border-t border-white/[0.05] my-1" />}
 
       {/* ── Categories ── */}
-      {isOpen && (
+      {effectiveOpen && (
         <div className="px-4 py-3">
           <div className="flex items-center gap-2 mb-2.5">
             <Tag size={11} className="text-slate-600" />
@@ -199,7 +227,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       <div className="flex-1" />
 
       {/* ── Mini Calendar ── */}
-      {isOpen && (
+      {effectiveOpen && !isMobile && (
         <div className="border-t border-white/[0.05] pt-4 mx-1">
           <div className="px-3 mb-2">
             <span className="text-[9px] text-slate-600 uppercase tracking-widest font-bold">
@@ -224,14 +252,14 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
               <User size={14} className="text-indigo-300" />
             </div>
           )}
-          {isOpen && (
+          {effectiveOpen && (
             <>
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] text-slate-200 font-semibold truncate tracking-tight flex items-center gap-1">
                   <span>{user?.fullName || "Người dùng"}</span>
                   {user?.isPremium && (
                     <span className="bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 text-[8px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider scale-90 shrink-0">
-                      PRO
+                      PREMIUM
                     </span>
                   )}
                 </div>

@@ -21,35 +21,30 @@ export const notificationApi = {
   },
 
   async getUnreadCount(): Promise<{ count: number }> {
-    const response = await fetch(`${API_BASE_URL}${API}/notifications/unread/count`, {
+    const response = await fetch(`${API_BASE_URL}${API}/notifications/unread-count`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch unread count");
     return response.json();
   },
 
-  async markAsRead(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}${API}/notifications/${id}/read`, {
+  async update(id: string, data: { read?: boolean; dismissed?: boolean }): Promise<ApiNotification> {
+    const response = await fetch(`${API_BASE_URL}${API}/notifications/${id}`, {
       method: "PATCH",
       headers: getAuthHeaders(),
+      body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error("Failed to mark notification as read");
+    if (!response.ok) throw new Error("Failed to update notification");
+    return response.json();
   },
 
-  async markAllAsRead(): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}${API}/notifications/read-all`, {
+  async updateAll(data: { read?: boolean; dismissed?: boolean }): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}${API}/notifications`, {
       method: "PATCH",
       headers: getAuthHeaders(),
+      body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error("Failed to mark all notifications as read");
-  },
-
-  async dismiss(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}${API}/notifications/${id}/dismiss`, {
-      method: "PATCH",
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) throw new Error("Failed to dismiss notification");
+    if (!response.ok) throw new Error("Failed to update notifications");
   },
 
   async delete(id: string): Promise<void> {

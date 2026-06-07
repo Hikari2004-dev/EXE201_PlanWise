@@ -46,33 +46,33 @@ function DayDetailPanel({ date, events, onClose, onEditEvent }: DayDetailPanelPr
 
   return (
     <div
-      className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-end z-50 p-4"
+      className="fixed inset-0 bg-black/25 backdrop-blur-sm flex items-center justify-center sm:justify-end z-50 p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-80 max-h-[80vh] flex flex-col overflow-hidden"
+        className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-[320px] max-h-[80vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-slate-800">
           <div>
-            <div className="text-xs text-gray-400 uppercase tracking-wide">{dayName}</div>
-            <h3 className="text-gray-800 mt-0.5">{date} tháng 3, 2026</h3>
+            <div className="text-xs text-gray-400 dark:text-slate-500 uppercase tracking-wide">{dayName}</div>
+            <h3 className="text-gray-800 dark:text-slate-100 mt-0.5 font-bold">{date} tháng 3, 2026</h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 transition-colors"
           >
             <X size={15} />
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-3">
           {events.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-gray-300">
-              <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-3">
+            <div className="flex flex-col items-center justify-center py-8 text-gray-350 dark:text-slate-500">
+              <div className="w-12 h-12 rounded-full bg-gray-55 dark:bg-slate-800 flex items-center justify-center mb-3">
                 <Plus size={20} />
               </div>
-              <p className="text-sm text-gray-400">Không có sự kiện</p>
-              <p className="text-xs text-gray-300 mt-0.5">Ngày rảnh rỗi!</p>
+              <p className="text-sm text-gray-400 dark:text-slate-400">Không có sự kiện</p>
+              <p className="text-xs text-gray-300 dark:text-slate-500 mt-0.5">Ngày rảnh rỗi!</p>
             </div>
           ) : (
             <div className="space-y-2.5">
@@ -122,10 +122,10 @@ function DayDetailPanel({ date, events, onClose, onEditEvent }: DayDetailPanelPr
             </div>
           )}
         </div>
-        <div className="px-5 py-3 border-t border-gray-100">
+        <div className="px-5 py-3 border-t border-gray-100 dark:border-slate-850">
           <button
             onClick={onClose}
-            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm py-2 rounded-xl transition-colors"
+            className="w-full bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-gray-700 dark:text-slate-300 text-sm py-2 rounded-xl transition-colors"
           >
             Đóng
           </button>
@@ -149,12 +149,12 @@ export function MonthlyView() {
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-950">
-      <div className="border-b border-gray-100 px-6 py-3.5 flex items-center justify-between flex-shrink-0 dark:border-slate-800 dark:bg-slate-950">
+      <div className="border-b border-gray-100 px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between flex-shrink-0 dark:border-slate-800 dark:bg-slate-950 gap-3 flex-wrap">
         <div>
-          <h1 className="text-gray-900 font-bold text-xl dark:text-slate-50">{language === 'vi' ? "Lịch tháng" : "Monthly Calendar"}</h1>
+          <h1 className="text-gray-900 font-bold text-lg sm:text-xl dark:text-slate-50">{language === 'vi' ? "Lịch tháng" : "Monthly Calendar"}</h1>
           <p className="text-xs text-gray-400 mt-0.5 dark:text-slate-300">{language === 'vi' ? MONTH_NAME : "March 2026"}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5 dark:bg-slate-800">
             <button 
               onClick={() => navigate('/timetable')}
@@ -253,8 +253,8 @@ export function MonthlyView() {
                     )}
                   </div>
 
-                  {/* Event dots */}
-                  <div className="space-y-0.5 overflow-hidden flex-1">
+                  {/* Event dots/titles */}
+                  <div className="space-y-0.5 overflow-hidden flex-1 hidden sm:block">
                     {dateEvents.slice(0, 3).map((event) => {
                       const colors = COLOR_MAP[event.color as EventColor];
                       return (
@@ -273,8 +273,22 @@ export function MonthlyView() {
                       );
                     })}
                     {dateEvents.length > 3 && (
-                      <div className="text-[9px] text-gray-400 px-1.5 dark:text-slate-300">+{dateEvents.length - 3} khác</div>
+                      <div className="text-[9px] text-gray-400 px-1.5 dark:text-slate-300">+{dateEvents.length - 3} {language === 'vi' ? 'khác' : 'more'}</div>
                     )}
+                  </div>
+
+                  {/* Compact indicators for mobile */}
+                  <div className="flex flex-wrap gap-0.5 mt-1 sm:hidden overflow-hidden max-h-5">
+                    {dateEvents.map((event) => {
+                      const colors = COLOR_MAP[event.color as EventColor];
+                      return (
+                        <div
+                          key={event.id}
+                          className={`w-1.5 h-1.5 rounded-full ${colors.dot} shrink-0`}
+                          title={event.title}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               );

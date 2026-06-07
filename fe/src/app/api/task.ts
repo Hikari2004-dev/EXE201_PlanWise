@@ -15,8 +15,17 @@ export const taskApi = {
     const searchParams = new URLSearchParams();
     if (params?.completed !== undefined) searchParams.set("completed", String(params.completed));
     if (params?.categoryId) searchParams.set("categoryId", params.categoryId);
-    if (params?.priority) searchParams.set("priority", params.priority);
-    if (params?.eisenhowerMatrix) searchParams.set("eisenhowerMatrix", params.eisenhowerMatrix);
+    if (params?.priority) {
+      const priorityMap: Record<string, string> = {
+        "Cao": "HIGH",
+        "Trung bình": "MEDIUM",
+        "Thấp": "LOW"
+      };
+      searchParams.set("priority", priorityMap[params.priority] || params.priority);
+    }
+    if (params?.eisenhowerMatrix) {
+      searchParams.set("eisenhowerMatrix", params.eisenhowerMatrix.replace(/-/g, "_"));
+    }
     if (params?.dateFrom) searchParams.set("dateFrom", params.dateFrom);
     if (params?.dateTo) searchParams.set("dateTo", params.dateTo);
 
@@ -25,7 +34,11 @@ export const taskApi = {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch tasks");
-    return response.json();
+    const tasks: ApiTask[] = await response.json();
+    return tasks.map(task => ({
+      ...task,
+      eisenhowerMatrix: task.eisenhowerMatrix ? task.eisenhowerMatrix.replace(/_/g, "-") : undefined,
+    }));
   },
 
   async getById(id: string): Promise<ApiTask> {
@@ -33,7 +46,11 @@ export const taskApi = {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch task");
-    return response.json();
+    const task: ApiTask = await response.json();
+    return {
+      ...task,
+      eisenhowerMatrix: task.eisenhowerMatrix ? task.eisenhowerMatrix.replace(/_/g, "-") : undefined,
+    };
   },
 
   async create(data: {
@@ -47,13 +64,29 @@ export const taskApi = {
     contexts?: string[];
     categoryId?: string;
   }): Promise<ApiTask> {
+    const priorityMap: Record<string, string> = {
+      "Cao": "HIGH",
+      "Trung bình": "MEDIUM",
+      "Thấp": "LOW"
+    };
+    const mappedPriority = data.priority ? (priorityMap[data.priority] || data.priority) : undefined;
+    const mappedEisenhower = data.eisenhowerMatrix ? data.eisenhowerMatrix.replace(/-/g, "_") : undefined;
+
     const response = await fetch(`${API_BASE_URL}${API}/tasks`, {
       method: "POST",
       headers: getAuthHeaders(),
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        priority: mappedPriority,
+        eisenhowerMatrix: mappedEisenhower,
+      }),
     });
     if (!response.ok) throw new Error("Failed to create task");
-    return response.json();
+    const task: ApiTask = await response.json();
+    return {
+      ...task,
+      eisenhowerMatrix: task.eisenhowerMatrix ? task.eisenhowerMatrix.replace(/_/g, "-") : undefined,
+    };
   },
 
   async update(id: string, data: {
@@ -69,13 +102,29 @@ export const taskApi = {
     categoryId?: string;
     sortOrder?: number;
   }): Promise<ApiTask> {
+    const priorityMap: Record<string, string> = {
+      "Cao": "HIGH",
+      "Trung bình": "MEDIUM",
+      "Thấp": "LOW"
+    };
+    const mappedPriority = data.priority ? (priorityMap[data.priority] || data.priority) : undefined;
+    const mappedEisenhower = data.eisenhowerMatrix ? data.eisenhowerMatrix.replace(/-/g, "_") : undefined;
+
     const response = await fetch(`${API_BASE_URL}${API}/tasks/${id}`, {
       method: "PUT",
       headers: getAuthHeaders(),
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        priority: mappedPriority,
+        eisenhowerMatrix: mappedEisenhower,
+      }),
     });
     if (!response.ok) throw new Error("Failed to update task");
-    return response.json();
+    const task: ApiTask = await response.json();
+    return {
+      ...task,
+      eisenhowerMatrix: task.eisenhowerMatrix ? task.eisenhowerMatrix.replace(/_/g, "-") : undefined,
+    };
   },
 
   async delete(id: string): Promise<void> {
@@ -86,13 +135,18 @@ export const taskApi = {
     if (!response.ok) throw new Error("Failed to delete task");
   },
 
-  async toggleComplete(id: string): Promise<ApiTask> {
-    const response = await fetch(`${API_BASE_URL}${API}/tasks/${id}/toggle-complete`, {
-      method: "PATCH",
+  async updateCompletion(id: string, completed: boolean): Promise<ApiTask> {
+    const response = await fetch(`${API_BASE_URL}${API}/tasks/${id}`, {
+      method: "PUT",
       headers: getAuthHeaders(),
+      body: JSON.stringify({ completed }),
     });
-    if (!response.ok) throw new Error("Failed to toggle task completion");
-    return response.json();
+    if (!response.ok) throw new Error("Failed to update task completion");
+    const task: ApiTask = await response.json();
+    return {
+      ...task,
+      eisenhowerMatrix: task.eisenhowerMatrix ? task.eisenhowerMatrix.replace(/_/g, "-") : undefined,
+    };
   },
 
   async getStats(): Promise<{

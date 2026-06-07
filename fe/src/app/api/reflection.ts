@@ -5,7 +5,7 @@ const API = "/api/v1";
 
 export const reflectionApi = {
   async getByDate(date: string): Promise<ApiDailyReflection | null> {
-    const response = await fetch(`${API_BASE_URL}${API}/reflections/${date}`, {
+    const response = await fetch(`${API_BASE_URL}${API}/reflections/date?date=${date}`, {
       headers: getAuthHeaders(),
     });
     if (response.status === 404) return null;
@@ -20,37 +20,24 @@ export const reflectionApi = {
     energyLevel?: number;
     mood?: string;
   }): Promise<ApiDailyReflection> {
-    const response = await fetch(`${API_BASE_URL}${API}/reflections/${date}`, {
-      method: "PUT",
+    const response = await fetch(`${API_BASE_URL}${API}/reflections`, {
+      method: "POST",
       headers: getAuthHeaders(),
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        reflectionDate: date,
+        ...data,
+      }),
     });
     if (!response.ok) throw new Error("Failed to save reflection");
     return response.json();
   },
 
-  async getHistory(params?: {
-    startDate?: string;
-    endDate?: string;
-  }): Promise<ApiDailyReflection[]> {
-    const searchParams = new URLSearchParams();
-    if (params?.startDate) searchParams.set("startDate", params.startDate);
-    if (params?.endDate) searchParams.set("endDate", params.endDate);
-
-    const query = searchParams.toString();
-    const response = await fetch(`${API_BASE_URL}${API}/reflections${query ? `?${query}` : ""}`, {
+  async getHistory(): Promise<ApiDailyReflection[]> {
+    const response = await fetch(`${API_BASE_URL}${API}/reflections`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch reflection history");
     return response.json();
-  },
-
-  async delete(date: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}${API}/reflections/${date}`, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) throw new Error("Failed to delete reflection");
   },
 };
 

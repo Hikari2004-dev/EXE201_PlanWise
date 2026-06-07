@@ -36,8 +36,8 @@ public class FocusController {
                 .body(focusService.createFocusSession(principal.getId(), request));
     }
 
-    @PostMapping("/sessions/{sessionId}/complete")
-    public ResponseEntity<FocusSessionDto> completeFocusSession(
+    @PatchMapping("/sessions/{sessionId}")
+    public ResponseEntity<FocusSessionDto> updateFocusSession(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID sessionId) {
         return ResponseEntity.ok(focusService.completeFocusSession(principal.getId(), sessionId));
@@ -51,19 +51,19 @@ public class FocusController {
         return ResponseEntity.ok(focusService.getDailyFocus(principal.getId(), date));
     }
 
-    @PostMapping("/daily/top-tasks")
+    @PostMapping("/daily/{date}/top-tasks/{taskId}")
     public ResponseEntity<DailyFocusDto> addTopTask(
             @AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam UUID taskId) {
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @PathVariable UUID taskId) {
         return ResponseEntity.ok(focusService.addTopTask(principal.getId(), date, taskId));
     }
 
-    @DeleteMapping("/daily/top-tasks")
+    @DeleteMapping("/daily/{date}/top-tasks/{taskId}")
     public ResponseEntity<DailyFocusDto> removeTopTask(
             @AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam UUID taskId) {
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @PathVariable UUID taskId) {
         return ResponseEntity.ok(focusService.removeTopTask(principal.getId(), date, taskId));
     }
 

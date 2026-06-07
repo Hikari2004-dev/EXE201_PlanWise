@@ -1,8 +1,6 @@
 package com.exe201.planwise.category.dto;
 
 import com.exe201.planwise.category.entity.Category;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -14,8 +12,7 @@ public record CategoryDto(
         short sortOrder,
         boolean isDefault,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
-) {
+        OffsetDateTime updatedAt) {
     public static CategoryDto from(Category category) {
         return new CategoryDto(
                 category.getId(),
@@ -24,7 +21,6 @@ public record CategoryDto(
                 category.getSortOrder(),
                 category.isDefault(),
                 category.getCreatedAt(),
-                category.getUpdatedAt()
-        );
+                category.getUpdatedAt());
     }
 }

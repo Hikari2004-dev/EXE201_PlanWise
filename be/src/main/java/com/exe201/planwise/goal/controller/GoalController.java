@@ -91,14 +91,15 @@ public class GoalController {
     }
 
     /**
-     * POST /api/v1/goals/{goalId}/increment-progress
-     * Tăng tiến độ mục tiêu thêm 10%.
+     * PATCH /api/v1/goals/{goalId}
+     * Cập nhật một phần thông tin mục tiêu (ví dụ: tiến độ).
      */
-    @PostMapping("/{goalId}/increment-progress")
-    public ResponseEntity<GoalDto> incrementProgress(
+    @PatchMapping("/{goalId}")
+    public ResponseEntity<GoalDto> updateGoalProgress(
             @AuthenticationPrincipal UserPrincipal principal,
-            @PathVariable UUID goalId) {
-        return ResponseEntity.ok(goalService.incrementProgress(principal.getId(), goalId));
+            @PathVariable UUID goalId,
+            @Valid @RequestBody UpdateGoalRequest request) {
+        return ResponseEntity.ok(goalService.updateGoal(principal.getId(), goalId, request));
     }
 
     // Milestone endpoints

@@ -5,8 +5,9 @@ const API = "/api/v1";
 
 export const focusApi = {
   // Daily Focus
-  async getDailyFocus(date: string): Promise<ApiDailyFocus | null> {
-    const response = await fetch(`${API_BASE_URL}${API}/focus/daily/${date}`, {
+  async getDailyFocus(date?: string): Promise<ApiDailyFocus | null> {
+    const query = date ? `?date=${date}` : "";
+    const response = await fetch(`${API_BASE_URL}${API}/focus/daily${query}`, {
       headers: getAuthHeaders(),
     });
     if (response.status === 404) return null;
@@ -14,32 +15,37 @@ export const focusApi = {
     return response.json();
   },
 
-  async createOrUpdateDailyFocus(date: string, data: {
-    notes?: string;
-    topTaskIds?: string[];
-  }): Promise<ApiDailyFocus> {
-    const response = await fetch(`${API_BASE_URL}${API}/focus/daily/${date}`, {
+  async updateDailyNotes(date: string, notes: string): Promise<ApiDailyFocus> {
+    const response = await fetch(`${API_BASE_URL}${API}/focus/daily/notes?date=${date}`, {
       method: "PUT",
       headers: getAuthHeaders(),
-      body: JSON.stringify(data),
+      body: JSON.stringify(notes),
     });
-    if (!response.ok) throw new Error("Failed to update daily focus");
+    if (!response.ok) throw new Error("Failed to update daily focus notes");
+    return response.json();
+  },
+
+  async addTopTask(date: string, taskId: string): Promise<ApiDailyFocus> {
+    const response = await fetch(`${API_BASE_URL}${API}/focus/daily/${date}/top-tasks/${taskId}`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error("Failed to add top task");
+    return response.json();
+  },
+
+  async removeTopTask(date: string, taskId: string): Promise<ApiDailyFocus> {
+    const response = await fetch(`${API_BASE_URL}${API}/focus/daily/${date}/top-tasks/${taskId}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error("Failed to remove top task");
     return response.json();
   },
 
   // Focus Sessions
-  async getSessions(params?: {
-    startDate?: string;
-    endDate?: string;
-    taskId?: string;
-  }): Promise<ApiFocusSession[]> {
-    const searchParams = new URLSearchParams();
-    if (params?.startDate) searchParams.set("startDate", params.startDate);
-    if (params?.endDate) searchParams.set("endDate", params.endDate);
-    if (params?.taskId) searchParams.set("taskId", params.taskId);
-
-    const query = searchParams.toString();
-    const response = await fetch(`${API_BASE_URL}${API}/focus/sessions${query ? `?${query}` : ""}`, {
+  async getSessions(): Promise<ApiFocusSession[]> {
+    const response = await fetch(`${API_BASE_URL}${API}/focus/sessions`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch focus sessions");
@@ -48,11 +54,12 @@ export const focusApi = {
 
   async startSession(data: {
     startTime: string;
-    duration: number;
+    duration?: number;
     sessionType?: string;
     taskId?: string;
+    notes?: string;
   }): Promise<ApiFocusSession> {
-    const response = await fetch(`${API_BASE_URL}${API}/focus/sessions/start`, {
+    const response = await fetch(`${API_BASE_URL}${API}/focus/sessions`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -61,27 +68,18 @@ export const focusApi = {
     return response.json();
   },
 
-  async endSession(id: string, completed: boolean): Promise<ApiFocusSession> {
-    const response = await fetch(`${API_BASE_URL}${API}/focus/sessions/${id}/end`, {
+  async completeSession(id: string): Promise<ApiFocusSession> {
+    const response = await fetch(`${API_BASE_URL}${API}/focus/sessions/${id}`, {
       method: "PATCH",
       headers: getAuthHeaders(),
-      body: JSON.stringify({ completed }),
     });
-    if (!response.ok) throw new Error("Failed to end focus session");
+    if (!response.ok) throw new Error("Failed to complete focus session");
     return response.json();
   },
 
-  async deleteSession(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}${API}/focus/sessions/${id}`, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) throw new Error("Failed to delete focus session");
-  },
-
   // Quick Notes
-  async getQuickNotes(dailyFocusId: string): Promise<ApiQuickNote[]> {
-    const response = await fetch(`${API_BASE_URL}${API}/focus/daily/${dailyFocusId}/notes`, {
+  async getQuickNotes(): Promise<ApiQuickNote[]> {
+    const response = await fetch(`${API_BASE_URL}${API}/focus/notes`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch quick notes");
@@ -89,7 +87,6 @@ export const focusApi = {
   },
 
   async createQuickNote(data: {
-    dailyFocusId?: string;
     content: string;
     noteType?: string;
     mediaUrl?: string;

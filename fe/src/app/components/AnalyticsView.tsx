@@ -120,20 +120,20 @@ export function AnalyticsView() {
   const activeRecap = recapRange === "week" ? weeklyRecap : monthlyRecap;
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 overflow-y-auto font-sans text-slate-900">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 overflow-y-auto font-sans text-slate-900 dark:text-slate-100">
       {/* Page Header */}
-      <div className="pt-8 pb-6 px-8 flex items-center justify-between flex-shrink-0 border-b border-slate-200 bg-white sticky top-0 z-10">
+      <div className="pt-6 sm:pt-8 pb-5 sm:pb-6 px-4 sm:px-8 flex items-center justify-between flex-shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 sticky top-0 z-10 gap-3">
         <div>
-          <h1 className="text-[1.6rem] font-extrabold tracking-tight text-slate-900">
+          <h1 className="text-[1.3rem] sm:text-[1.6rem] font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
             {language === "vi" ? "Phân Tích & Đánh Giá" : "Analytics & Review"}
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 mt-1 dark:text-slate-400">
             {language === "vi" ? "Nhật ký cuối ngày và biểu đồ hiệu suất" : "Daily journal and performance charts"}
           </p>
         </div>
       </div>
 
-      <div className="flex-1 p-8 space-y-8 max-w-[1400px] mx-auto w-full pb-12">
+      <div className="flex-1 p-4 sm:p-8 space-y-8 max-w-[1400px] mx-auto w-full pb-12">
         <HintBubble
           id="analytics_intro"
           title={language === "vi" ? "Phân tích & Đánh giá" : "Analytics & Review"}
@@ -148,7 +148,7 @@ export function AnalyticsView() {
         <div className="relative">
           <div className={`${!user?.isPremium ? "blur-md pointer-events-none select-none" : ""}`}>
             <div className="overflow-hidden rounded-2xl border border-indigo-100 bg-white shadow-sm dark:border-indigo-500/20 dark:bg-slate-950">
-          <div className="flex flex-col gap-4 border-b border-indigo-100 bg-gradient-to-r from-slate-950 via-indigo-950 to-violet-900 px-6 py-5 text-white dark:border-indigo-500/20 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-4 border-b border-indigo-100 bg-gradient-to-r from-slate-950 via-indigo-950 to-violet-900 px-6 py-5 text-white dark:border-indigo-500/20 flex-col lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-3">
               <div className="mt-0.5 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/12 text-yellow-300 ring-1 ring-white/15">
                 <Bot size={20} />
@@ -190,7 +190,7 @@ export function AnalyticsView() {
             </div>
           </div>
 
-          <div className="grid gap-6 px-6 py-6 dark:bg-slate-950 lg:grid-cols-[1.4fr_0.9fr]">
+          <div className="grid gap-6 px-6 py-6 dark:bg-slate-950 grid-cols-1 lg:grid-cols-[1.4fr_0.9fr]">
             <div className="space-y-4">
               <div className="flex items-start gap-3">
                 <div className="mt-1 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-200">
@@ -281,10 +281,10 @@ export function AnalyticsView() {
         </div>
 
         {/* ── Daily Reflection ── */}
-        <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-zinc-200 bg-zinc-50/50 flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-zinc-600" />
-            <h2 className="text-base font-semibold tracking-tight text-zinc-950">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-zinc-200 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-zinc-200 dark:border-slate-800 bg-zinc-50/50 dark:bg-slate-900/50 flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-zinc-600 dark:text-slate-350" />
+            <h2 className="text-base font-semibold tracking-tight text-zinc-950 dark:text-slate-100">
               {language === "vi" ? "Nhật ký cuối ngày" : "Daily Reflection"}
             </h2>
           </div>
@@ -297,26 +297,26 @@ export function AnalyticsView() {
                 { key: "improvements"as const, label: language === "vi" ? "Cải thiện gì cho ngày mai?" : "What to improve tomorrow?",     placeholder: language === "vi" ? "Kế hoạch cải thiện..." : "Improvement plan...",                      color: "focus:ring-blue-300 focus:border-blue-400"     },
               ].map(({ key, label, placeholder, color }) => (
                 <div key={key}>
-                  <label className="text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-1.5 block">{label}</label>
+                  <label className="text-xs font-semibold text-zinc-600 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">{label}</label>
                   <textarea
                     rows={3}
                     placeholder={placeholder}
                     value={newReflection[key]}
                     onChange={(e) => setNewReflection({ ...newReflection, [key]: e.target.value })}
-                    className={`w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 ${color} transition-all resize-none`}
+                    className={`w-full border border-zinc-300 dark:border-slate-700 bg-white dark:bg-slate-850 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 dark:text-slate-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 ${color} transition-all resize-none`}
                   />
                 </div>
               ))}
             </div>
 
             {/* Mood & Energy */}
-            <div className="flex flex-wrap items-center gap-6 pt-2 border-t border-zinc-100">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-6 pt-4 border-t border-zinc-100 dark:border-slate-800">
               {/* Energy level */}
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-semibold text-zinc-600 uppercase tracking-wider whitespace-nowrap">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+                <span className="text-xs font-semibold text-zinc-600 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">
                   {language === "vi" ? "Năng lượng" : "Energy"}
                 </span>
-                <div className="flex gap-1">
+                <div className="flex flex-wrap gap-1">
                   {[1,2,3,4,5,6,7,8,9,10].map(level => (
                     <button
                       key={level}
@@ -324,7 +324,7 @@ export function AnalyticsView() {
                       className={`w-7 h-7 rounded-md text-xs font-bold transition-all border ${
                         level <= newReflection.energyLevel
                           ? "bg-blue-500 border-blue-500 text-white shadow-sm"
-                          : "bg-zinc-100 border-zinc-200 text-zinc-500 hover:bg-zinc-200"
+                          : "bg-zinc-100 dark:bg-slate-800 border-zinc-200 dark:border-slate-755 text-zinc-500 dark:text-slate-450 hover:bg-zinc-200 dark:hover:bg-slate-700"
                       }`}
                     >
                       {level}
@@ -334,8 +334,8 @@ export function AnalyticsView() {
               </div>
 
               {/* Mood */}
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-semibold text-zinc-600 uppercase tracking-wider whitespace-nowrap">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+                <span className="text-xs font-semibold text-zinc-600 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">
                   {language === "vi" ? "Tâm trạng" : "Mood"}
                 </span>
                 <div className="flex gap-1.5">
@@ -346,8 +346,8 @@ export function AnalyticsView() {
                       title={getMoodLabel(mood)}
                       className={`p-2 rounded-lg border transition-all ${
                         newReflection.mood === mood
-                          ? "bg-zinc-100 border-zinc-300 shadow-sm"
-                          : "border-transparent hover:bg-zinc-100"
+                          ? "bg-zinc-100 dark:bg-slate-800 border-zinc-300 dark:border-slate-700 shadow-sm"
+                          : "border-transparent hover:bg-zinc-100 dark:hover:bg-slate-800"
                       }`}
                     >
                       {getMoodIcon(mood)}
@@ -356,7 +356,7 @@ export function AnalyticsView() {
                 </div>
               </div>
 
-              <button className="ml-auto flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md shadow-indigo-200">
+              <button className="w-full lg:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md shadow-indigo-200 dark:shadow-none cursor-pointer shrink-0">
                 <Save size={14} className="text-zinc-400" />
                 {language === "vi" ? "Lưu nhật ký" : "Save Journal"}
               </button>
@@ -367,10 +367,10 @@ export function AnalyticsView() {
         {/* ── Charts Grid ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Weekly Progress Bar Chart */}
-          <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-zinc-200 bg-zinc-50/50 flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-zinc-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-zinc-200 dark:border-slate-800 bg-zinc-50/50 dark:bg-slate-900/50 flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-indigo-500" />
-              <h3 className="text-sm font-semibold tracking-tight text-zinc-950">
+              <h3 className="text-sm font-semibold tracking-tight text-zinc-950 dark:text-slate-100">
                 {language === "vi" ? "Tiến độ tuần này" : "Weekly Progress"}
               </h3>
             </div>
@@ -392,10 +392,10 @@ export function AnalyticsView() {
           </div>
 
           {/* Energy Level Line Chart */}
-          <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-zinc-200 bg-zinc-50/50 flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-zinc-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-zinc-200 dark:border-slate-800 bg-zinc-50/50 dark:bg-slate-900/50 flex items-center gap-2">
               <Flame className="w-4 h-4 text-orange-500" />
-              <h3 className="text-sm font-semibold tracking-tight text-zinc-950">
+              <h3 className="text-sm font-semibold tracking-tight text-zinc-950 dark:text-slate-100">
                 {language === "vi" ? "Biến động năng lượng" : "Energy Trend"}
               </h3>
             </div>
@@ -424,15 +424,15 @@ export function AnalyticsView() {
           </div>
 
           {/* Category Distribution Pie */}
-          <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-zinc-200 bg-zinc-50/50 flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-zinc-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-zinc-200 dark:border-slate-800 bg-zinc-50/50 dark:bg-slate-900/50 flex items-center gap-2">
               <Calendar className="w-4 h-4 text-purple-500" />
-              <h3 className="text-sm font-semibold tracking-tight text-zinc-950">
+              <h3 className="text-sm font-semibold tracking-tight text-zinc-950 dark:text-slate-100">
                 {language === "vi" ? "Phân bổ thời gian theo danh mục" : "Time by Category"}
               </h3>
             </div>
-            <div className="p-6 flex gap-6">
-              <ResponsiveContainer width="55%" height={220}>
+            <div className="p-6 flex flex-col sm:flex-row gap-6 items-center justify-center sm:items-stretch sm:justify-start">
+              <ResponsiveContainer width="100%" height={220} className="max-w-[180px] sm:max-w-none">
                 <PieChart>
                   <Pie data={categoryData} cx="50%" cy="50%" outerRadius={90} innerRadius={48} dataKey="value" paddingAngle={3}>
                     {categoryData.map((entry, index) => (
@@ -445,12 +445,12 @@ export function AnalyticsView() {
                   />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="flex flex-col justify-center gap-2.5">
+              <div className="flex flex-col justify-center gap-2.5 w-full sm:w-auto">
                 {categoryData.map(cat => (
                   <div key={cat.name} className="flex items-center gap-2.5">
                     <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: cat.color }} />
-                    <span className="text-sm font-medium text-zinc-700">{cat.name}</span>
-                    <span className="text-xs font-bold text-zinc-500 ml-auto pl-3">{cat.value}%</span>
+                    <span className="text-sm font-medium text-zinc-700 dark:text-slate-300">{cat.name}</span>
+                    <span className="text-xs font-bold text-zinc-500 dark:text-slate-450 ml-auto pl-3">{cat.value}%</span>
                   </div>
                 ))}
               </div>
@@ -458,28 +458,28 @@ export function AnalyticsView() {
           </div>
 
           {/* Habit Streaks */}
-          <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-zinc-200 bg-zinc-50/50 flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-zinc-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-zinc-200 dark:border-slate-800 bg-zinc-50/50 dark:bg-slate-900/50 flex items-center gap-2">
               <Flame className="w-4 h-4 text-orange-500" />
-              <h3 className="text-sm font-semibold tracking-tight text-zinc-950">
+              <h3 className="text-sm font-semibold tracking-tight text-zinc-950 dark:text-slate-100">
                 {language === "vi" ? "Chuỗi thói quen" : "Habit Streaks"}
               </h3>
             </div>
-            <div className="divide-y divide-zinc-100">
+            <div className="divide-y divide-zinc-100 dark:divide-slate-800">
               {HABITS.map(habit => (
-                <div key={habit.id} className="flex items-center justify-between px-6 py-4 hover:bg-zinc-50/50 transition-colors">
+                <div key={habit.id} className="flex items-center justify-between px-6 py-4 hover:bg-zinc-50/50 dark:hover:bg-slate-800/50 transition-colors">
                   <div className="min-w-0 flex-1 mr-4">
-                    <h4 className="text-sm font-semibold text-zinc-950 truncate">{habit.title}</h4>
-                    <p className="text-xs text-zinc-500 mt-0.5">
+                    <h4 className="text-sm font-semibold text-zinc-950 dark:text-slate-100 truncate">{habit.title}</h4>
+                    <p className="text-xs text-zinc-500 dark:text-slate-450 mt-0.5">
                       {language === "vi" ? "Hiện tại:" : "Current:"}&nbsp;
-                      <span className="font-bold text-zinc-900">{habit.currentStreak}</span> {language === "vi" ? "ngày" : "days"}
+                      <span className="font-bold text-zinc-900 dark:text-white">{habit.currentStreak}</span> {language === "vi" ? "ngày" : "days"}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <div className="w-8 h-8 rounded-md bg-orange-50 border border-orange-100 flex items-center justify-center shadow-sm">
+                    <div className="w-8 h-8 rounded-md bg-orange-50 dark:bg-orange-500/10 border border-orange-100 dark:border-orange-500/20 flex items-center justify-center shadow-sm">
                       <Flame className="w-4 h-4 text-orange-500" />
                     </div>
-                    <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-md border border-zinc-200 bg-zinc-50 text-zinc-700">
+                    <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-md border border-zinc-200 dark:border-slate-800 bg-zinc-50 dark:bg-slate-900 text-zinc-700 dark:text-slate-300">
                       {language === "vi" ? "Tốt nhất:" : "Best:"} {habit.bestStreak}
                     </span>
                   </div>
@@ -490,48 +490,48 @@ export function AnalyticsView() {
         </div>
 
         {/* ── Recent Reflections ── */}
-        <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-zinc-200 bg-zinc-50/50 flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-zinc-600" />
-            <h2 className="text-base font-semibold tracking-tight text-zinc-950">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-zinc-200 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-zinc-200 dark:border-slate-800 bg-zinc-50/50 dark:bg-slate-900/50 flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-zinc-600 dark:text-slate-350" />
+            <h2 className="text-base font-semibold tracking-tight text-zinc-950 dark:text-slate-100">
               {language === "vi" ? "Nhật ký gần đây" : "Recent Journal Entries"}
             </h2>
           </div>
-          <div className="divide-y divide-zinc-100">
+          <div className="divide-y divide-zinc-100 dark:divide-slate-800">
             {reflections.map(reflection => (
-              <div key={reflection.id} className="px-6 py-5 hover:bg-zinc-50/30 transition-colors">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-semibold text-zinc-950">
+              <div key={reflection.id} className="px-6 py-5 hover:bg-zinc-50/30 dark:hover:bg-slate-800/40 transition-colors">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                  <span className="text-sm font-semibold text-zinc-950 dark:text-slate-100">
                     {new Date(reflection.date).toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long" })}
                   </span>
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5">
                       {getMoodIcon(reflection.mood)}
-                      <span className="text-xs font-semibold text-zinc-700">{getMoodLabel(reflection.mood)}</span>
+                      <span className="text-xs font-semibold text-zinc-700 dark:text-slate-300">{getMoodLabel(reflection.mood)}</span>
                     </div>
-                    <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-md border border-blue-100 bg-blue-50 text-blue-700">
+                    <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-md border border-blue-100 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300">
                       {language === "vi" ? "Năng lượng:" : "Energy:"} {reflection.energyLevel}/10
                     </span>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <div className="bg-emerald-50/50 border border-emerald-100 rounded-lg p-3">
-                    <h5 className="font-semibold text-emerald-700 mb-1.5 text-xs uppercase tracking-wider">
+                  <div className="bg-emerald-50/50 dark:bg-emerald-500/5 border border-emerald-100 dark:border-emerald-500/20 rounded-lg p-3">
+                    <h5 className="font-semibold text-emerald-700 dark:text-emerald-400 mb-1.5 text-xs uppercase tracking-wider">
                       {language === "vi" ? "✓ Hoàn thành" : "✓ Completed"}
                     </h5>
-                    <p className="text-zinc-700 text-xs leading-relaxed">{reflection.completed}</p>
+                    <p className="text-zinc-700 dark:text-slate-300 text-xs leading-relaxed">{reflection.completed}</p>
                   </div>
-                  <div className="bg-rose-50/50 border border-rose-100 rounded-lg p-3">
-                    <h5 className="font-semibold text-rose-700 mb-1.5 text-xs uppercase tracking-wider">
+                  <div className="bg-rose-50/50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/20 rounded-lg p-3">
+                    <h5 className="font-semibold text-rose-700 dark:text-rose-400 mb-1.5 text-xs uppercase tracking-wider">
                       {language === "vi" ? "⚠ Trở ngại" : "⚠ Obstacles"}
                     </h5>
-                    <p className="text-zinc-700 text-xs leading-relaxed">{reflection.obstacles}</p>
+                    <p className="text-zinc-700 dark:text-slate-300 text-xs leading-relaxed">{reflection.obstacles}</p>
                   </div>
-                  <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-3">
-                    <h5 className="font-semibold text-blue-700 mb-1.5 text-xs uppercase tracking-wider">
+                  <div className="bg-blue-50/50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/20 rounded-lg p-3">
+                    <h5 className="font-semibold text-blue-700 dark:text-blue-400 mb-1.5 text-xs uppercase tracking-wider">
                       {language === "vi" ? "↑ Cải thiện" : "↑ Improvements"}
                     </h5>
-                    <p className="text-zinc-700 text-xs leading-relaxed">{reflection.improvements}</p>
+                    <p className="text-zinc-700 dark:text-slate-300 text-xs leading-relaxed">{reflection.improvements}</p>
                   </div>
                 </div>
               </div>

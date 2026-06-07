@@ -48,6 +48,7 @@ export function Chatbot() {
   const [inputValue, setInputValue] = useState("");
   const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
@@ -56,6 +57,7 @@ export function Chatbot() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    setIsMobile(window.innerWidth < 640);
     setPosition({
       x: window.innerWidth - BUTTON_SIZE - DEFAULT_MARGIN,
       y: window.innerHeight - BUTTON_SIZE - DEFAULT_MARGIN,
@@ -63,7 +65,10 @@ export function Chatbot() {
   }, []);
 
   useEffect(() => {
-    const handleResize = () => setPosition((prev) => clampPosition(prev));
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+      setPosition((prev) => clampPosition(prev));
+    };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -233,29 +238,33 @@ export function Chatbot() {
 
   const panelLeft = Math.max(16, Math.min(position.x - 324, window.innerWidth - 396));
   const panelTop = Math.max(16, position.y - 430);
-  const hintLeft = Math.max(16, Math.min(position.x - 260, window.innerWidth - 300));
-  const hintTop = Math.max(16, position.y - 4);
+  const hintLeft = isMobile
+    ? Math.max(12, window.innerWidth - 272)
+    : Math.max(16, Math.min(position.x - 260, window.innerWidth - 300));
+  const hintTop = isMobile
+    ? Math.max(12, position.y - 130)
+    : Math.max(16, position.y - 4);
 
   return (
     <div className="pointer-events-none fixed inset-0 z-50">
       {!isOpen && showHint && (
         <div
-          className="pointer-events-auto absolute w-[260px] rounded-2xl border border-indigo-100 bg-white/95 p-3 shadow-[0_16px_40px_-18px_rgba(79,70,229,0.45)] backdrop-blur"
+          className="pointer-events-auto absolute w-[260px] rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-white/95 dark:bg-slate-900/95 p-3 shadow-[0_16px_40px_-18px_rgba(79,70,229,0.45)] backdrop-blur text-slate-600 dark:text-slate-300 transition-all duration-200"
           style={{ left: hintLeft, top: hintTop }}
         >
           <div className="flex items-start gap-2">
-            <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+            <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
               <img src={AUTO_FILL_AVATAR} alt="Coach assistant" className="h-6 w-6 object-contain" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold uppercase tracking-wider text-indigo-700">Coach</p>
-              <p className="mt-1 text-xs leading-relaxed text-slate-600">
+              <p className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">Coach</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
                 Nhập như đang nhắn tin, Coach sẽ giúp bạn thêm task hoặc lịch nhanh hơn. Bạn cũng có thể kéo nút này đến vị trí thuận mắt.
               </p>
             </div>
             <button
               onClick={() => setShowHint(false)}
-              className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+              className="rounded-lg p-1 text-slate-400 dark:text-slate-500 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200"
             >
               <X size={13} />
             </button>
@@ -284,8 +293,10 @@ export function Chatbot() {
 
       {isOpen && (
         <div
-          className="pointer-events-auto absolute flex h-[500px] w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-3xl border border-indigo-100 bg-white shadow-[0_18px_60px_-15px_rgba(15,23,42,0.35)]"
-          style={{ left: panelLeft, top: panelTop }}
+          className={`pointer-events-auto absolute flex flex-col overflow-hidden rounded-3xl border border-indigo-100 bg-white dark:border-slate-800 dark:bg-slate-900 shadow-[0_18px_60px_-15px_rgba(15,23,42,0.35)] transition-all ${
+            isMobile ? "fixed inset-x-4 top-20 bottom-4 h-auto w-auto max-w-none" : "h-[500px] w-[380px]"
+          }`}
+          style={isMobile ? {} : { left: panelLeft, top: panelTop }}
         >
           <div className="relative flex items-center justify-between overflow-hidden bg-gradient-to-r from-indigo-600 to-violet-600 p-4 shadow-sm">
             <div className="absolute inset-0 opacity-10 mix-blend-overlay bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]" />
@@ -312,10 +323,10 @@ export function Chatbot() {
             </button>
           </div>
 
-          <div className="flex-1 space-y-4 overflow-y-auto bg-gray-50/50 p-4">
+          <div className="flex-1 space-y-4 overflow-y-auto bg-gray-50/50 dark:bg-slate-950/40 p-4">
             {messages.length < 2 && (
-              <div className="mx-auto flex max-w-[92%] items-start gap-2 rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-xs text-indigo-700 shadow-sm">
-                <CalendarPlus size={20} className="mt-0.5 shrink-0 text-indigo-500" />
+              <div className="mx-auto flex max-w-[92%] items-start gap-2 rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-xs text-indigo-700 dark:border-indigo-950/60 dark:bg-indigo-950/40 dark:text-indigo-300 shadow-sm">
+                <CalendarPlus size={20} className="mt-0.5 shrink-0 text-indigo-500 dark:text-indigo-400" />
                 <p>
                   Thử nhắn:
                   <strong> "Mai 9h họp team ở phòng A"</strong>
@@ -336,14 +347,14 @@ export function Chatbot() {
                   className={`max-w-[82%] px-3.5 py-2.5 text-[13px] shadow ${
                     msg.sender === "user"
                       ? "rounded-2xl rounded-tr-sm bg-indigo-600 text-white"
-                      : "rounded-2xl rounded-tl-sm border border-gray-100 bg-white text-gray-700 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)]"
+                      : "rounded-2xl rounded-tl-sm border border-gray-100 bg-white text-gray-700 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)]"
                   }`}
                 >
                   {msg.isTyping ? (
                     <div className="flex h-5 items-center gap-1.5 px-1">
-                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-300 [animation-delay:-0.3s]" />
-                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-300 [animation-delay:-0.15s]" />
-                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-300" />
+                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-300 dark:bg-indigo-500 [animation-delay:-0.3s]" />
+                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-300 dark:bg-indigo-500 [animation-delay:-0.15s]" />
+                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-300 dark:bg-indigo-500" />
                     </div>
                   ) : (
                     <div className="space-y-2 whitespace-pre-wrap leading-relaxed">
@@ -354,7 +365,7 @@ export function Chatbot() {
                             <p key={i}>
                               {parts.map((part, j) =>
                                 j % 2 === 1 ? (
-                                  <strong key={j} className="font-bold text-indigo-700">
+                                  <strong key={j} className="font-bold text-indigo-700 dark:text-indigo-400">
                                     {part}
                                   </strong>
                                 ) : (
@@ -374,9 +385,9 @@ export function Chatbot() {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="shrink-0 border-t border-gray-100 bg-white p-3">
+          <div className="shrink-0 border-t border-gray-100 bg-white dark:border-slate-800 dark:bg-slate-900 p-3">
             <form onSubmit={handleSendMessage} className="flex flex-col gap-2">
-              <div className="flex items-end gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 transition-all focus-within:border-indigo-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-100">
+              <div className="flex items-end gap-2 rounded-2xl border border-gray-200 bg-gray-50 dark:border-slate-800 dark:bg-slate-950/50 px-3 py-2 transition-all focus-within:border-indigo-400 dark:focus-within:border-indigo-500 focus-within:bg-white dark:focus-within:bg-slate-950 focus-within:ring-2 focus-within:ring-indigo-100 dark:focus-within:ring-indigo-950">
                 <textarea
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
@@ -388,18 +399,18 @@ export function Chatbot() {
                   }}
                   placeholder="Ví dụ: Mai 9h họp team hoặc nhắc mình nộp báo cáo"
                   title="Nhập nội dung để Coach tự thêm công việc hoặc lịch phù hợp"
-                  className="min-h-[40px] max-h-[100px] flex-1 resize-none border-none bg-transparent py-1 text-sm placeholder:text-gray-400 focus:outline-none"
+                  className="min-h-[40px] max-h-[100px] flex-1 resize-none border-none bg-transparent py-1 text-sm text-slate-800 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none"
                   rows={1}
                 />
                 <button
                   type="submit"
                   disabled={!inputValue.trim()}
-                  className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white shadow-md shadow-indigo-200 transition-colors hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none"
+                  className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-600 disabled:shadow-none"
                 >
                   <Send size={14} className={inputValue.trim() ? "ml-0.5" : ""} />
                 </button>
               </div>
-              <div className="flex items-center justify-center gap-1 text-center text-[10px] text-gray-400">
+              <div className="flex items-center justify-center gap-1 text-center text-[10px] text-gray-400 dark:text-slate-500">
                 <Sparkles size={10} className="text-yellow-400" />
                 Coach sẽ đọc câu bạn nhập và tự thêm task hoặc lịch phù hợp
               </div>

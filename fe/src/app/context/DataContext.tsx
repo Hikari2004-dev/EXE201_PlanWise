@@ -96,6 +96,35 @@ function normalizeTaskDueDateForApi(dueDate?: string) {
   return undefined;
 }
 
+function mapApiTaskToTask(t: ApiTask): Task {
+  const priorityMap: Record<string, "Cao" | "Trung bình" | "Thấp"> = {
+    "HIGH": "Cao",
+    "MEDIUM": "Trung bình",
+    "LOW": "Thấp",
+    "Cao": "Cao",
+    "Trung bình": "Trung bình",
+    "Thấp": "Thấp"
+  };
+  return {
+    id: t.id,
+    title: t.title,
+    description: t.description || "",
+    dueDate: formatTaskDueDateForUi(t.dueDate),
+    priority: priorityMap[t.priority] || "Trung bình",
+    completed: t.completed,
+    completedAt: t.completedAt,
+    color: t.color,
+    eisenhowerMatrix: t.eisenhowerMatrix ? t.eisenhowerMatrix.replace(/_/g, "-") : undefined,
+    contexts: t.contexts,
+    estimatedTime: t.estimatedTime,
+    actualTime: t.actualTime,
+    categoryId: t.categoryId,
+    categoryName: t.categoryName,
+    categoryColor: t.categoryColor,
+    sortOrder: t.sortOrder,
+  };
+}
+
 interface Goal {
   id: string;
   title: string;
@@ -235,7 +264,7 @@ interface DataContextType {
   // Focus operations
   updateDailyFocus: (date: string, topTasks: string[]) => Promise<void>;
   addFocusSession: (session: Partial<ApiFocusSession>) => Promise<void>;
-  endFocusSession: (id: string, completed: boolean) => Promise<void>;
+  endFocusSession: (id: string) => Promise<void>;
   
   // Reflection operations
   saveReflection: (date: string, reflection: Partial<DailyReflection>) => Promise<void>;
@@ -340,24 +369,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       // Process tasks
       if (tasksData.status === "fulfilled") {
-        setTasks(tasksData.value.map(t => ({
-          id: t.id,
-          title: t.title,
-          description: t.description || "",
-          dueDate: formatTaskDueDateForUi(t.dueDate),
-          priority: t.priority || "Trung bình",
-          completed: t.completed,
-          completedAt: t.completedAt,
-          color: t.color,
-          eisenhowerMatrix: t.eisenhowerMatrix,
-          contexts: t.contexts,
-          estimatedTime: t.estimatedTime,
-          actualTime: t.actualTime,
-          categoryId: t.categoryId,
-          categoryName: t.categoryName,
-          categoryColor: t.categoryColor,
-          sortOrder: t.sortOrder,
-        })));
+        setTasks(tasksData.value.map(mapApiTaskToTask));
       }
 
       // Process goals
@@ -392,8 +404,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
           currentStreak: h.currentStreak,
           bestStreak: h.bestStreak,
           color: h.color,
-          completedDates: [],
-          completedToday: h.completedToday,
+          completedDates: h.completedDates || [],
+          completedToday: h.completedDates ? h.completedDates.includes(new Date().toISOString().split('T')[0]) : false,
         })));
       }
 
@@ -418,8 +430,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
           title: n.title,
           message: n.message,
           ctaLabel: n.ctaLabel,
-          isRead: n.isRead,
-          isDismissed: n.isDismissed,
+          isRead: n.read,
+          isDismissed: n.dismissed,
           scheduledFor: n.scheduledFor,
           createdAt: n.createdAt,
         })));
@@ -527,7 +539,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       contexts: task.contexts,
       categoryId: task.categoryId,
     });
-    setTasks(prev => [...prev, { ...task, id: created.id, sortOrder: created.sortOrder, dueDate: formatTaskDueDateForUi(task.dueDate) }]);
+    setTasks(prev => [...prev, mapApiTaskToTask(created)]);
   };
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
@@ -536,18 +548,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.dueDate !== undefined) {
       const normalizedDueDate = normalizeTaskDueDateForApi(updates.dueDate);
-      if (normalizedDueDate) updateData.dueDate = normalizedDueDate;
+      if (normalizedDueDate) {
+        updateData.dueDate = normalizedDueDate;
+      }
     }
     if (updates.priority) updateData.priority = updates.priority;
     if (updates.color) updateData.color = updates.color;
     if (updates.completed !== undefined) updateData.completed = updates.completed;
-    if (updates.eisenhowerMatrix) updateData.eisenhowerMatrix = updates.eisenhowerMatrix;
+    if (updates.eisenhowerMatrix !== undefined) updateData.eisenhowerMatrix = updates.eisenhowerMatrix;
     if (updates.estimatedTime !== undefined) updateData.estimatedTime = updates.estimatedTime;
     if (updates.contexts) updateData.contexts = updates.contexts;
     if (updates.categoryId !== undefined) updateData.categoryId = updates.categoryId;
 
-    await taskApi.update(id, updateData as Parameters<typeof taskApi.update>[1]);
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates, dueDate: updates.dueDate !== undefined ? formatTaskDueDateForUi(updates.dueDate) : t.dueDate } : t));
+    const updated = await taskApi.update(id, updateData as Parameters<typeof taskApi.update>[1]);
+    setTasks(prev => prev.map(t => t.id === id ? mapApiTaskToTask(updated) : t));
   };
 
   const deleteTask = async (id: string) => {
@@ -556,8 +570,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const toggleTaskComplete = async (id: string) => {
-    const updated = await taskApi.toggleComplete(id);
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, completed: updated.completed } : t));
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    const updated = await taskApi.updateCompletion(id, !task.completed);
+    setTasks(prev => prev.map(t => t.id === id ? mapApiTaskToTask(updated) : t));
   };
 
   // Goal operations
@@ -607,6 +623,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       currentStreak: 0,
       bestStreak: 0,
       completedDates: [],
+      completedToday: false,
     }]);
   };
 
@@ -623,28 +640,38 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const toggleHabitDate = async (id: string, dateStr: string) => {
-    await habitApi.toggleCompletion(id, dateStr);
-    setHabits(prev => prev.map(h => {
-      if (h.id === id) {
-        const completedDates = h.completedDates.includes(dateStr)
-          ? h.completedDates.filter(d => d !== dateStr)
-          : [...h.completedDates, dateStr];
-        return { ...h, completedDates };
-      }
-      return h;
-    }));
+    const updated = await habitApi.toggleCompletion(id, dateStr);
+    setHabits(prev => prev.map(h => h.id === id ? {
+      ...h,
+      completedDates: updated.completedDates || [],
+      completedToday: updated.completedDates ? updated.completedDates.includes(new Date().toISOString().split('T')[0]) : false,
+    } : h));
   };
 
   // Focus operations
   const updateDailyFocus = async (date: string, topTasks: string[]) => {
-    const updated = await focusApi.createOrUpdateDailyFocus(date, { topTaskIds: topTasks });
-    setDailyFocus(prev => prev ? { ...prev, topTasks } : {
-      id: updated.id,
-      date: updated.focusDate,
-      topTasks,
-      focusSessions: [],
-      quickNotes: [],
-    });
+    const currentTopTasks = dailyFocus && dailyFocus.date === date ? dailyFocus.topTasks : [];
+    const toAdd = topTasks.filter(id => !currentTopTasks.includes(id));
+    const toRemove = currentTopTasks.filter(id => !topTasks.includes(id));
+    let updated: ApiDailyFocus | null = null;
+    for (const taskId of toAdd) {
+      updated = await focusApi.addTopTask(date, taskId);
+    }
+    for (const taskId of toRemove) {
+      updated = await focusApi.removeTopTask(date, taskId);
+    }
+    if (!updated) {
+      updated = await focusApi.getDailyFocus(date);
+    }
+    if (updated) {
+      setDailyFocus({
+        id: updated.id,
+        date: updated.focusDate,
+        topTasks: updated.topTaskIds || [],
+        focusSessions: updated.focusSessions || [],
+        quickNotes: updated.quickNotes || [],
+      });
+    }
   };
 
   const addFocusSession = async (session: Partial<ApiFocusSession>) => {
@@ -666,8 +693,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const endFocusSession = async (id: string, completed: boolean) => {
-    const updated = await focusApi.endSession(id, completed);
+  const endFocusSession = async (id: string) => {
+    const updated = await focusApi.completeSession(id);
     setDailyFocus(prev => prev ? {
       ...prev,
       focusSessions: prev.focusSessions.map(s => s.id === id ? updated : s),
@@ -726,17 +753,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Notification operations
   const markNotificationRead = async (id: string) => {
-    await notificationApi.markAsRead(id);
+    await notificationApi.update(id, { read: true });
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
   };
 
   const markAllNotificationsRead = async () => {
-    await notificationApi.markAllAsRead();
+    await notificationApi.updateAll({ read: true });
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
   };
 
   const dismissNotification = async (id: string) => {
-    await notificationApi.dismiss(id);
+    await notificationApi.update(id, { dismissed: true });
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 

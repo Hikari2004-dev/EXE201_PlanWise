@@ -53,6 +53,32 @@ public class SubscriptionController {
         return ResponseEntity.ok(payment);
     }
 
+    /**
+     * VNPay return URL endpoint - xác thực callback từ VNPay khi user được redirect về.
+     * Frontend gọi endpoint này với tất cả query params từ VNPay.
+     */
+    @GetMapping("/vnpay-return")
+    public ResponseEntity<Map<String, String>> vnpayReturn(@RequestParam Map<String, String> vnpParams) {
+        log.info("Received VNPay return callback with params: {}", vnpParams.keySet());
+        Map<String, String> result = vnpayPaymentService.verifyVnpayReturn(vnpParams);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * VNPay IPN (server-to-server) endpoint - VNPay gọi trực tiếp.
+     */
+    @GetMapping("/vnpay-ipn")
+    public ResponseEntity<Map<String, String>> vnpayIpn(@RequestParam Map<String, String> vnpParams) {
+        log.info("Received VNPay IPN webhook with params: {}", vnpParams.keySet());
+        try {
+            vnpayPaymentService.verifyVnpayReturn(vnpParams);
+            return ResponseEntity.ok(Map.of("RspCode", "00", "Message", "Confirm Success"));
+        } catch (Exception e) {
+            log.error("Error processing VNPay IPN", e);
+            return ResponseEntity.ok(Map.of("RspCode", "99", "Message", e.getMessage()));
+        }
+    }
+
     @PostMapping("/momo-ipn")
     public ResponseEntity<Void> receiveMomoIPN(@RequestBody MomoIPNRequest ipnRequest) {
         log.info("Received IPN webhook from Momo for order: {}", ipnRequest.getOrderId());
@@ -84,7 +110,7 @@ public class SubscriptionController {
     @PostMapping("/mock-ipn")
     public ResponseEntity<Map<String, String>> mockIpn(@RequestParam String orderId) {
         log.info("Triggering mock IPN payment verification for order: {}", orderId);
-        momoPaymentService.mockIpnCallback(orderId);
+        vnpayPaymentService.mockVnpayIpn(orderId);
         return ResponseEntity.ok(Map.of(
                 "status", "SUCCESS",
                 "message", "Đã kích hoạt giả lập gói hội viên thành công!"));

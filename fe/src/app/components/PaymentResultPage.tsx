@@ -16,78 +16,65 @@ export function PaymentResultPage() {
   const [amount, setAmount] = useState<number>(0);
   const [mockLoading, setMockLoading] = useState(false);
 
-  // Extract query parameters and call backend verify
+  // Extract VNPay query parameters and call backend verify
   useEffect(() => {
     const verifyTransaction = async () => {
       const searchParams = new URLSearchParams(window.location.search);
-      const partnerCode = searchParams.get("partnerCode") || "";
-      const orderIdVal = searchParams.get("orderId") || "";
-      const requestId = searchParams.get("requestId") || "";
-      const amountVal = Number(searchParams.get("amount") || 0);
-      const orderInfo = searchParams.get("orderInfo") || "";
-      const orderType = searchParams.get("orderType") || "";
-      const transId = Number(searchParams.get("transId") || 0);
-      const resultCode = Number(searchParams.get("resultCode") ?? -1);
-      const message = searchParams.get("message") || "";
-      const payType = searchParams.get("payType") || "";
-      const responseTime = Number(searchParams.get("responseTime") || 0);
-      const extraData = searchParams.get("extraData") || "";
-      const signature = searchParams.get("signature") || "";
 
-      setOrderId(orderIdVal);
-      setAmount(amountVal);
+      // VNPay callback parameters
+      const vnpResponseCode = searchParams.get("vnp_ResponseCode") || "";
+      const vnpTxnRef = searchParams.get("vnp_TxnRef") || ""; // orderId
+      const vnpAmount = Number(searchParams.get("vnp_Amount") || 0) / 100; // VNPay sends amount * 100
+      const vnpBankCode = searchParams.get("vnp_BankCode") || "";
+      const vnpBankTranNo = searchParams.get("vnp_BankTranNo") || "";
+      const vnpCardType = searchParams.get("vnp_CardType") || "";
+      const vnpOrderInfo = searchParams.get("vnp_OrderInfo") || "";
+      const vnpPayDate = searchParams.get("vnp_PayDate") || "";
+      const vnpTransactionNo = searchParams.get("vnp_TransactionNo") || "";
+      const vnpTransactionStatus = searchParams.get("vnp_TransactionStatus") || "";
+      const vnpSecureHash = searchParams.get("vnp_SecureHash") || "";
 
-      // Check for Momo resultCode: 0 means success
-      if (resultCode !== 0) {
+      setOrderId(vnpTxnRef);
+      setAmount(vnpAmount);
+
+      // VNPay: "00" means success
+      if (vnpResponseCode !== "00") {
         setSuccess(false);
         setErrorMsg(
-          language === "vi" 
-            ? `Thanh toán thất bại: ${message || "Người dùng hủy giao dịch"}` 
-            : `Payment failed: ${message || "User cancelled transaction"}`
+          language === "vi"
+            ? `Thanh toán thất bại (Mã lỗi: ${vnpResponseCode})`
+            : `Payment failed (Error code: ${vnpResponseCode})`
         );
         setLoading(false);
         return;
       }
 
       try {
-        const payload = {
-          partnerCode,
-          orderId: orderIdVal,
-          requestId,
-          amount: amountVal,
-          orderInfo,
-          orderType,
-          transId,
-          resultCode,
-          message,
-          payType,
-          responseTime,
-          extraData,
-          signature,
-        };
-
-        const response = await fetchWithAuth("/api/v1/subscriptions/verify", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
+        // Send all VNPay params to backend for verification
+        const queryString = window.location.search;
+        const response = await fetchWithAuth(`/api/v1/subscriptions/vnpay-return${queryString}`, {
+          method: "GET",
         });
 
         if (response.ok) {
-          setSuccess(true);
-          await refreshProfile(); // Refresh AuthContext so that limits unlock immediately!
+          const data = await response.json();
+          if (data.status === "SUCCESS") {
+            setSuccess(true);
+            await refreshProfile(); // Refresh AuthContext so that limits unlock immediately!
+          } else {
+            throw new Error(data.message || "Payment verification failed");
+          }
         } else {
           const data = await response.json().catch(() => ({}));
-          throw new Error(data.message || "Signature verification failed on backend");
+          throw new Error(data.message || "Payment verification failed on backend");
         }
       } catch (err: any) {
         console.error("Verification error:", err);
         setSuccess(false);
         setErrorMsg(
           language === "vi"
-            ? `Không thể xác minh chữ ký giao dịch: ${err.message || "Lỗi chữ ký"}. Nếu bạn đang test ở Localhost (không có public webhook), hãy click nút DEV Mock ở dưới.`
-            : `Could not verify transaction signature: ${err.message || "Signature error"}. If testing on Localhost (no public webhook), click the DEV Mock button below.`
+            ? `Không thể xác minh giao dịch: ${err.message || "Lỗi xác thực"}. Nếu bạn đang test ở Localhost, hãy click nút DEV Mock ở dưới.`
+            : `Could not verify transaction: ${err.message || "Verification error"}. If testing on Localhost, click the DEV Mock button below.`
         );
       } finally {
         setLoading(false);
@@ -149,8 +136,8 @@ export function PaymentResultPage() {
             </h2>
             <p className="text-slate-400 text-xs font-medium max-w-xs mx-auto">
               {language === "vi"
-                ? "Chúng tôi đang xác thực thông tin thanh toán từ MoMo. Vui lòng giữ nguyên trang web."
-                : "We are verifying payment status with MoMo. Please do not close this window."}
+                ? "Chúng tôi đang xác thực thông tin thanh toán từ VNPay. Vui lòng giữ nguyên trang web."
+                : "We are verifying payment status with VNPay. Please do not close this window."}
             </p>
           </div>
         ) : success ? (
@@ -219,8 +206,8 @@ export function PaymentResultPage() {
                 </div>
                 <p className="text-[10px] text-slate-500 max-w-xs mx-auto">
                   {language === "vi"
-                    ? "Tại môi trường localhost, do MoMo không thể gọi trực tiếp webhook IPN đến máy tính của bạn, bạn có thể click nút dưới đây để kích hoạt giả lập thành công."
-                    : "On localhost, because MoMo cannot call your local IPN webhook, you can use the button below to simulate a successful payment notification."}
+                    ? "Tại môi trường localhost, do VNPay không thể gọi trực tiếp webhook IPN đến máy tính của bạn, bạn có thể click nút dưới đây để kích hoạt giả lập thành công."
+                    : "On localhost, because VNPay cannot call your local IPN webhook, you can use the button below to simulate a successful payment notification."}
                 </p>
                 <button
                   onClick={handleDevMock}

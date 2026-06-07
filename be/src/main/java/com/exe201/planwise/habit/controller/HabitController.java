@@ -91,38 +91,14 @@ public class HabitController {
     }
 
     /**
-     * POST /api/v1/habits/{habitId}/toggle
-     * Toggle hoàn thành thói quen trong một ngày.
+     * PATCH /api/v1/habits/{habitId}/completions/{date}
+     * Bật/tắt hoàn thành thói quen trong một ngày.
      */
-    @PostMapping("/{habitId}/toggle")
+    @PatchMapping("/{habitId}/completions/{date}")
     public ResponseEntity<HabitDto> toggleCompletion(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID habitId,
-            @Valid @RequestBody ToggleHabitCompletionRequest request) {
-        return ResponseEntity.ok(habitService.toggleCompletion(principal.getId(), habitId, request.date()));
-    }
-
-    /**
-     * POST /api/v1/habits/{habitId}/complete
-     * Đánh dấu hoàn thành thói quen trong một ngày.
-     */
-    @PostMapping("/{habitId}/complete")
-    public ResponseEntity<HabitDto> markCompleted(
-            @AuthenticationPrincipal UserPrincipal principal,
-            @PathVariable UUID habitId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ResponseEntity.ok(habitService.markCompleted(principal.getId(), habitId, date));
-    }
-
-    /**
-     * DELETE /api/v1/habits/{habitId}/complete
-     * Bỏ đánh dấu hoàn thành thói quen trong một ngày.
-     */
-    @DeleteMapping("/{habitId}/complete")
-    public ResponseEntity<HabitDto> unmarkCompleted(
-            @AuthenticationPrincipal UserPrincipal principal,
-            @PathVariable UUID habitId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ResponseEntity.ok(habitService.unmarkCompleted(principal.getId(), habitId, date));
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(habitService.toggleCompletion(principal.getId(), habitId, date));
     }
 }

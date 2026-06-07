@@ -6,9 +6,11 @@ import com.exe201.planwise.exception.ErrorCode;
 import com.exe201.planwise.user.entity.PaymentTransaction;
 import com.exe201.planwise.user.entity.SubscriptionPlan;
 import com.exe201.planwise.user.entity.User;
+import com.exe201.planwise.user.entity.UserSubscription;
 import com.exe201.planwise.user.repository.PaymentTransactionRepository;
 import com.exe201.planwise.user.repository.SubscriptionPlanRepository;
 import com.exe201.planwise.user.repository.UserRepository;
+import com.exe201.planwise.user.repository.UserSubscriptionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,7 @@ import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.time.OffsetDateTime;
 import java.util.*;
 
 @Service
@@ -31,6 +34,7 @@ public class VnpayPaymentService {
     private final SubscriptionPlanRepository subscriptionPlanRepository;
     private final UserRepository userRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
+    private final UserSubscriptionRepository userSubscriptionRepository;
 
     @Transactional
     public Map<String, String> createPayment(UUID userId, UUID planId) {
@@ -129,6 +133,135 @@ public class VnpayPaymentService {
         return Map.of(
                 "payUrl", paymentUrl,
                 "orderId", orderId);
+    }
+
+    /**
+     * Xác thực VNPay return URL callback: kiểm tra chữ ký, cập nhật giao dịch, kích hoạt Premium.
+     */
+    @Transactional
+    public Map<String, String> verifyVnpayReturn(Map<String, String> vnpParams) {
+        AppProperties.Vnpay vnpay = appProperties.getVnpay();
+
+        // 1. Tách secure hash ra khỏi params để tạo chuỗi xác thực
+        String vnpSecureHash = vnpParams.get("vnp_SecureHash");
+        // Remove hash-related params trước khi tính toán
+        Map<String, String> paramsToHash = new TreeMap<>(vnpParams);
+        paramsToHash.remove("vnp_SecureHash");
+        paramsToHash.remove("vnp_SecureHashType");
+
+        // 2. Tạo chuỗi hash từ các params còn lại (đã sorted theo key)
+        StringBuilder hashData = new StringBuilder();
+        for (Map.Entry<String, String> entry : paramsToHash.entrySet()) {
+            if (entry.getValue() != null && !entry.getValue().isEmpty()) {
+                hashData.append(URLEncoder.encode(entry.getKey(), StandardCharsets.US_ASCII));
+                hashData.append("=");
+                hashData.append(URLEncoder.encode(entry.getValue(), StandardCharsets.US_ASCII).replaceAll("\\+", "%20"));
+                hashData.append("&");
+            }
+        }
+        // Bỏ ký tự & cuối
+        if (hashData.length() > 0) {
+            hashData.deleteCharAt(hashData.length() - 1);
+        }
+
+        String calculatedHash = hmacSHA512(vnpay.getHashSecret(), hashData.toString());
+
+        log.info("VNPAY Return - Hash Data: {}", hashData);
+        log.info("VNPAY Return - Calculated Hash: {}", calculatedHash);
+        log.info("VNPAY Return - Received Hash: {}", vnpSecureHash);
+
+        // 3. Kiểm tra chữ ký
+        if (!calculatedHash.equalsIgnoreCase(vnpSecureHash)) {
+            log.error("VNPay signature verification failed!");
+            throw new AppException(ErrorCode.BAD_REQUEST, "Chữ ký VNPay không hợp lệ");
+        }
+
+        // 4. Kiểm tra response code
+        String responseCode = vnpParams.get("vnp_ResponseCode");
+        String txnRef = vnpParams.get("vnp_TxnRef");
+        String transactionNo = vnpParams.get("vnp_TransactionNo");
+
+        log.info("VNPay Return - ResponseCode: {}, TxnRef: {}, TransactionNo: {}", responseCode, txnRef, transactionNo);
+
+        // 5. Tìm giao dịch
+        PaymentTransaction transaction = paymentTransactionRepository.findByOrderId(txnRef)
+                .orElseThrow(() -> new AppException(ErrorCode.TRANSACTION_NOT_FOUND,
+                        "Không tìm thấy giao dịch: " + txnRef));
+
+        // Nếu đã xử lý trước đó
+        if (!"PENDING".equals(transaction.getStatus())) {
+            log.info("Transaction {} already processed with status: {}", txnRef, transaction.getStatus());
+            return Map.of("status", transaction.getStatus(), "message", "Giao dịch đã được xử lý trước đó");
+        }
+
+        transaction.setTransId(transactionNo);
+        transaction.setRawCallbackResponse(vnpParams.toString());
+
+        if ("00".equals(responseCode)) {
+            // Thanh toán thành công!
+            transaction.setStatus("SUCCESS");
+            paymentTransactionRepository.save(transaction);
+
+            // Kích hoạt Premium
+            activateUserSubscription(transaction.getUser(), transaction.getPlan());
+            log.info("Successfully activated Premium for user: {} with plan: {}",
+                    transaction.getUser().getEmail(), transaction.getPlan().getName());
+
+            return Map.of("status", "SUCCESS", "message", "Thanh toán thành công");
+        } else {
+            // Thanh toán thất bại
+            transaction.setStatus("FAILED");
+            paymentTransactionRepository.save(transaction);
+            log.warn("VNPay payment failed for order: {}, responseCode: {}", txnRef, responseCode);
+
+            return Map.of("status", "FAILED", "message", "Thanh toán thất bại (Mã: " + responseCode + ")");
+        }
+    }
+
+    /**
+     * Giả lập IPN Webhook (Dành cho kiểm thử cục bộ không cần public URL).
+     */
+    @Transactional
+    public void mockVnpayIpn(String orderId) {
+        PaymentTransaction transaction = paymentTransactionRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.TRANSACTION_NOT_FOUND,
+                        "Không tìm thấy giao dịch: " + orderId));
+
+        if (!"PENDING".equals(transaction.getStatus())) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Giao dịch đã được xử lý từ trước.");
+        }
+
+        // Cập nhật giao dịch thành SUCCESS
+        transaction.setStatus("SUCCESS");
+        transaction.setTransId("MOCK_VNPAY_" + System.currentTimeMillis());
+        paymentTransactionRepository.save(transaction);
+
+        // Kích hoạt Premium
+        activateUserSubscription(transaction.getUser(), transaction.getPlan());
+    }
+
+    private void activateUserSubscription(User user, SubscriptionPlan plan) {
+        OffsetDateTime now = OffsetDateTime.now();
+
+        Optional<UserSubscription> activeSubOpt = userSubscriptionRepository.findActiveSubscription(user.getId(), now);
+
+        UserSubscription subscription;
+        if (activeSubOpt.isPresent()) {
+            subscription = activeSubOpt.get();
+            subscription.setEndDate(subscription.getEndDate().plusMonths(plan.getDurationMonths()));
+            subscription.setPlan(plan);
+            subscription.setStatus("ACTIVE");
+        } else {
+            subscription = UserSubscription.builder()
+                    .user(user)
+                    .plan(plan)
+                    .startDate(now)
+                    .endDate(now.plusMonths(plan.getDurationMonths()))
+                    .status("ACTIVE")
+                    .build();
+        }
+
+        userSubscriptionRepository.save(subscription);
     }
 
     private String hmacSHA512(String key, String data) {

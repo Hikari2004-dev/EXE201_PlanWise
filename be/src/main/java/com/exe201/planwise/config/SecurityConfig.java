@@ -64,6 +64,7 @@ public class SecurityConfig {
                     "/actuator/health",
                     "/api/v1/subscriptions/plans",
                     "/api/v1/subscriptions/momo-ipn",
+                    "/api/v1/subscriptions/vnpay-ipn",
                     "/api/v1/subscriptions/mock-ipn"
                 ).permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()

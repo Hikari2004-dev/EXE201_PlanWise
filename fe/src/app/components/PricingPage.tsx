@@ -144,7 +144,7 @@ export function PricingPage() {
 
         {/* Pricing Cards */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="h-96 rounded-3xl bg-slate-900/40 border border-white/[0.05] p-6 flex flex-col justify-between animate-pulse">
                 <div className="space-y-4">
@@ -157,7 +157,7 @@ export function PricingPage() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {plans.map((plan) => {
               const isPopular = plan.durationMonths === 6 || plan.durationMonths === 12; // Highlighting longer options
               const isActivePlan = user?.isPremium && user?.premiumExpiresAt; // Need to verify if the active sub is this specific one or just premium
@@ -263,7 +263,7 @@ export function PricingPage() {
             {t.featuresTitle}
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               { text: t.featureGoal, desc: language === "vi" ? "Không lo giới hạn số lượng mục tiêu, thoải mái lập kế hoạch dài hạn." : "No limits on goal setting, design your ultimate vision." },
               { text: t.featureHabit, desc: language === "vi" ? "Tạo thói quen buổi sáng, tối và công việc mà không bị giới hạn." : "Track custom habits for routine building without constraint." },

@@ -124,17 +124,17 @@ function EventModal({ event, onClose, onSave, onDelete }: EventModalProps) {
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-96 overflow-hidden"
+        className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-[384px] border dark:border-slate-800 overflow-hidden animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className={`${colors.light} px-5 py-4 border-b border-black/5`}>
+        <div className={`${colors.light} px-5 py-4 border-b border-black/5 dark:border-white/5`}>
           <div className="flex items-start justify-between">
-            <h3 className={`${colors.text} leading-tight`}>
+            <h3 className={`${colors.text} leading-tight font-bold text-base`}>
               {event ? "Chỉnh sửa sự kiện" : "Thêm sự kiện mới"}
             </h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-black/5 transition-colors"
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-black/5 transition-colors"
             >
               <X size={16} />
             </button>
@@ -142,29 +142,29 @@ function EventModal({ event, onClose, onSave, onDelete }: EventModalProps) {
         </div>
         <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3">
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Tiêu đề *</label>
+            <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Tiêu đề *</label>
             <input
               type="text"
               required
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               placeholder="VD: Họp nhóm"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Ngày</label>
+              <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Ngày</label>
               <select
                 value={form.day}
                 onChange={(e) => setForm({ ...form, day: e.target.value })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all cursor-pointer"
               >
-                {DAYS.map((d, i) => <option key={d} value={d}>{DAYS_VI[i]}</option>)}
+                {DAYS.map((d, i) => <option key={d} value={d} className="dark:bg-slate-900">{DAYS_VI[i]}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Danh mục</label>
+              <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Danh mục</label>
               <select
                 value={form.categoryId || categories[0]?.id || ""}
                 onChange={(e) => {
@@ -172,68 +172,68 @@ function EventModal({ event, onClose, onSave, onDelete }: EventModalProps) {
                   const cat = categories.find(c => c.id === catId);
                   setForm({ ...form, categoryId: catId, color: cat?.color as EventColor || form.color });
                 }}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all cursor-pointer"
               >
                 {categories.length === 0 && <option value="">Đang tải danh mục...</option>}
                 {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  <option key={cat.id} value={cat.id} className="dark:bg-slate-900">{cat.name}</option>
                 ))}
               </select>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Giờ bắt đầu</label>
+              <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Giờ bắt đầu</label>
               <select
                 value={form.startHour}
                 onChange={(e) => setForm({ ...form, startHour: e.target.value })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all cursor-pointer"
               >
-                {hours.map((h) => <option key={h} value={h}>{h}:00</option>)}
+                {hours.map((h) => <option key={h} value={h} className="dark:bg-slate-900">{h}:00</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Phút</label>
+              <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Phút</label>
               <select
                 value={form.startMin}
                 onChange={(e) => setForm({ ...form, startMin: e.target.value })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all cursor-pointer"
               >
-                <option value="0">:00</option>
-                <option value="30">:30</option>
+                <option value="0" className="dark:bg-slate-900">:00</option>
+                <option value="30" className="dark:bg-slate-900">:30</option>
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Thời lượng</label>
+              <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Thời lượng</label>
               <select
                 value={form.duration}
                 onChange={(e) => setForm({ ...form, duration: e.target.value })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all cursor-pointer"
               >
                 {[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4].map((d) => (
-                  <option key={d} value={d}>{d}h</option>
+                  <option key={d} value={d} className="dark:bg-slate-900">{d}h</option>
                 ))}
               </select>
             </div>
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Địa điểm</label>
+            <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Địa điểm</label>
             <input
               type="text"
               value={form.location}
               onChange={(e) => setForm({ ...form, location: e.target.value })}
               placeholder="Phòng họp A"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all"
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Ghi chú</label>
+            <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Ghi chú</label>
             <textarea
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               placeholder="Thêm ghi chú..."
               rows={2}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+              className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none transition-all"
             />
           </div>
           <div className="flex gap-2 pt-1">
@@ -244,7 +244,7 @@ function EventModal({ event, onClose, onSave, onDelete }: EventModalProps) {
                   onDelete(event.id);
                   onClose();
                 }}
-                className="px-3 border border-rose-200 text-rose-600 text-sm py-2 rounded-xl hover:bg-rose-50 transition-colors"
+                className="px-3 border border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 text-sm py-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
               >
                 <Trash2 size={14} />
               </button>
@@ -252,15 +252,15 @@ function EventModal({ event, onClose, onSave, onDelete }: EventModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 border border-gray-200 text-gray-600 text-sm py-2 rounded-xl hover:bg-gray-50 transition-colors"
+              className="flex-1 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-350 text-sm py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
             >
               Hủy
             </button>
             <button
               type="submit"
-              className="flex-1 bg-indigo-600 text-white text-sm py-2 rounded-xl hover:bg-indigo-700 transition-colors"
+              className="flex-1 bg-zinc-900 dark:bg-indigo-600 hover:bg-zinc-800 dark:hover:bg-indigo-700 text-white text-sm py-2 rounded-xl transition-colors"
             >
-              {event ? "Cập nhật" : "Thêm"}
+              Lưu
             </button>
           </div>
         </form>
@@ -340,7 +340,7 @@ export function WeeklyView() {
   const isCurrentTimeVisible = currentHour >= START_HOUR && currentHour < END_HOUR;
 
   return (
-    <div className="flex flex-col h-full bg-white relative">
+    <div className="flex flex-col h-full bg-white dark:bg-slate-950 dark:text-slate-100 relative">
       {/* CoachAI Bubble & Float Button */}
       {hasMERTask && (
         <button 
@@ -360,60 +360,64 @@ export function WeeklyView() {
 
       {/* Done notification */}
       {coachState === 'done' && (
-        <div className="absolute bottom-24 right-6 w-80 bg-white rounded-2xl shadow-2xl p-4 border border-emerald-100 z-50 animate-in slide-in-from-bottom-5">
+        <div className="absolute bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-4 border border-emerald-100 dark:border-emerald-500/20 z-50 animate-in slide-in-from-bottom-5">
           <div className="flex gap-3">
-             <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-xl shrink-0">🦉</div>
+             <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/25 flex items-center justify-center text-xl shrink-0">🦉</div>
              <div>
-                <p className="text-sm text-gray-700 leading-relaxed font-medium">Xong rồi! Mình đã xếp sẵn các khung nghỉ ngơi. Khi đến giờ giải lao, mình sẽ nhắc bạn đứng dậy vươn vai nhé. Bắt đầu phiên 1 thôi! 🎉</p>
+                <p className="text-sm text-gray-700 dark:text-slate-300 leading-relaxed font-medium">
+                  {language === 'vi' 
+                    ? "Xong rồi! Mình đã xếp sẵn các khung nghỉ ngơi. Khi đến giờ giải lao, mình sẽ nhắc bạn đứng dậy vươn vai nhé. Bắt đầu phiên 1 thôi! 🎉"
+                    : "Done! I have scheduled rest intervals. I'll remind you to stretch when it's break time. Let's start session 1! 🎉"}
+                </p>
                 <button 
                   onClick={() => setCoachState('idle')} 
-                  className="mt-3 text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors"
+                  className="mt-3 text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-300 px-3 py-1.5 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-500/25 transition-colors"
                 >
-                  Đóng
+                  {language === 'vi' ? 'Đóng' : 'Close'}
                 </button>
              </div>
           </div>
         </div>
       )}
       {/* Header */}
-      <div className="border-b border-gray-100 px-4 sm:px-6 py-3 flex items-center justify-between flex-shrink-0 bg-white gap-3 flex-wrap">
+      <div className="border-b border-gray-100 dark:border-slate-800 px-4 sm:px-6 py-3 flex items-center justify-between flex-shrink-0 bg-white dark:bg-slate-950 gap-3 flex-wrap">
         <div className="min-w-0">
-          <h1 className="text-gray-900 font-bold text-lg sm:text-xl leading-tight">
+          <h1 className="text-gray-900 dark:text-slate-50 font-bold text-lg sm:text-xl leading-tight">
             {language === 'vi' ? 'Lịch tuần' : 'Weekly Schedule'}
           </h1>
-          <p className="text-xs text-gray-400 mt-0.5 hidden sm:block">
+          <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5 hidden sm:block">
             {language === 'vi' ? '9 – 15 tháng 3, 2026' : 'March 9 – 15, 2026'}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Week / Month toggle */}
-          <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5">
-            <button className="px-3 py-1.5 rounded-lg text-xs bg-white shadow-sm text-gray-700 font-semibold">
+          <div className="flex items-center bg-gray-100 dark:bg-slate-900 rounded-xl p-1 gap-0.5">
+            <button className="px-3 py-1.5 rounded-lg text-xs bg-white dark:bg-slate-800 shadow-sm text-gray-700 dark:text-slate-200 font-semibold">
               {language === 'vi' ? 'Tuần' : 'Week'}
             </button>
             <button
               onClick={() => navigate('/calendar')}
-              className="px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-gray-600 transition-colors cursor-pointer font-medium"
+              className="px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 transition-colors cursor-pointer font-medium"
             >
               {language === 'vi' ? 'Tháng' : 'Month'}
             </button>
           </div>
           {/* Prev / Today / Next */}
           <div className="flex items-center gap-1">
-            <button className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors">
+            <button className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 transition-colors">
               <ChevronLeft size={16} />
             </button>
-            <button className="px-3 py-1.5 text-xs border border-indigo-200 text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors font-semibold">
+            <button className="px-3 py-1.5 text-xs border border-indigo-200 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors font-semibold">
               {language === 'vi' ? 'Hôm nay' : 'Today'}
             </button>
-            <button className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors">
+            <button className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 transition-colors">
               <ChevronRight size={16} />
             </button>
           </div>
           {/* Add event */}
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-xs font-semibold hover:from-indigo-700 hover:to-violet-700 transition-all shadow-sm shadow-indigo-200"
+            className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-xs font-semibold hover:from-indigo-700 hover:to-violet-700 transition-all shadow-sm shadow-indigo-200 dark:shadow-none"
           >
             <Plus size={14} />
             <span className="hidden sm:inline">{language === 'vi' ? 'Thêm sự kiện' : 'Add Event'}</span>
@@ -424,7 +428,7 @@ export function WeeklyView() {
 
       {/* Calendar grid */}
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-        <div className="px-4 sm:px-6 pt-4 bg-white border-b border-gray-100">
+        <div className="px-4 sm:px-6 pt-4 bg-white dark:bg-slate-950 border-b border-gray-100 dark:border-slate-800">
           <HintBubble
             id="weekly_timetable_intro"
             title={language === "vi" ? "Lịch tuần" : "Weekly Schedule"}
@@ -439,17 +443,17 @@ export function WeeklyView() {
         </div>
 
         {/* Day header row — responsive: show short labels on small screens */}
-        <div className="flex border-b border-gray-100 bg-white flex-shrink-0">
+        <div className="flex border-b border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-950 flex-shrink-0">
           {/* Time gutter */}
           <div className="w-12 sm:w-16 flex-shrink-0" />
           {DAYS.map((day, i) => (
             <div
               key={day}
               className={`flex-1 text-center py-2 sm:py-2.5 min-w-0 ${
-                i < DAYS.length - 1 ? 'border-r border-gray-50' : ''
+                i < DAYS.length - 1 ? 'border-r border-gray-50 dark:border-slate-900' : ''
               }`}
             >
-              <div className="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-widest font-bold">
+              <div className="text-[9px] sm:text-[10px] text-gray-400 dark:text-slate-500 uppercase tracking-widest font-bold">
                 {DAYS_VI[i]}
               </div>
               <div
@@ -457,8 +461,8 @@ export function WeeklyView() {
                   inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full mt-1 text-[11px] sm:text-xs font-semibold
                   ${
                     i === TODAY_INDEX
-                      ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-300'
-                      : 'text-gray-500 hover:bg-gray-100 cursor-pointer transition-colors'
+                      ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-300 dark:shadow-none'
+                      : 'text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 cursor-pointer transition-colors'
                   }
                 `}
               >
@@ -469,7 +473,7 @@ export function WeeklyView() {
         </div>
 
         {/* Scrollable time grid — overflow-y-auto here, NOT on children */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-auto">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-auto dark:bg-slate-950">
           <div
             className="flex relative"
             style={{
@@ -482,7 +486,7 @@ export function WeeklyView() {
               {hours.map((hour) => (
                 <div
                   key={hour}
-                  className="absolute right-2 sm:right-3 text-[9px] sm:text-[10px] text-gray-400 font-semibold select-none"
+                  className="absolute right-2 sm:right-3 text-[9px] sm:text-[10px] text-gray-400 dark:text-slate-500 font-semibold select-none"
                   style={{ top: `${(hour - START_HOUR) * HOUR_HEIGHT - 7}px` }}
                 >
                   {formatHourLabel(hour)}
@@ -499,8 +503,8 @@ export function WeeklyView() {
                 <div
                   key={day}
                   className={`
-                    flex-1 relative border-l border-gray-50
-                    ${isToday ? "bg-indigo-50/20" : ""}
+                    flex-1 relative border-l border-gray-50 dark:border-slate-900
+                    ${isToday ? "bg-indigo-50/20 dark:bg-indigo-500/5" : ""}
                   `}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
@@ -518,7 +522,7 @@ export function WeeklyView() {
                   {hours.map((hour) => (
                     <div
                       key={hour}
-                      className="absolute w-full border-t border-gray-100"
+                      className="absolute w-full border-t border-gray-100 dark:border-slate-900"
                       style={{ top: `${(hour - START_HOUR) * HOUR_HEIGHT}px` }}
                     />
                   ))}
@@ -526,7 +530,7 @@ export function WeeklyView() {
                   {hours.map((hour) => (
                     <div
                       key={`h-${hour}`}
-                      className="absolute w-full border-t border-dashed border-gray-50"
+                      className="absolute w-full border-t border-dashed border-gray-50 dark:border-slate-900/50 opacity-40"
                       style={{ top: `${(hour - START_HOUR) * HOUR_HEIGHT + HOUR_HEIGHT / 2}px` }}
                     />
                   ))}
@@ -552,7 +556,7 @@ export function WeeklyView() {
                   {/* Coach AI Bubble logic specifically for the 99 event on Monday */}
                   {day === "Mon" && hasMERTask && coachState === 'suggesting' && (
                     <div 
-                      className="absolute z-50 left-[90%] w-72 sm:w-80 bg-white rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-blue-100 p-0 overflow-hidden animate-in zoom-in-95 duration-200"
+                      className="absolute z-50 left-[10px] right-[10px] sm:left-[90%] sm:right-auto w-[calc(100vw-3rem)] sm:w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-blue-100 dark:border-slate-800 p-0 overflow-hidden animate-in zoom-in-95 duration-200"
                       style={{ top: `${(8 - START_HOUR) * HOUR_HEIGHT + 20}px` }}
                     >
                       <div className="bg-gradient-to-r from-blue-500 to-indigo-500 px-4 py-3 flex items-center gap-2 relative overflow-hidden">
@@ -562,29 +566,29 @@ export function WeeklyView() {
                       </div>
                       
                       <div className="p-4 space-y-4">
-                        <p className="text-[13px] text-gray-700 leading-relaxed">
+                        <p className="text-[13px] text-gray-700 dark:text-slate-300 leading-relaxed">
                           Chào <strong>Quoc Anh</strong>! Mình thấy bạn định dành 4 tiếng liên tục cho nghiên cứu MER. Theo khoa học, não bộ sẽ bắt đầu <em>"đình công"</em> sau 90 phút tập trung sâu đấy.
                         </p>
                         
-                        <div className="bg-blue-50/50 rounded-xl p-3 border border-blue-100">
-                          <p className="text-xs text-blue-900 leading-relaxed flex items-start gap-2">
+                        <div className="bg-blue-50/50 dark:bg-blue-500/10 rounded-xl p-3 border border-blue-100 dark:border-blue-500/25">
+                          <p className="text-xs text-blue-900 dark:text-blue-300 leading-relaxed flex items-start gap-2">
                             <Brain size={16} className="text-blue-500 shrink-0 mt-0.5" />
                             <span>Bạn có muốn thử <strong>phương pháp Pomodoro</strong> không? Chúng ta sẽ chia 4 tiếng này thành các phiên làm việc 25 phút và nghỉ 5 phút. Cách này giúp não không bị "cháy".</span>
                           </p>
                         </div>
                         
-                        <p className="text-[13px] font-medium text-gray-700">Bạn có muốn mình tự động chia nhỏ lịch trình này không?</p>
+                        <p className="text-[13px] font-medium text-gray-700 dark:text-slate-350">Bạn có muốn mình tự động chia nhỏ lịch trình này không?</p>
                         
                         <div className="flex flex-col gap-2 pt-2">
                           <button 
                             onClick={applyPomodoro}
-                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-all shadow-md shadow-blue-200 active:scale-95"
+                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-all shadow-md shadow-blue-200 dark:shadow-none active:scale-95"
                           >
                             Áp dụng ngay 🚀
                           </button>
                           <button 
                             onClick={() => setCoachState('idle')}
-                            className="w-full bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 font-medium py-2 rounded-xl text-sm transition-colors"
+                            className="w-full bg-white dark:bg-slate-800 text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-750 font-medium py-2 rounded-xl text-sm transition-colors"
                           >
                             Để mình tự làm
                           </button>
@@ -592,14 +596,14 @@ export function WeeklyView() {
                       </div>
                       
                       {/* Left arrow pointer */}
-                      <div className="absolute top-6 -left-2 w-4 h-4 bg-blue-500 transform rotate-45"></div>
+                      <div className="hidden sm:block absolute top-6 -left-2 w-4 h-4 bg-blue-500 transform rotate-45"></div>
                     </div>
                   )}
                   
                   {/* Processing Overlay over the specific block */}
                   {day === "Mon" && coachState === 'processing' && hasMERTask && (
                     <div 
-                      className="absolute inset-x-1 z-40 bg-white/80 backdrop-blur-sm rounded-lg border-2 border-indigo-400 border-dashed flex items-center justify-center flex-col gap-2"
+                      className="absolute inset-x-1 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-lg border-2 border-indigo-400 border-dashed flex items-center justify-center flex-col gap-2"
                       style={{ top: `${(8 - START_HOUR) * HOUR_HEIGHT}px`, height: `${4 * HOUR_HEIGHT}px` }}
                     >
                       <div className="flex gap-1.5 items-center">
@@ -607,7 +611,7 @@ export function WeeklyView() {
                         <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
                         <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full animate-bounce"></div>
                       </div>
-                      <span className="text-xs font-bold text-indigo-600 tracking-wide uppercase">AI đang chia block...</span>
+                      <span className="text-xs font-bold text-indigo-600 dark:text-indigo-450 tracking-wide uppercase">AI đang chia block...</span>
                     </div>
                   )}
                 </div>

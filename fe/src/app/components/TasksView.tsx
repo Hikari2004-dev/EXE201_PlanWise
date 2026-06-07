@@ -30,6 +30,24 @@ function normalizeColor(color: string | undefined): string {
   return color.toLowerCase();
 }
 
+function normalizeUiDateToDateString(dueDate?: string) {
+  if (!dueDate) return "";
+  const trimmed = dueDate.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+  const viMatch = trimmed.match(/^(\d{1,2})\s*Th(\d{1,2})$/i);
+  if (viMatch) {
+    const day = Number(viMatch[1]);
+    const month = Number(viMatch[2]);
+    if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+      const year = new Date().getFullYear();
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+  }
+  return "";
+}
+
 const PRIORITY_COLORS: Record<string, string> = {
   Cao: "text-rose-600 bg-rose-50 border-rose-200",
   "Trung bình": "text-amber-600 bg-amber-50 border-amber-200",
@@ -167,7 +185,7 @@ function FocusSessionOverlay({
           ))}
         </div>
 
-        <div className="relative flex h-[360px] w-[360px] items-center justify-center rounded-full border border-white/10 bg-white/5 shadow-[0_30px_120px_-40px_rgba(79,70,229,0.65)] backdrop-blur">
+        <div className="relative flex h-[280px] w-[280px] sm:h-[360px] sm:w-[360px] items-center justify-center rounded-full border border-white/10 bg-white/5 shadow-[0_30px_120px_-40px_rgba(79,70,229,0.65)] backdrop-blur flex-shrink-0">
           <div
             className="absolute inset-3 rounded-full"
             style={{
@@ -176,13 +194,13 @@ function FocusSessionOverlay({
               WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 16px), black calc(100% - 15px))",
             }}
           />
-          <div className="relative flex h-[300px] w-[300px] flex-col items-center justify-center rounded-full border border-white/10 bg-slate-950/80 text-center">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-indigo-200">
+          <div className="relative flex h-[230px] w-[230px] sm:h-[300px] sm:w-[300px] flex-col items-center justify-center rounded-full border border-white/10 bg-slate-950/80 text-center">
+            <div className="mb-2 sm:mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-indigo-200">
               <Brain size={13} />
               {method.label}
             </div>
-            <div className="text-6xl font-black tracking-tight text-white sm:text-7xl">{formatFocusTime(timeLeft)}</div>
-            <p className="mt-3 max-w-[220px] text-sm leading-relaxed text-slate-300">{method.helper}</p>
+            <div className="text-5xl font-black tracking-tight text-white sm:text-7xl">{formatFocusTime(timeLeft)}</div>
+            <p className="mt-2 sm:mt-3 max-w-[180px] sm:max-w-[220px] text-xs sm:text-sm leading-relaxed text-slate-300">{method.helper}</p>
           </div>
         </div>
 
@@ -238,7 +256,7 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
   const [form, setForm] = useState({
     title: task?.title || "",
     categoryId: resolvedCategoryId,
-    dueDate: task?.dueDate || "",
+    dueDate: task?.dueDate ? normalizeUiDateToDateString(task.dueDate) : "",
     priority: (task?.priority || "Trung bình") as Task["priority"],
     color: normalizeColor(task?.color) || "indigo" as EventColor,
     description: task?.description || "",
@@ -252,20 +270,27 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
     e.preventDefault();
     if (!form.title.trim()) return;
     
+    const taskData = {
+      title: form.title,
+      categoryId: form.categoryId || categories[0]?.id || "",
+      dueDate: form.dueDate || "",
+      priority: form.priority,
+      completed: form.completed,
+      color: form.color,
+      description: form.description,
+      eisenhowerMatrix: form.eisenhowerMatrix || undefined,
+      estimatedTime: form.estimatedTime ? Number(form.estimatedTime) : undefined,
+      contexts: form.contexts.length > 0 ? form.contexts : undefined,
+    };
+
     if (task) {
-      onSave({ ...task, ...form });
+      onSave({
+        ...task,
+        ...taskData,
+      });
     } else {
       onSave({
-        title: form.title,
-        categoryId: form.categoryId || categories[0]?.id || "",
-        dueDate: form.dueDate || "",
-        priority: form.priority,
-        completed: false,
-        color: form.color,
-        description: form.description,
-        eisenhowerMatrix: form.eisenhowerMatrix || undefined,
-        estimatedTime: form.estimatedTime ? Number(form.estimatedTime) : undefined,
-        contexts: form.contexts.length > 0 ? form.contexts : undefined,
+        ...taskData,
         sortOrder: 0,
       });
     }
@@ -279,16 +304,16 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
       className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
-      <div className="bg-white rounded-xl shadow-2xl w-[420px] overflow-hidden border border-zinc-200 ring-1 ring-black/5" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-[420px] overflow-hidden border border-zinc-200 ring-1 ring-black/5 dark:bg-slate-900 dark:border-slate-800 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
         {/* Modal header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 bg-zinc-50/50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 bg-zinc-50/50 dark:bg-slate-900/50 dark:border-slate-850">
           <div>
-            <h3 className="text-base font-semibold text-zinc-950 tracking-tight">
+            <h3 className="text-base font-semibold text-zinc-950 dark:text-slate-50 tracking-tight">
               {task ? "Chỉnh sửa công việc" : "Thêm công việc mới"}
             </h3>
-            <p className="text-xs text-zinc-500 mt-0.5">{task ? "Cập nhật thông tin task" : "Điền thông tin để tạo task mới"}</p>
+            <p className="text-xs text-zinc-500 dark:text-slate-400 mt-0.5">{task ? "Cập nhật thông tin task" : "Điền thông tin để tạo task mới"}</p>
           </div>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-900 p-1.5 rounded-md hover:bg-zinc-100 transition-colors">
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-850 transition-colors">
             <X size={16} />
           </button>
         </div>
@@ -314,22 +339,21 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
                   const cat = categories.find(c => c.id === catId);
                   setForm({ ...form, categoryId: catId, color: normalizeColor(cat?.color) as EventColor || form.color });
                 }}
-                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all bg-white"
+                className="w-full border border-zinc-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all bg-white"
               >
                 {categories.length === 0 && <option value="">Đang tải danh mục...</option>}
                 {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  <option key={cat.id} value={cat.id} className="dark:bg-slate-900">{cat.name}</option>
                 ))}
               </select>
             </div>
             <div>
               <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Hạn chót</label>
               <input
-                type="text"
+                type="date"
                 value={form.dueDate}
                 onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-                placeholder="VD: 20 Th3 hoặc 2026-03-20"
-                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all"
+                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all bg-white"
               />
             </div>
           </div>
@@ -394,7 +418,7 @@ function TaskCard({
   onEdit: (task: Task) => void;
   onFocus: (task: Task) => void;
 }) {
-  const { categories } = useData();
+  const { categories, language } = useData();
   const category = categories.find(c => c.id === task.categoryId);
   const normalizedColor = normalizeColor(task.color);
   const colors = category ? COLOR_MAP[normalizeColor(category.color)] : COLOR_MAP[normalizedColor];
@@ -403,6 +427,7 @@ function TaskCard({
     <div
       className={`
         group bg-white rounded-lg border border-zinc-200 p-4 hover:border-zinc-300 hover:shadow-sm
+        dark:bg-slate-900 dark:border-slate-800 dark:hover:border-slate-700
         transition-all duration-150 ${task.completed ? "opacity-50 grayscale" : ""}
       `}
     >
@@ -425,7 +450,7 @@ function TaskCard({
         <div className="flex-1 min-w-0" onClick={() => !task.completed && onEdit(task)} style={{ cursor: task.completed ? 'default' : 'pointer' }}>
           <div className="flex items-start justify-between gap-2">
             <h4
-              className={`text-sm font-semibold tracking-tight text-zinc-900 leading-tight ${task.completed ? "line-through text-zinc-500" : ""}`}
+              className={`text-sm font-semibold tracking-tight text-zinc-900 dark:text-slate-100 leading-tight ${task.completed ? "line-through text-zinc-500" : ""}`}
             >
               {task.title}
             </h4>
@@ -436,7 +461,7 @@ function TaskCard({
                     e.stopPropagation();
                     onEdit(task);
                   }}
-                  className="text-zinc-400 hover:text-zinc-900 transition-all flex-shrink-0 p-1 rounded hover:bg-zinc-100"
+                  className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all flex-shrink-0 p-1 rounded hover:bg-zinc-100 dark:hover:bg-slate-800"
                 >
                   <Edit2 size={13} />
                 </button>
@@ -446,14 +471,14 @@ function TaskCard({
                   e.stopPropagation();
                   onDelete(task.id);
                 }}
-                className="text-zinc-400 hover:text-rose-600 transition-all flex-shrink-0 p-1 rounded hover:bg-rose-50"
+                className="text-zinc-400 hover:text-rose-600 transition-all flex-shrink-0 p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30"
               >
                 <Trash2 size={13} />
               </button>
             </div>
           </div>
 
-            <p className="text-xs text-zinc-500 mt-1 leading-relaxed line-clamp-2">{task.description}</p>
+            <p className="text-xs text-zinc-500 dark:text-slate-400 mt-1 leading-relaxed line-clamp-2">{task.description}</p>
 
           <div className="flex items-center gap-2 mt-3 flex-wrap">
             {/* Category badge - use task's categoryName/categoryColor if available, fallback to context */}
@@ -465,7 +490,7 @@ function TaskCard({
             )}
 
             {/* Due date */}
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-zinc-600 bg-zinc-100 px-2 py-1 rounded-md border border-zinc-200">
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-zinc-600 bg-zinc-100 dark:bg-slate-800 dark:text-slate-300 px-2 py-1 rounded-md border border-zinc-200 dark:border-slate-700">
               <Calendar size={10} />
               {task.dueDate}
             </span>
@@ -487,7 +512,7 @@ function TaskCard({
                 className="inline-flex items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[10px] font-semibold text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200"
               >
                 <Play size={10} />
-                Bắt đầu tập trung
+                {language === "vi" ? "Bắt đầu tập trung" : "Start Focus"}
               </button>
             )}
           </div>
@@ -500,13 +525,17 @@ function TaskCard({
 type FilterTab = "Tất cả" | "Đang làm" | "Hoàn thành" | "Tập trung";
 
 export function TasksView() {
-  const { tasks, categories, updateTask, deleteTask, addTask } = useData();
+  const { tasks, categories, updateTask, deleteTask, addTask, language } = useData();
   const [filter, setFilter] = useState<FilterTab>("Tất cả");
   const [priorityFilter, setPriorityFilter] = useState<string>("Tất cả");
   const [search, setSearch] = useState("");
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [focusTask, setFocusTask] = useState<Task | null>(null);
+
+  const pending = tasks.filter((t) => !t.completed).length;
+  const completed = tasks.filter((t) => t.completed).length;
+  const highPriority = tasks.filter((t) => !t.completed && t.priority === "Cao").length;
 
   const toggleTask = (id: string) => {
     const task = tasks.find(t => t.id === id);
@@ -540,63 +569,73 @@ export function TasksView() {
     const matchSearch =
       search === "" ||
       t.title.toLowerCase().includes(search.toLowerCase()) ||
-      t.description.toLowerCase().includes(search.toLowerCase());
+      (t.description || "").toLowerCase().includes(search.toLowerCase());
     return matchFilter && matchPriority && matchSearch;
   });
-
-  const pending = tasks.filter((t) => !t.completed).length;
-  const completed = tasks.filter((t) => t.completed).length;
-  const highPriority = tasks.filter((t) => !t.completed && t.priority === "Cao").length;
-
   return (
-    <div className="flex flex-col h-full bg-slate-50 font-sans text-slate-900">
+    <div className="flex flex-col h-full bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-8 py-5 flex items-center justify-between flex-shrink-0">
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between flex-shrink-0 dark:bg-slate-950 dark:border-slate-800 gap-3">
         <div>
-          <h1 className="text-[1.6rem] font-extrabold tracking-tight text-slate-900">Công việc</h1>
-          <p className="text-sm text-slate-500 mt-1">{pending} đang làm · {completed} hoàn thành</p>
+          <h1 className="text-[1.4rem] sm:text-[1.6rem] font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
+            {language === "vi" ? "Công việc" : "Tasks"}
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1 dark:text-slate-400">
+            {language === "vi"
+              ? `${pending} đang làm · ${completed} hoàn thành`
+              : `${pending} pending · ${completed} completed`}
+          </p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md shadow-indigo-200"
+          className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md shadow-indigo-200 dark:shadow-none"
         >
           <Plus size={16} />
-          Thêm công việc
+          <span className="hidden sm:inline">{language === "vi" ? "Thêm công việc" : "Add Task"}</span>
         </button>
       </div>
 
       {/* Stats bar */}
-      <div className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2.5 text-sm text-slate-600">
-            <div className="w-8 h-8 bg-rose-50 border border-rose-100 rounded-lg flex items-center justify-center shadow-sm">
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-8 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0 dark:bg-slate-950 dark:border-slate-800">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+          <div className="flex items-center gap-2.5 text-sm text-slate-600 dark:text-slate-350">
+            <div className="w-8 h-8 bg-rose-50 border border-rose-100 rounded-lg flex items-center justify-center shadow-sm dark:bg-rose-500/15 dark:border-rose-500/30">
               <AlertCircle size={14} className="text-rose-500" />
             </div>
-            <span className="text-sm"><span className="font-bold text-slate-900">{highPriority}</span> ưu tiên cao</span>
+            <span className="text-xs sm:text-sm">
+              <span className="font-bold text-slate-900 dark:text-white">{highPriority}</span>{" "}
+              {language === "vi" ? "ưu tiên cao" : "high priority"}
+            </span>
           </div>
-          <div className="flex items-center gap-2.5 text-sm text-slate-600">
-            <div className="w-8 h-8 bg-amber-50 border border-amber-100 rounded-lg flex items-center justify-center shadow-sm">
+          <div className="flex items-center gap-2.5 text-sm text-slate-600 dark:text-slate-350">
+            <div className="w-8 h-8 bg-amber-50 border border-amber-100 rounded-lg flex items-center justify-center shadow-sm dark:bg-amber-500/15 dark:border-amber-500/30">
               <Circle size={14} className="text-amber-500" />
             </div>
-            <span className="text-sm"><span className="font-bold text-slate-900">{pending}</span> đang làm</span>
+            <span className="text-xs sm:text-sm">
+              <span className="font-bold text-slate-900 dark:text-white">{pending}</span>{" "}
+              {language === "vi" ? "đang làm" : "pending"}
+            </span>
           </div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-emerald-50 border border-emerald-100 rounded-lg flex items-center justify-center shadow-sm">
+          <div className="flex items-center gap-2.5 text-sm text-slate-600 dark:text-slate-350">
+            <div className="w-8 h-8 bg-emerald-50 border border-emerald-100 rounded-lg flex items-center justify-center shadow-sm dark:bg-emerald-500/15 dark:border-emerald-500/30">
               <Check size={14} className="text-emerald-500" />
             </div>
-            <span className="text-sm"><span className="font-bold text-slate-900">{completed}</span> hoàn thành</span>
+            <span className="text-xs sm:text-sm">
+              <span className="font-bold text-slate-900 dark:text-white">{completed}</span>{" "}
+              {language === "vi" ? "hoàn thành" : "completed"}
+            </span>
           </div>
         </div>
 
         {/* Progress bar */}
-        <div className="w-64 max-w-full">
-          <div className="flex justify-between text-xs font-medium text-zinc-500 mb-2">
-            <span>Tiến độ tổng thể</span>
-            <span className="text-zinc-900">{tasks.length > 0 ? Math.round((completed / tasks.length) * 100) : 0}%</span>
+        <div className="w-full md:w-64 max-w-full">
+          <div className="flex justify-between text-xs font-medium text-zinc-550 mb-2 dark:text-slate-400">
+            <span>{language === "vi" ? "Tiến độ tổng thể" : "Overall progress"}</span>
+            <span className="text-zinc-900 dark:text-white">{tasks.length > 0 ? Math.round((completed / tasks.length) * 100) : 0}%</span>
           </div>
-          <div className="h-2 bg-zinc-100 rounded-full overflow-hidden border border-zinc-200/50">
+          <div className="h-2 bg-zinc-100 rounded-full overflow-hidden border border-zinc-200/50 dark:bg-slate-800 dark:border-slate-700">
             <div
-              className="h-full bg-zinc-900 rounded-full transition-all duration-500"
+              className="h-full bg-zinc-900 rounded-full transition-all duration-500 dark:bg-indigo-500"
               style={{ width: `${tasks.length > 0 ? (completed / tasks.length) * 100 : 0}%` }}
             />
           </div>
@@ -604,47 +643,61 @@ export function TasksView() {
       </div>
 
       {/* Filters and Controls */}
-      <div className="bg-white border-b border-zinc-200 px-8 py-4 flex items-center justify-between gap-4 flex-shrink-0">
+      <div className="bg-white border-b border-zinc-200 px-4 sm:px-8 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0 dark:bg-slate-950 dark:border-slate-800">
         {/* Status tabs */}
-        <div className="flex items-center bg-zinc-100/80 rounded-lg p-1 border border-zinc-200">
-          {(["Tất cả", "Đang làm", "Hoàn thành", "Tập trung"] as FilterTab[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setFilter(tab)}
-              className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${
-                filter === tab ? "bg-white shadow-sm text-zinc-950 ring-1 ring-zinc-200" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+        <div className="flex items-center bg-zinc-100/80 rounded-lg p-1 border border-zinc-200 dark:bg-slate-900 dark:border-slate-850 overflow-x-auto w-full md:w-auto shrink-0 scrollbar-none">
+          {(["Tất cả", "Đang làm", "Hoàn thành", "Tập trung"] as FilterTab[]).map((tab) => {
+            const mappedTabLabel =
+              language === "vi"
+                ? tab
+                : tab === "Tất cả"
+                ? "All"
+                : tab === "Đang làm"
+                ? "Pending"
+                : tab === "Hoàn thành"
+                ? "Completed"
+                : "Focus";
+            return (
+              <button
+                key={tab}
+                onClick={() => setFilter(tab)}
+                className={`flex-1 md:flex-initial px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                  filter === tab
+                    ? "bg-white shadow-sm text-zinc-950 ring-1 ring-zinc-200 dark:bg-slate-800 dark:text-white dark:ring-slate-700"
+                    : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/50"
+                }`}
+              >
+                {mappedTabLabel}
+              </button>
+            );
+          })}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
           {/* Priority filter */}
-          <div className="flex items-center gap-2 px-3 py-1.5 border border-zinc-200 rounded-md bg-zinc-50">
+          <div className="flex items-center gap-2 px-3 py-1.5 border border-zinc-200 rounded-md bg-zinc-50 dark:bg-slate-900 dark:border-slate-800 w-full sm:w-auto">
             <Flag size={14} className="text-zinc-400" />
             <select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
-              className="text-sm font-medium border-none bg-transparent text-zinc-700 focus:outline-none cursor-pointer"
+              className="text-xs sm:text-sm font-medium border-none bg-transparent text-zinc-700 dark:text-slate-300 focus:outline-none cursor-pointer w-full"
             >
-              <option value="Tất cả">Tất cả mức độ</option>
-              <option value="Cao">Cao</option>
-              <option value="Trung bình">Trung bình</option>
-              <option value="Thấp">Thấp</option>
+              <option value="Tất cả" className="dark:bg-slate-900">{language === "vi" ? "Tất cả mức độ" : "All Priorities"}</option>
+              <option value="Cao" className="dark:bg-slate-900">{language === "vi" ? "Cao" : "High"}</option>
+              <option value="Trung bình" className="dark:bg-slate-900">{language === "vi" ? "Trung bình" : "Medium"}</option>
+              <option value="Thấp" className="dark:bg-slate-900">{language === "vi" ? "Thấp" : "Low"}</option>
             </select>
           </div>
 
           {/* Search */}
-          <div className="flex items-center gap-2 bg-white border border-zinc-200 rounded-md px-3 py-1.5 w-64 shadow-sm focus-within:ring-1 focus-within:ring-zinc-400 focus-within:border-zinc-400 transition-all">
+          <div className="flex items-center gap-2 bg-white border border-zinc-200 rounded-md px-3 py-1.5 w-full sm:w-64 shadow-sm focus-within:ring-1 focus-within:ring-zinc-400 focus-within:border-zinc-400 transition-all dark:bg-slate-900 dark:border-slate-800 dark:focus-within:ring-indigo-500">
             <Search size={14} className="text-zinc-400 flex-shrink-0" />
             <input
               type="text"
-              placeholder="Tìm kiếm công việc..."
+              placeholder={language === "vi" ? "Tìm kiếm công việc..." : "Search tasks..."}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="bg-transparent text-sm font-medium focus:outline-none flex-1 placeholder:text-zinc-400 text-zinc-900"
+              className="bg-transparent text-xs sm:text-sm font-medium focus:outline-none flex-1 placeholder:text-zinc-400 text-zinc-900 dark:text-slate-100"
             />
           </div>
         </div>

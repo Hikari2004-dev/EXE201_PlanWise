@@ -178,20 +178,21 @@ public class TaskService {
 
     private Task.TaskPriority parsePriority(String priority) {
         if (priority == null) return Task.TaskPriority.MEDIUM;
-        return switch (priority) {
-            case "Cao" -> Task.TaskPriority.HIGH;
-            case "Thấp" -> Task.TaskPriority.LOW;
+        return switch (priority.trim()) {
+            case "Cao", "HIGH" -> Task.TaskPriority.HIGH;
+            case "Thấp", "LOW" -> Task.TaskPriority.LOW;
+            case "Trung bình", "MEDIUM" -> Task.TaskPriority.MEDIUM;
             default -> Task.TaskPriority.MEDIUM;
         };
     }
 
     private Task.EisenhowerQuadrant parseEisenhowerMatrix(String matrix) {
         if (matrix == null) return null;
-        return switch (matrix) {
-            case "urgent-important" -> Task.EisenhowerQuadrant.urgent_important;
-            case "not-urgent-important" -> Task.EisenhowerQuadrant.not_urgent_important;
-            case "urgent-not-important" -> Task.EisenhowerQuadrant.urgent_not_important;
-            case "not-urgent-not-important" -> Task.EisenhowerQuadrant.not_urgent_not_important;
+        return switch (matrix.trim()) {
+            case "urgent-important", "urgent_important" -> Task.EisenhowerQuadrant.urgent_important;
+            case "not-urgent-important", "not_urgent_important" -> Task.EisenhowerQuadrant.not_urgent_important;
+            case "urgent-not-important", "urgent_not_important" -> Task.EisenhowerQuadrant.urgent_not_important;
+            case "not-urgent-not-important", "not_urgent_not_important" -> Task.EisenhowerQuadrant.not_urgent_not_important;
             default -> null;
         };
     }

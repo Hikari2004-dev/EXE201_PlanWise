@@ -35,9 +35,14 @@ public class NotificationService {
     }
 
     @Transactional
-    public NotificationDto markAsRead(UUID userId, UUID notificationId) {
+    public NotificationDto updateNotification(UUID userId, UUID notificationId, Boolean read, Boolean dismissed) {
         Notification notification = findNotificationAndValidateOwnership(notificationId, userId);
-        notification.setRead(true);
+        if (read != null) {
+            notification.setRead(read);
+        }
+        if (dismissed != null) {
+            notification.setDismissed(dismissed);
+        }
         notification = notificationRepository.save(notification);
         return NotificationDto.from(notification);
     }
@@ -48,15 +53,13 @@ public class NotificationService {
     }
 
     @Transactional
-    public void dismissNotification(UUID userId, UUID notificationId) {
-        Notification notification = findNotificationAndValidateOwnership(notificationId, userId);
-        notification.setDismissed(true);
-        notificationRepository.save(notification);
+    public void dismissAll(UUID userId) {
+        notificationRepository.dismissAllByUserId(userId);
     }
 
     @Transactional
-    public void dismissAll(UUID userId) {
-        notificationRepository.dismissAllByUserId(userId);
+    public void dismissNotification(UUID userId, UUID notificationId) {
+        updateNotification(userId, notificationId, null, true);
     }
 
     @Transactional

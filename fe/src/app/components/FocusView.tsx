@@ -120,7 +120,7 @@ export function FocusView() {
                           {task.estimatedTime}p
                         </Badge>
                       )}
-                      {task.context && task.context.map((ctx, i) => (
+                      {task.contexts && task.contexts.map((ctx: string, i: number) => (
                         <Badge key={i} variant="secondary" className="text-xs">
                           {ctx}
                         </Badge>

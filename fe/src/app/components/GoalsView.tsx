@@ -63,16 +63,16 @@ export function GoalsView() {
   const renderGoalCard = (goal: any, type: 'week'|'month'|'year') => (
     <div key={goal.id}
       onClick={() => incrementProgress(type, goal.id)}
-      className="p-4 rounded-xl border border-slate-200 hover:border-indigo-200 hover:shadow-sm transition-all bg-white cursor-pointer group"
+      className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-500/30 hover:shadow-sm transition-all bg-white dark:bg-slate-850 cursor-pointer group"
       title={language === 'vi' ? "Nhấp để tăng tiến độ" : "Click to increase progress"}
     >
       <div className="flex justify-between items-start mb-3">
-        <h4 className="font-semibold text-sm text-slate-800 leading-tight pr-4 group-hover:text-indigo-700 transition-colors truncate">{goal.title}</h4>
-        <div className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full flex-shrink-0 ${goal.bgSoft} ${goal.text}`}>
+        <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-100 leading-tight pr-4 group-hover:text-indigo-700 dark:group-hover:text-indigo-350 transition-colors truncate">{goal.title}</h4>
+        <div className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full flex-shrink-0 ${goal.bgSoft} ${goal.text} dark:bg-indigo-500/10 dark:text-indigo-300 dark:border dark:border-indigo-500/20`}>
           {goal.progress}%
         </div>
       </div>
-      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+      <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all duration-500 ${goal.color}`} style={{ width: `${goal.progress}%` }} />
       </div>
       {goal.progress === 100 && (
@@ -82,8 +82,8 @@ export function GoalsView() {
   );
 
   const renderInlineGoalInput = (type: 'week'|'month'|'year', placeholder: string) => (
-    <div className="mt-2 rounded-xl border border-dashed border-zinc-300 bg-zinc-50/70 p-3">
-      <label className="mb-2 block text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+    <div className="mt-2 rounded-xl border border-dashed border-zinc-300 dark:border-slate-800 bg-zinc-50/70 dark:bg-slate-900/50 p-3">
+      <label className="mb-2 block text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-slate-400">
         {language === 'vi' ? "Nhập trực tiếp mục tiêu mới" : "Type a new goal"}
       </label>
       <div className="flex gap-2">
@@ -99,11 +99,11 @@ export function GoalsView() {
             }
           }}
           placeholder={placeholder}
-          className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300"
+          className="flex-1 rounded-lg border border-zinc-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-3 py-2 text-sm font-medium text-zinc-900 dark:text-slate-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 transition-all"
         />
         <button
           onClick={() => addGoal(type)}
-          className="inline-flex items-center gap-1 rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
+          className="inline-flex items-center gap-1 rounded-lg bg-zinc-900 dark:bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 dark:hover:bg-indigo-705 cursor-pointer shrink-0"
         >
           <Plus size={14} />
           {language === 'vi' ? "Thêm" : "Add"}
@@ -174,12 +174,12 @@ export function GoalsView() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 overflow-y-auto font-sans text-slate-900">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 overflow-y-auto font-sans text-slate-900 dark:text-slate-100">
       {/* Header */}
-      <div className="pt-8 pb-6 px-8 flex items-center justify-between flex-shrink-0 border-b border-slate-200 bg-white sticky top-0 z-10">
+      <div className="pt-6 sm:pt-8 pb-5 sm:pb-6 px-4 sm:px-8 flex items-center justify-between flex-shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 sticky top-0 z-10 gap-3">
         <div>
-          <h1 className="text-[1.6rem] font-extrabold tracking-tight text-slate-900">{language === 'vi' ? "Bảng tầm nhìn và mục tiêu" : "Vision Board & Goals"}</h1>
-          <p className="text-sm text-slate-500 mt-1">{language === 'vi' ? "La bàn định hướng và phân rã mục tiêu dài hạn" : "Compass for long-term goal breakdown"}</p>
+          <h1 className="text-[1.3rem] sm:text-[1.6rem] font-extrabold tracking-tight text-slate-900 dark:text-slate-50">{language === 'vi' ? "Bảng tầm nhìn và mục tiêu" : "Vision Board & Goals"}</h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1 dark:text-slate-400">{language === 'vi' ? "La bàn định hướng và phân rã mục tiêu dài hạn" : "Compass for long-term goal breakdown"}</p>
         </div>
         <button
           onClick={() => {
@@ -192,14 +192,15 @@ export function GoalsView() {
             el?.scrollIntoView({ behavior: "smooth", block: "center" });
             (el as HTMLInputElement | null)?.focus();
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md shadow-indigo-200 cursor-pointer"
+          className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md shadow-indigo-200 dark:shadow-none cursor-pointer shrink-0"
         >
           <Plus size={16} />
-          {language === 'vi' ? "Thêm mục tiêu" : "Add Goal"}
+          <span className="hidden sm:inline">{language === 'vi' ? "Thêm mục tiêu" : "Add Goal"}</span>
+          <span className="sm:hidden">+</span>
         </button>
       </div>
 
-      <div className="flex-1 p-8 space-y-10 max-w-[1440px] mx-auto w-full pb-12">
+      <div className="flex-1 p-4 sm:p-8 space-y-8 sm:space-y-10 max-w-[1440px] mx-auto w-full pb-12">
         <HintBubble 
           id="goals_intro" 
           title={language === 'vi' ? "Tầm nhìn & Mục tiêu" : "Vision & Goals"}
@@ -213,21 +214,21 @@ export function GoalsView() {
         {/* Tiêu điểm Tầm nhìn */}
         <div>
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-lg border border-zinc-200 bg-white shadow-sm flex items-center justify-center">
-              <Target className="w-4 h-4 text-zinc-600" />
+            <div className="w-8 h-8 rounded-lg border border-zinc-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex items-center justify-center">
+              <Target className="w-4 h-4 text-zinc-600 dark:text-slate-350" />
             </div>
-            <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
+            <h2 className="text-lg font-semibold tracking-tight text-zinc-950 dark:text-slate-100">
               {language === 'vi' ? "Bảng Tầm Nhìn" : "Vision Board"}
             </h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {VISION_ITEMS.map(item => (
-              <div key={item.id} className="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm flex flex-col hover:border-zinc-300 hover:shadow-md transition-all">
-                <div className={`w-10 h-10 rounded-lg ${item.bg} border ${item.color.replace('text-', 'border-').replace('500', '200')} flex items-center justify-center mb-3 mt-1`}>
+              <div key={item.id} className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-zinc-200 dark:border-slate-800 shadow-sm flex flex-col hover:border-zinc-300 dark:hover:border-slate-700 hover:shadow-md transition-all">
+                <div className={`w-10 h-10 rounded-lg ${item.bg} dark:bg-slate-850 border ${item.color.replace('text-', 'border-').replace('500', '200')} dark:border-slate-800 flex items-center justify-center mb-3 mt-1`}>
                   <item.icon className={`w-5 h-5 ${item.color}`} />
                 </div>
-                <h3 className="font-semibold text-zinc-950 text-sm mb-1">{item.title}</h3>
-                <p className="text-xs text-zinc-500 leading-relaxed min-h-[40px]">{item.description}</p>
+                <h3 className="font-semibold text-zinc-950 dark:text-slate-100 text-sm mb-1">{item.title}</h3>
+                <p className="text-xs text-zinc-500 dark:text-slate-400 leading-relaxed min-h-[40px]">{item.description}</p>
               </div>
             ))}
           </div>
@@ -236,70 +237,70 @@ export function GoalsView() {
         {/* Mục tiêu Phân rã */}
         <div className="pb-8">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-lg border border-zinc-200 bg-white shadow-sm flex items-center justify-center">
-              <Calendar className="w-4 h-4 text-zinc-600" />
+            <div className="w-8 h-8 rounded-lg border border-zinc-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex items-center justify-center">
+              <Calendar className="w-4 h-4 text-zinc-600 dark:text-slate-350" />
             </div>
-            <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
+            <h2 className="text-lg font-semibold tracking-tight text-zinc-950 dark:text-slate-100">
               {language === 'vi' ? "Phân Rã Mục Tiêu" : "Goal Breakdown"}
             </h2>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             {/* Tuần */}
-            <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden flex flex-col">
-              <div className="px-5 py-4 border-b border-zinc-200 bg-zinc-50/50">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-zinc-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
+              <div className="px-5 py-4 border-b border-zinc-200 dark:border-slate-800 bg-zinc-50/50 dark:bg-slate-900/55">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold text-zinc-950 flex items-center gap-2 text-sm tracking-tight">
+                    <h3 className="font-semibold text-zinc-950 dark:text-slate-100 flex items-center gap-2 text-sm tracking-tight">
                       <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                       {language === 'vi' ? "Mục tiêu Tuần" : "Weekly Goals"}
                     </h3>
-                    <p className="text-xs text-zinc-500 mt-1">{language === 'vi' ? "Hành động ngắn hạn" : "Short-term actions"}</p>
+                    <p className="text-xs text-zinc-500 dark:text-slate-400 mt-1">{language === 'vi' ? "Hành động ngắn hạn" : "Short-term actions"}</p>
                   </div>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">{weeklyGoals.length}</span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-55 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-500/20">{weeklyGoals.length}</span>
                 </div>
               </div>
-              <div className="p-5 space-y-3 flex-1 bg-white">
+              <div className="p-5 space-y-3 flex-1 bg-white dark:bg-slate-900">
                 {weeklyGoals.map(g => renderGoalCard(g, 'week'))}
                 {renderInlineGoalInput('week', language === 'vi' ? "Ví dụ: Hoàn thành 3 buổi tập trong tuần" : "Example: Finish 3 workouts this week")}
               </div>
             </div>
 
             {/* Tháng */}
-            <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden flex flex-col">
-              <div className="px-5 py-4 border-b border-zinc-200 bg-zinc-50/50">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-zinc-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
+              <div className="px-5 py-4 border-b border-zinc-200 dark:border-slate-800 bg-zinc-50/50 dark:bg-slate-900/55">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold text-zinc-950 flex items-center gap-2 text-sm tracking-tight">
+                    <h3 className="font-semibold text-zinc-950 dark:text-slate-100 flex items-center gap-2 text-sm tracking-tight">
                       <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                       {language === 'vi' ? "Mục tiêu Tháng" : "Monthly Goals"}
                     </h3>
-                    <p className="text-xs text-zinc-500 mt-1">{language === 'vi' ? "Xây dựng nền tảng" : "Building foundations"}</p>
+                    <p className="text-xs text-zinc-500 dark:text-slate-400 mt-1">{language === 'vi' ? "Xây dựng nền tảng" : "Building foundations"}</p>
                   </div>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">{monthlyGoals.length}</span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-55 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 border border-blue-100 dark:border-blue-500/20">{monthlyGoals.length}</span>
                 </div>
               </div>
-              <div className="p-5 space-y-3 flex-1 bg-white">
+              <div className="p-5 space-y-3 flex-1 bg-white dark:bg-slate-900">
                 {monthlyGoals.map(g => renderGoalCard(g, 'month'))}
                 {renderInlineGoalInput('month', language === 'vi' ? "Ví dụ: Hoàn thành khóa học React trong tháng" : "Example: Finish React course this month")}
               </div>
             </div>
 
             {/* Năm */}
-            <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden flex flex-col">
-              <div className="px-5 py-4 border-b border-zinc-200 bg-zinc-50/50">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-zinc-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
+              <div className="px-5 py-4 border-b border-zinc-200 dark:border-slate-800 bg-zinc-50/50 dark:bg-slate-900/55">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold text-zinc-950 flex items-center gap-2 text-sm tracking-tight">
+                    <h3 className="font-semibold text-zinc-950 dark:text-slate-100 flex items-center gap-2 text-sm tracking-tight">
                       <span className="w-2 h-2 rounded-full bg-purple-500"></span>
                       {language === 'vi' ? "Mục tiêu Năm" : "Yearly Goals"}
                     </h3>
-                    <p className="text-xs text-zinc-500 mt-1">{language === 'vi' ? "Định hướng cốt lõi" : "Core directions"}</p>
+                    <p className="text-xs text-zinc-500 dark:text-slate-400 mt-1">{language === 'vi' ? "Định hướng cốt lõi" : "Core directions"}</p>
                   </div>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-100">{yearlyGoals.length}</span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-55 dark:bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-100 dark:border-purple-500/20">{yearlyGoals.length}</span>
                 </div>
               </div>
-              <div className="p-5 space-y-3 flex-1 bg-white">
+              <div className="p-5 space-y-3 flex-1 bg-white dark:bg-slate-900">
                 {yearlyGoals.map(g => renderGoalCard(g, 'year'))}
                 {renderInlineGoalInput('year', language === 'vi' ? "Ví dụ: Đạt chứng chỉ hoặc hoàn thành mục tiêu lớn trong năm" : "Example: Reach a major goal this year")}
               </div>

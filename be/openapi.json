@@ -1,0 +1,4054 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "PlanWise API Documentation",
+        "description": "API Documentation for PlanWise application - a smart daily planning application with AI features.",
+        "contact": {
+            "name": "PlanWise Team",
+            "email": "contact@planwise.com"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://springdoc.org"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8080",
+            "description": "Local development"
+        }
+    ],
+    "security": [
+        {
+            "bearer": []
+        }
+    ],
+    "paths": {
+        "/api/v1/vision/{itemId}": {
+            "put": {
+                "tags": [
+                    "vision-controller"
+                ],
+                "operationId": "updateVisionItem",
+                "parameters": [
+                    {
+                        "name": "itemId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateVisionItemRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VisionItemDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "vision-controller"
+                ],
+                "operationId": "deleteVisionItem",
+                "parameters": [
+                    {
+                        "name": "itemId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{taskId}": {
+            "get": {
+                "tags": [
+                    "task-controller"
+                ],
+                "operationId": "getTaskById",
+                "parameters": [
+                    {
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TaskDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "task-controller"
+                ],
+                "operationId": "updateTask",
+                "parameters": [
+                    {
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateTaskRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TaskDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "task-controller"
+                ],
+                "operationId": "deleteTask",
+                "parameters": [
+                    {
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/api/v1/settings": {
+            "get": {
+                "tags": [
+                    "settings-controller"
+                ],
+                "operationId": "getSettings",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserSettingsDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "settings-controller"
+                ],
+                "operationId": "updateSettings",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateSettingsRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserSettingsDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reflections/{reflectionId}": {
+            "put": {
+                "tags": [
+                    "reflection-controller"
+                ],
+                "operationId": "updateReflection",
+                "parameters": [
+                    {
+                        "name": "reflectionId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateReflectionRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DailyReflectionDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/habits/{habitId}": {
+            "get": {
+                "tags": [
+                    "habit-controller"
+                ],
+                "operationId": "getHabitById",
+                "parameters": [
+                    {
+                        "name": "habitId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HabitDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "habit-controller"
+                ],
+                "operationId": "updateHabit",
+                "parameters": [
+                    {
+                        "name": "habitId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateHabitRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HabitDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "habit-controller"
+                ],
+                "operationId": "deleteHabit",
+                "parameters": [
+                    {
+                        "name": "habitId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/api/v1/goals/{goalId}": {
+            "get": {
+                "tags": [
+                    "goal-controller"
+                ],
+                "operationId": "getGoalById",
+                "parameters": [
+                    {
+                        "name": "goalId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GoalDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "goal-controller"
+                ],
+                "operationId": "updateGoal",
+                "parameters": [
+                    {
+                        "name": "goalId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateGoalRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GoalDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "goal-controller"
+                ],
+                "operationId": "deleteGoal",
+                "parameters": [
+                    {
+                        "name": "goalId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "goal-controller"
+                ],
+                "operationId": "updateGoalProgress",
+                "parameters": [
+                    {
+                        "name": "goalId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateGoalRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GoalDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/goals/{goalId}/milestones/{milestoneId}": {
+            "put": {
+                "tags": [
+                    "goal-controller"
+                ],
+                "operationId": "updateMilestone",
+                "parameters": [
+                    {
+                        "name": "goalId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    {
+                        "name": "milestoneId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateMilestoneRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MilestoneDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "goal-controller"
+                ],
+                "operationId": "deleteMilestone",
+                "parameters": [
+                    {
+                        "name": "goalId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    {
+                        "name": "milestoneId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/api/v1/focus/daily/notes": {
+            "put": {
+                "tags": [
+                    "focus-controller"
+                ],
+                "operationId": "updateDailyNotes",
+                "parameters": [
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-06-05"
+                        },
+                        "example": "2026-06-05"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DailyFocusDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/events/{eventId}": {
+            "get": {
+                "tags": [
+                    "calendar-event-controller"
+                ],
+                "operationId": "getEventById",
+                "parameters": [
+                    {
+                        "name": "eventId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CalendarEventDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "calendar-event-controller"
+                ],
+                "operationId": "updateEvent",
+                "parameters": [
+                    {
+                        "name": "eventId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateEventRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CalendarEventDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "calendar-event-controller"
+                ],
+                "operationId": "deleteEvent",
+                "parameters": [
+                    {
+                        "name": "eventId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/api/v1/categories/{categoryId}": {
+            "get": {
+                "tags": [
+                    "category-controller"
+                ],
+                "operationId": "getCategoryById",
+                "parameters": [
+                    {
+                        "name": "categoryId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CategoryDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "category-controller"
+                ],
+                "operationId": "updateCategory",
+                "parameters": [
+                    {
+                        "name": "categoryId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateCategoryRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CategoryDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "category-controller"
+                ],
+                "operationId": "deleteCategory",
+                "parameters": [
+                    {
+                        "name": "categoryId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/api/v1/vision": {
+            "get": {
+                "tags": [
+                    "vision-controller"
+                ],
+                "operationId": "getVisionItems",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/VisionItemDto"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "vision-controller"
+                ],
+                "operationId": "createVisionItem",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateVisionItemRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VisionItemDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks": {
+            "get": {
+                "tags": [
+                    "task-controller"
+                ],
+                "operationId": "getTasks",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TaskListResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "task-controller"
+                ],
+                "operationId": "createTask",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateTaskRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TaskDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/verify": {
+            "post": {
+                "tags": [
+                    "subscription-controller"
+                ],
+                "operationId": "verifyPayment",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MomoIPNRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/purchase": {
+            "post": {
+                "tags": [
+                    "subscription-controller"
+                ],
+                "operationId": "purchasePlan",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/momo-ipn": {
+            "post": {
+                "tags": [
+                    "subscription-controller"
+                ],
+                "operationId": "receiveMomoIPN",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MomoIPNRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/mock-ipn": {
+            "post": {
+                "tags": [
+                    "subscription-controller"
+                ],
+                "operationId": "mockIpn",
+                "parameters": [
+                    {
+                        "name": "orderId",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reflections": {
+            "get": {
+                "tags": [
+                    "reflection-controller"
+                ],
+                "operationId": "getReflections",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/DailyReflectionDto"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "reflection-controller"
+                ],
+                "operationId": "createOrUpdateReflection",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateReflectionRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DailyReflectionDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/habits": {
+            "get": {
+                "tags": [
+                    "habit-controller"
+                ],
+                "operationId": "getHabits",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HabitListResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "habit-controller"
+                ],
+                "operationId": "createHabit",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateHabitRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HabitDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/goals": {
+            "get": {
+                "tags": [
+                    "goal-controller"
+                ],
+                "operationId": "getGoals",
+                "parameters": [
+                    {
+                        "name": "period",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "week",
+                                "month",
+                                "year"
+                            ],
+                            "example": "week"
+                        },
+                        "example": "week"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/GoalDto"
+                                            }
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/GoalListResponse"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "goal-controller"
+                ],
+                "operationId": "createGoal",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateGoalRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GoalDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/goals/{goalId}/milestones": {
+            "get": {
+                "tags": [
+                    "goal-controller"
+                ],
+                "operationId": "getMilestones",
+                "parameters": [
+                    {
+                        "name": "goalId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/MilestoneDto"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "goal-controller"
+                ],
+                "operationId": "createMilestone",
+                "parameters": [
+                    {
+                        "name": "goalId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateMilestoneRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MilestoneDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/focus/sessions": {
+            "get": {
+                "tags": [
+                    "focus-controller"
+                ],
+                "operationId": "getFocusSessions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FocusSessionDto"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "focus-controller"
+                ],
+                "operationId": "createFocusSession",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateFocusSessionRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FocusSessionDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/focus/notes": {
+            "get": {
+                "tags": [
+                    "focus-controller"
+                ],
+                "operationId": "getQuickNotes",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/QuickNoteDto"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "focus-controller"
+                ],
+                "operationId": "createQuickNote",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateQuickNoteRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/QuickNoteDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/focus/daily/{date}/top-tasks/{taskId}": {
+            "post": {
+                "tags": [
+                    "focus-controller"
+                ],
+                "operationId": "addTopTask",
+                "parameters": [
+                    {
+                        "name": "date",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-06-05"
+                        },
+                        "example": "2026-06-05"
+                    },
+                    {
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DailyFocusDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "focus-controller"
+                ],
+                "operationId": "removeTopTask",
+                "parameters": [
+                    {
+                        "name": "date",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-06-05"
+                        },
+                        "example": "2026-06-05"
+                    },
+                    {
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DailyFocusDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/events": {
+            "get": {
+                "tags": [
+                    "calendar-event-controller"
+                ],
+                "operationId": "getEvents",
+                "parameters": [
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-06-05"
+                        },
+                        "example": "2026-06-05"
+                    },
+                    {
+                        "name": "startDate",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-06-05"
+                        },
+                        "example": "2026-06-05"
+                    },
+                    {
+                        "name": "endDate",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-06-05"
+                        },
+                        "example": "2026-06-05"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/CalendarEventDto"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "calendar-event-controller"
+                ],
+                "operationId": "createEvent",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateEventRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CalendarEventDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/categories": {
+            "get": {
+                "tags": [
+                    "category-controller"
+                ],
+                "operationId": "getCategories",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CategoryListResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "category-controller"
+                ],
+                "operationId": "createCategory",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateCategoryRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CategoryDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/register": {
+            "post": {
+                "tags": [
+                    "auth-controller"
+                ],
+                "operationId": "register",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegisterRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/refresh": {
+            "post": {
+                "tags": [
+                    "auth-controller"
+                ],
+                "operationId": "refresh",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TokenRefreshRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/logout": {
+            "post": {
+                "tags": [
+                    "auth-controller"
+                ],
+                "operationId": "logout",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/login": {
+            "post": {
+                "tags": [
+                    "auth-controller"
+                ],
+                "operationId": "login",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications": {
+            "get": {
+                "tags": [
+                    "notification-controller"
+                ],
+                "operationId": "getNotifications",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/NotificationDto"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "notification-controller"
+                ],
+                "operationId": "updateAllNotifications",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateNotificationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/{notificationId}": {
+            "delete": {
+                "tags": [
+                    "notification-controller"
+                ],
+                "operationId": "deleteNotification",
+                "parameters": [
+                    {
+                        "name": "notificationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "notification-controller"
+                ],
+                "operationId": "updateNotification",
+                "parameters": [
+                    {
+                        "name": "notificationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateNotificationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotificationDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/habits/{habitId}/completions/{date}": {
+            "patch": {
+                "tags": [
+                    "habit-controller"
+                ],
+                "operationId": "toggleCompletion",
+                "parameters": [
+                    {
+                        "name": "habitId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    {
+                        "name": "date",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-06-05"
+                        },
+                        "example": "2026-06-05"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HabitDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/focus/sessions/{sessionId}": {
+            "patch": {
+                "tags": [
+                    "focus-controller"
+                ],
+                "operationId": "updateFocusSession",
+                "parameters": [
+                    {
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FocusSessionDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/vnpay-return": {
+            "get": {
+                "tags": [
+                    "subscription-controller"
+                ],
+                "operationId": "vnpayReturn",
+                "parameters": [
+                    {
+                        "name": "vnpParams",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/vnpay-ipn": {
+            "get": {
+                "tags": [
+                    "subscription-controller"
+                ],
+                "operationId": "vnpayIpn",
+                "parameters": [
+                    {
+                        "name": "vnpParams",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/transactions/{orderId}/status": {
+            "get": {
+                "tags": [
+                    "subscription-controller"
+                ],
+                "operationId": "getTransactionStatus",
+                "parameters": [
+                    {
+                        "name": "orderId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/plans": {
+            "get": {
+                "tags": [
+                    "subscription-controller"
+                ],
+                "operationId": "getPlans",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/SubscriptionPlan"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reflections/today": {
+            "get": {
+                "tags": [
+                    "reflection-controller"
+                ],
+                "operationId": "getTodayReflection",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DailyReflectionDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reflections/date": {
+            "get": {
+                "tags": [
+                    "reflection-controller"
+                ],
+                "operationId": "getReflectionByDate",
+                "parameters": [
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-06-05"
+                        },
+                        "example": "2026-06-05"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DailyReflectionDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/unread-count": {
+            "get": {
+                "tags": [
+                    "notification-controller"
+                ],
+                "operationId": "getUnreadCount",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "integer",
+                                        "format": "int64"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/habits/active": {
+            "get": {
+                "tags": [
+                    "habit-controller"
+                ],
+                "operationId": "getActiveHabits",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/HabitDto"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/focus/daily": {
+            "get": {
+                "tags": [
+                    "focus-controller"
+                ],
+                "operationId": "getDailyFocus",
+                "parameters": [
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-06-05"
+                        },
+                        "example": "2026-06-05"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DailyFocusDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/me": {
+            "get": {
+                "tags": [
+                    "auth-controller"
+                ],
+                "operationId": "getMe",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserInfo"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/analytics": {
+            "get": {
+                "tags": [
+                    "analytics-controller"
+                ],
+                "operationId": "getAnalytics",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AnalyticsResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/focus/notes/{noteId}": {
+            "delete": {
+                "tags": [
+                    "focus-controller"
+                ],
+                "operationId": "deleteQuickNote",
+                "parameters": [
+                    {
+                        "name": "noteId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "UpdateVisionItemRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "category": {
+                        "type": "string",
+                        "example": "career"
+                    },
+                    "imageUrl": {
+                        "type": "string"
+                    },
+                    "quote": {
+                        "type": "string"
+                    },
+                    "sortOrder": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                }
+            },
+            "VisionItemDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "category": {
+                        "type": "string",
+                        "example": "career"
+                    },
+                    "imageUrl": {
+                        "type": "string"
+                    },
+                    "quote": {
+                        "type": "string"
+                    },
+                    "sortOrder": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    }
+                }
+            },
+            "UpdateTaskRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "dueDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-06-05"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "example": "MEDIUM"
+                    },
+                    "color": {
+                        "type": "string",
+                        "example": "indigo"
+                    },
+                    "categoryId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "eisenhowerMatrix": {
+                        "type": "string",
+                        "example": "urgent_important"
+                    },
+                    "estimatedTime": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "completed": {
+                        "type": "boolean"
+                    },
+                    "contexts": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "sortOrder": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                }
+            },
+            "TaskDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "dueDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-06-05"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "example": "MEDIUM"
+                    },
+                    "color": {
+                        "type": "string",
+                        "example": "indigo"
+                    },
+                    "completed": {
+                        "type": "boolean"
+                    },
+                    "completedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    },
+                    "eisenhowerMatrix": {
+                        "type": "string",
+                        "example": "urgent_important"
+                    },
+                    "estimatedTime": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "actualTime": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "contexts": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "categoryId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "categoryName": {
+                        "type": "string"
+                    },
+                    "categoryColor": {
+                        "type": "string"
+                    },
+                    "sortOrder": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    }
+                }
+            },
+            "LocalTime": {
+                "type": "object",
+                "properties": {
+                    "hour": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "minute": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "second": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "nano": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                }
+            },
+            "UpdateSettingsRequest": {
+                "type": "object",
+                "properties": {
+                    "theme": {
+                        "type": "string"
+                    },
+                    "defaultFocusType": {
+                        "type": "string"
+                    },
+                    "pomodoroDuration": {
+                        "type": "integer",
+                        "format": "int32",
+                        "maximum": 120,
+                        "minimum": 1
+                    },
+                    "shortBreakDuration": {
+                        "type": "integer",
+                        "format": "int32",
+                        "maximum": 60,
+                        "minimum": 1
+                    },
+                    "longBreakDuration": {
+                        "type": "integer",
+                        "format": "int32",
+                        "maximum": 120,
+                        "minimum": 1
+                    },
+                    "dailyTaskLimit": {
+                        "type": "integer",
+                        "format": "int32",
+                        "maximum": 20,
+                        "minimum": 1
+                    },
+                    "notificationEnabled": {
+                        "type": "boolean"
+                    },
+                    "emailDigestEnabled": {
+                        "type": "boolean"
+                    },
+                    "emailDigestTime": {
+                        "$ref": "#/components/schemas/LocalTime"
+                    },
+                    "onboardingCompleted": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "UserSettingsDto": {
+                "type": "object",
+                "properties": {
+                    "theme": {
+                        "type": "string"
+                    },
+                    "defaultFocusType": {
+                        "type": "string"
+                    },
+                    "pomodoroDuration": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "shortBreakDuration": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "longBreakDuration": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "dailyTaskLimit": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "notificationEnabled": {
+                        "type": "boolean"
+                    },
+                    "emailDigestEnabled": {
+                        "type": "boolean"
+                    },
+                    "emailDigestTime": {
+                        "$ref": "#/components/schemas/LocalTime"
+                    },
+                    "onboardingCompleted": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "UpdateReflectionRequest": {
+                "type": "object",
+                "properties": {
+                    "completed": {
+                        "type": "string"
+                    },
+                    "obstacles": {
+                        "type": "string"
+                    },
+                    "improvements": {
+                        "type": "string"
+                    },
+                    "energyLevel": {
+                        "type": "integer",
+                        "format": "int32",
+                        "maximum": 10,
+                        "minimum": 1
+                    },
+                    "mood": {
+                        "type": "string"
+                    }
+                }
+            },
+            "DailyReflectionDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "reflectionDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-06-05"
+                    },
+                    "completed": {
+                        "type": "string"
+                    },
+                    "obstacles": {
+                        "type": "string"
+                    },
+                    "improvements": {
+                        "type": "string"
+                    },
+                    "energyLevel": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "mood": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    }
+                }
+            },
+            "UpdateHabitRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "frequency": {
+                        "type": "string",
+                        "enum": [
+                            "daily",
+                            "weekly",
+                            "monthly"
+                        ],
+                        "example": "daily"
+                    },
+                    "targetCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "color": {
+                        "type": "string",
+                        "example": "indigo"
+                    },
+                    "isActive": {
+                        "type": "boolean"
+                    },
+                    "sortOrder": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                }
+            },
+            "HabitDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "frequency": {
+                        "type": "string",
+                        "enum": [
+                            "daily",
+                            "weekly",
+                            "monthly"
+                        ],
+                        "example": "daily"
+                    },
+                    "targetCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "currentStreak": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "bestStreak": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "color": {
+                        "type": "string",
+                        "example": "indigo"
+                    },
+                    "isActive": {
+                        "type": "boolean"
+                    },
+                    "sortOrder": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "completedDates": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-06-05"
+                        },
+                        "uniqueItems": true
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    }
+                }
+            },
+            "UpdateGoalRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": [
+                            "career",
+                            "learning",
+                            "health",
+                            "finance"
+                        ],
+                        "example": "career"
+                    },
+                    "goalType": {
+                        "type": "string",
+                        "enum": [
+                            "SMART",
+                            "OKR"
+                        ],
+                        "example": "SMART"
+                    },
+                    "period": {
+                        "type": "string",
+                        "enum": [
+                            "week",
+                            "month",
+                            "year"
+                        ],
+                        "example": "week"
+                    },
+                    "targetDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-06-05"
+                    },
+                    "progress": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "color": {
+                        "type": "string",
+                        "example": "indigo"
+                    },
+                    "isCompleted": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "GoalDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": [
+                            "career",
+                            "learning",
+                            "health",
+                            "finance"
+                        ],
+                        "example": "career"
+                    },
+                    "goalType": {
+                        "type": "string",
+                        "enum": [
+                            "SMART",
+                            "OKR"
+                        ],
+                        "example": "SMART"
+                    },
+                    "period": {
+                        "type": "string",
+                        "enum": [
+                            "week",
+                            "month",
+                            "year"
+                        ],
+                        "example": "week"
+                    },
+                    "targetDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-06-05"
+                    },
+                    "progress": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "color": {
+                        "type": "string",
+                        "example": "indigo"
+                    },
+                    "isCompleted": {
+                        "type": "boolean"
+                    },
+                    "completedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    },
+                    "sortOrder": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "milestones": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MilestoneDto"
+                        }
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    }
+                }
+            },
+            "MilestoneDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "targetDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-06-05"
+                    },
+                    "completed": {
+                        "type": "boolean"
+                    },
+                    "completedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    },
+                    "sortOrder": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    }
+                }
+            },
+            "UpdateMilestoneRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "targetDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-06-05"
+                    },
+                    "completed": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "DailyFocusDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "focusDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-06-05"
+                    },
+                    "notes": {
+                        "type": "string"
+                    },
+                    "topTaskIds": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        }
+                    },
+                    "quickNotes": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/QuickNoteDto"
+                        }
+                    },
+                    "focusSessions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FocusSessionDto"
+                        }
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    }
+                }
+            },
+            "FocusSessionDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "startTime": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    },
+                    "duration": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "sessionType": {
+                        "type": "string",
+                        "example": "POMODORO"
+                    },
+                    "completed": {
+                        "type": "boolean"
+                    },
+                    "endTime": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    },
+                    "notes": {
+                        "type": "string"
+                    },
+                    "taskId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "taskTitle": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    }
+                }
+            },
+            "QuickNoteDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "noteType": {
+                        "type": "string"
+                    },
+                    "mediaUrl": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    }
+                }
+            },
+            "UpdateEventRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "eventDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-06-05"
+                    },
+                    "startHour": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "startMin": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "duration": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "color": {
+                        "type": "string",
+                        "example": "indigo"
+                    },
+                    "location": {
+                        "type": "string"
+                    },
+                    "notes": {
+                        "type": "string"
+                    },
+                    "categoryId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "isRecurring": {
+                        "type": "boolean"
+                    },
+                    "recurrenceRule": {
+                        "type": "string"
+                    }
+                }
+            },
+            "CalendarEventDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "eventDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-06-05"
+                    },
+                    "startHour": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "startMin": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "duration": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "color": {
+                        "type": "string",
+                        "example": "indigo"
+                    },
+                    "location": {
+                        "type": "string"
+                    },
+                    "notes": {
+                        "type": "string"
+                    },
+                    "isRecurring": {
+                        "type": "boolean"
+                    },
+                    "recurrenceRule": {
+                        "type": "string"
+                    },
+                    "categoryId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "categoryName": {
+                        "type": "string"
+                    },
+                    "categoryColor": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    }
+                }
+            },
+            "UpdateCategoryRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "minLength": 0,
+                        "example": "John Doe"
+                    },
+                    "color": {
+                        "type": "string",
+                        "pattern": "^(indigo|blue|emerald|amber|rose|purple|teal|orange)$",
+                        "example": "indigo"
+                    },
+                    "sortOrder": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                }
+            },
+            "CategoryDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "John Doe"
+                    },
+                    "color": {
+                        "type": "string",
+                        "example": "indigo"
+                    },
+                    "sortOrder": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "isDefault": {
+                        "type": "boolean"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    }
+                }
+            },
+            "CreateVisionItemRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "category": {
+                        "type": "string",
+                        "example": "career"
+                    },
+                    "imageUrl": {
+                        "type": "string"
+                    },
+                    "quote": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "title"
+                ]
+            },
+            "CreateTaskRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "dueDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-06-05"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "example": "MEDIUM"
+                    },
+                    "color": {
+                        "type": "string",
+                        "example": "indigo"
+                    },
+                    "categoryId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "eisenhowerMatrix": {
+                        "type": "string",
+                        "example": "urgent_important"
+                    },
+                    "estimatedTime": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "contexts": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "title"
+                ]
+            },
+            "MomoIPNRequest": {
+                "type": "object",
+                "properties": {
+                    "partnerCode": {
+                        "type": "string"
+                    },
+                    "orderId": {
+                        "type": "string"
+                    },
+                    "requestId": {
+                        "type": "string"
+                    },
+                    "amount": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "orderInfo": {
+                        "type": "string"
+                    },
+                    "orderType": {
+                        "type": "string"
+                    },
+                    "transId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "resultCode": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "payType": {
+                        "type": "string"
+                    },
+                    "responseTime": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "extraData": {
+                        "type": "string"
+                    },
+                    "signature": {
+                        "type": "string"
+                    }
+                }
+            },
+            "CreateReflectionRequest": {
+                "type": "object",
+                "properties": {
+                    "reflectionDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-06-05"
+                    },
+                    "completed": {
+                        "type": "string"
+                    },
+                    "obstacles": {
+                        "type": "string"
+                    },
+                    "improvements": {
+                        "type": "string"
+                    },
+                    "energyLevel": {
+                        "type": "integer",
+                        "format": "int32",
+                        "maximum": 10,
+                        "minimum": 1
+                    },
+                    "mood": {
+                        "type": "string"
+                    }
+                }
+            },
+            "CreateHabitRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "frequency": {
+                        "type": "string",
+                        "enum": [
+                            "daily",
+                            "weekly",
+                            "monthly"
+                        ],
+                        "example": "daily"
+                    },
+                    "targetCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "color": {
+                        "type": "string",
+                        "example": "indigo"
+                    }
+                },
+                "required": [
+                    "title"
+                ]
+            },
+            "CreateGoalRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": [
+                            "career",
+                            "learning",
+                            "health",
+                            "finance"
+                        ],
+                        "example": "career"
+                    },
+                    "goalType": {
+                        "type": "string",
+                        "enum": [
+                            "SMART",
+                            "OKR"
+                        ],
+                        "example": "SMART"
+                    },
+                    "period": {
+                        "type": "string",
+                        "enum": [
+                            "week",
+                            "month",
+                            "year"
+                        ],
+                        "example": "week"
+                    },
+                    "targetDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-06-05"
+                    },
+                    "color": {
+                        "type": "string",
+                        "example": "indigo"
+                    }
+                },
+                "required": [
+                    "period",
+                    "title"
+                ]
+            },
+            "CreateMilestoneRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "targetDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-06-05"
+                    }
+                },
+                "required": [
+                    "title"
+                ]
+            },
+            "CreateFocusSessionRequest": {
+                "type": "object",
+                "properties": {
+                    "startTime": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    },
+                    "duration": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "sessionType": {
+                        "type": "string",
+                        "example": "POMODORO"
+                    },
+                    "taskId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "notes": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "startTime"
+                ]
+            },
+            "CreateQuickNoteRequest": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string"
+                    },
+                    "noteType": {
+                        "type": "string"
+                    },
+                    "mediaUrl": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "content"
+                ]
+            },
+            "CreateEventRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "eventDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-06-05"
+                    },
+                    "startHour": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "startMin": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "duration": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "color": {
+                        "type": "string",
+                        "example": "indigo"
+                    },
+                    "location": {
+                        "type": "string"
+                    },
+                    "notes": {
+                        "type": "string"
+                    },
+                    "categoryId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "isRecurring": {
+                        "type": "boolean"
+                    },
+                    "recurrenceRule": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "eventDate",
+                    "title"
+                ]
+            },
+            "CreateCategoryRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "minLength": 0,
+                        "example": "John Doe"
+                    },
+                    "color": {
+                        "type": "string",
+                        "pattern": "^(indigo|blue|emerald|amber|rose|purple|teal|orange)$",
+                        "example": "indigo"
+                    }
+                },
+                "required": [
+                    "name"
+                ]
+            },
+            "RegisterRequest": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "example": "user@example.com"
+                    },
+                    "password": {
+                        "type": "string",
+                        "maxLength": 72,
+                        "minLength": 8,
+                        "example": "Password123"
+                    },
+                    "fullName": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "minLength": 0,
+                        "example": "John Doe"
+                    }
+                },
+                "required": [
+                    "email",
+                    "password"
+                ]
+            },
+            "AuthResponse": {
+                "type": "object",
+                "properties": {
+                    "accessToken": {
+                        "type": "string"
+                    },
+                    "refreshToken": {
+                        "type": "string"
+                    },
+                    "tokenType": {
+                        "type": "string"
+                    },
+                    "user": {
+                        "$ref": "#/components/schemas/UserInfo"
+                    }
+                }
+            },
+            "UserInfo": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "email": {
+                        "type": "string",
+                        "example": "user@example.com"
+                    },
+                    "fullName": {
+                        "type": "string",
+                        "example": "John Doe"
+                    },
+                    "avatarUrl": {
+                        "type": "string"
+                    },
+                    "language": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "string"
+                    },
+                    "isPremium": {
+                        "type": "boolean"
+                    },
+                    "premiumExpiresAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    }
+                }
+            },
+            "TokenRefreshRequest": {
+                "type": "object",
+                "properties": {
+                    "refreshToken": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "refreshToken"
+                ]
+            },
+            "LoginRequest": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "example": "user@example.com"
+                    },
+                    "password": {
+                        "type": "string",
+                        "example": "Password123"
+                    }
+                },
+                "required": [
+                    "email",
+                    "password"
+                ]
+            },
+            "UpdateNotificationRequest": {
+                "type": "object",
+                "properties": {
+                    "read": {
+                        "type": "boolean"
+                    },
+                    "dismissed": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "dismissed",
+                    "read"
+                ]
+            },
+            "NotificationDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "tone": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "ctaLabel": {
+                        "type": "string"
+                    },
+                    "read": {
+                        "type": "boolean"
+                    },
+                    "dismissed": {
+                        "type": "boolean"
+                    },
+                    "scheduledFor": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    }
+                }
+            },
+            "TaskListResponse": {
+                "type": "object",
+                "properties": {
+                    "tasks": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TaskDto"
+                        }
+                    },
+                    "totalCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "pendingCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "completedCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "overdueCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                }
+            },
+            "SubscriptionPlan": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "John Doe"
+                    },
+                    "price": {
+                        "type": "number"
+                    },
+                    "durationMonths": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T08:00:00.000Z"
+                    }
+                }
+            },
+            "HabitListResponse": {
+                "type": "object",
+                "properties": {
+                    "habits": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/HabitDto"
+                        }
+                    },
+                    "totalCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "activeCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "isPremium": {
+                        "type": "boolean"
+                    },
+                    "freeLimit": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                }
+            },
+            "GoalListResponse": {
+                "type": "object",
+                "properties": {
+                    "goals": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/GoalDto"
+                        }
+                    },
+                    "totalCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "weeklyCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "monthlyCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "yearlyCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "isPremium": {
+                        "type": "boolean"
+                    },
+                    "freeLimit": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                }
+            },
+            "CategoryListResponse": {
+                "type": "object",
+                "properties": {
+                    "categories": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CategoryDto"
+                        }
+                    },
+                    "totalCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "defaultCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "customCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "isPremium": {
+                        "type": "boolean"
+                    },
+                    "freeLimit": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                }
+            },
+            "AnalyticsResponse": {
+                "type": "object",
+                "properties": {
+                    "isPremium": {
+                        "type": "boolean"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "weeklyProgress": {
+                        "$ref": "#/components/schemas/WeeklyProgressStats"
+                    },
+                    "energyFluctuations": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/EnergyFluctuation"
+                        }
+                    },
+                    "categoryAllocations": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CategoryTimeAllocation"
+                        }
+                    },
+                    "habitStreaks": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/HabitStreakData"
+                        }
+                    }
+                }
+            },
+            "CategoryTimeAllocation": {
+                "type": "object",
+                "properties": {
+                    "categoryId": {
+                        "type": "string"
+                    },
+                    "categoryName": {
+                        "type": "string"
+                    },
+                    "color": {
+                        "type": "string",
+                        "example": "indigo"
+                    },
+                    "minutes": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "percentage": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                }
+            },
+            "EnergyFluctuation": {
+                "type": "object",
+                "properties": {
+                    "date": {
+                        "type": "string"
+                    },
+                    "level": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "mood": {
+                        "type": "string"
+                    }
+                }
+            },
+            "HabitStreakData": {
+                "type": "object",
+                "properties": {
+                    "habitId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "color": {
+                        "type": "string",
+                        "example": "indigo"
+                    },
+                    "currentStreak": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "bestStreak": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "completionsThisWeek": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                }
+            },
+            "WeeklyProgressStats": {
+                "type": "object",
+                "properties": {
+                    "totalTasks": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "completedTasks": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "completionRate": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "totalFocusMinutes": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "averageEnergyLevel": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                }
+            }
+        },
+        "securitySchemes": {
+            "bearer": {
+                "type": "http",
+                "description": "Enter your Bearer JWT token to access protected endpoints.",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
+        }
+    }
+}

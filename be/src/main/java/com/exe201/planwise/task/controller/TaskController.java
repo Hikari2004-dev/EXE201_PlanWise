@@ -48,13 +48,6 @@ public class TaskController {
         return ResponseEntity.ok(taskService.updateTask(principal.getId(), taskId, request));
     }
 
-    @PostMapping("/{taskId}/toggle")
-    public ResponseEntity<TaskDto> toggleComplete(
-            @AuthenticationPrincipal UserPrincipal principal,
-            @PathVariable UUID taskId) {
-        return ResponseEntity.ok(taskService.toggleComplete(principal.getId(), taskId));
-    }
-
     @DeleteMapping("/{taskId}")
     public ResponseEntity<Void> deleteTask(
             @AuthenticationPrincipal UserPrincipal principal,

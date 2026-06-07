@@ -69,12 +69,14 @@ export const habitApi = {
     if (!response.ok) throw new Error("Failed to delete habit");
   },
 
-  async toggleCompletion(id: string, date: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}${API}/habits/${id}/toggle?date=${date}`, {
+  async toggleCompletion(id: string, date: string): Promise<ApiHabit> {
+    const formattedDate = new Date(date).toISOString().split("T")[0];
+    const response = await fetch(`${API_BASE_URL}${API}/habits/${id}/completions/${formattedDate}`, {
       method: "PATCH",
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to toggle habit completion");
+    return response.json();
   },
 
   async getStats(id: string): Promise<{

@@ -42,7 +42,7 @@ spring:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:ZmFrZS1zZWNyZXQtZm9yLWRldi1tdXN0LWJlLWF0LWxlYXN0LTI1Ni1iaXRzLWxvbmctcGxhbndpc2U=}
+    secret: ${JWT_SECRET:ZmFrZS1zZWNyZXQtZm9yLWRldi1tdXN0LWJlLWF0LWxlYXN0LTUxMi1iaXRzLWxvbmctcGxhbndpc2UtcHJvamVjdC1hcHAtc2Vj}
     access-token-expiration-ms: 900000        # 15 phút
     refresh-token-expiration-ms: 604800000    # 7 ngày
 
@@ -60,7 +60,7 @@ app:
     tmn-code: Y9XZ6FFK
     hash-secret: 55QNGO35AW14FX8P0UKXP4LQ5VHTCYZ4
     pay-url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-    return-url: https://planwise.vn/payment-success
+    return-url: ${VNPAY_RETURN_URL:http://localhost:5173/payment/result}
     ipn-url: http://localhost:8080/api/v1/subscriptions/vnpay-ipn
 
 server:
@@ -73,3 +73,5 @@ logging:
     com.exe201.planwise: DEBUG
     org.springframework.security: INFO
     org.hibernate.SQL: WARN
+
+

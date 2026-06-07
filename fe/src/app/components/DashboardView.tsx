@@ -119,7 +119,7 @@ export function DashboardView() {
   return (
     <div className="flex flex-col h-full bg-slate-50 overflow-y-auto font-sans dark:bg-slate-950">
       {/* ── Top Header ── */}
-      <div className="px-8 pt-7 pb-5 flex items-center justify-between flex-shrink-0 bg-white border-b border-slate-200 dark:bg-slate-950 dark:border-slate-800">
+      <div className="px-4 sm:px-8 pt-5 sm:pt-7 pb-4 sm:pb-5 flex items-start sm:items-center justify-between flex-shrink-0 bg-white border-b border-slate-200 dark:bg-slate-950 dark:border-slate-800 gap-3 flex-wrap">
         <div>
           <h1 className="text-[1.65rem] font-extrabold tracking-tight text-slate-900 leading-snug dark:text-slate-50">
             {getGreeting()}
@@ -128,10 +128,10 @@ export function DashboardView() {
             {language === "vi" ? "Thứ Năm, 12 tháng 3, 2026" : "Thursday, March 12, 2026"}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <NotificationCenter />
           <CurrentTimeIndicator />
-          <div className="flex items-center gap-2 bg-gradient-to-r from-orange-50 to-amber-50 border border-amber-200 rounded-full px-3.5 py-1.5 shadow-sm dark:from-amber-500/15 dark:to-orange-500/15 dark:border-amber-400/30 dark:bg-slate-900">
+          <div className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-orange-50 to-amber-50 border border-amber-200 rounded-full px-3.5 py-1.5 shadow-sm dark:from-amber-500/15 dark:to-orange-500/15 dark:border-amber-400/30 dark:bg-slate-900">
             <Flame size={14} className="text-orange-500" />
             <span className="text-xs font-bold text-orange-700 dark:text-amber-200">
               {language === "vi" ? "Chuỗi 7 ngày" : "7 Day Streak"}
@@ -140,7 +140,7 @@ export function DashboardView() {
         </div>
       </div>
 
-      <div className="flex-1 px-8 py-6 space-y-6 max-w-[1440px] mx-auto w-full">
+      <div className="flex-1 px-4 sm:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 max-w-[1440px] mx-auto w-full">
         <HintBubble 
           id="dashboard_intro" 
           title={language === 'vi' ? "Chào mừng đến với PlanWise" : "Welcome to PlanWise"}
@@ -153,7 +153,7 @@ export function DashboardView() {
         </HintBubble>
 
         {/* ── KPI Cards ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {kpiCards.map(({ label, value, sub, icon: Icon, from, to, shadow, badge }, i) => (
             <div
               key={i}
@@ -277,7 +277,7 @@ export function DashboardView() {
 
             {/* Alert cards */}
             {(delayedTasks.length > 0 || abandonedTasks.length > 0) && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {delayedTasks.length > 0 && (
                   <div className="bg-white rounded-2xl border border-rose-100 overflow-hidden shadow-sm dark:bg-slate-900 dark:border-rose-500/20">
                     <div className="px-4 py-3 bg-gradient-to-r from-rose-50 to-pink-50 border-b border-rose-100 flex items-center justify-between dark:from-rose-500/12 dark:to-pink-500/10 dark:border-rose-500/20">

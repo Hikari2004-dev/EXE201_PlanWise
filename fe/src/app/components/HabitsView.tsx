@@ -212,12 +212,12 @@ export function HabitsView() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 overflow-y-auto font-sans text-slate-900">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 overflow-y-auto font-sans text-slate-900 dark:text-slate-100">
       {/* Header */}
-      <div className="pt-8 pb-6 px-8 flex items-center justify-between flex-shrink-0 border-b border-slate-200 bg-white sticky top-0 z-10">
+      <div className="pt-6 sm:pt-8 pb-5 sm:pb-6 px-4 sm:px-8 flex items-center justify-between flex-shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 sticky top-0 z-10 gap-3">
         <div>
-          <h1 className="text-[1.6rem] font-extrabold tracking-tight text-slate-900">{language === 'vi' ? "Theo dõi thói quen" : "Habit Tracker"}</h1>
-          <p className="text-sm text-slate-500 mt-1">{language === 'vi' ? "Xây dựng kỷ luật hàng ngày" : "Build daily discipline"}</p>
+          <h1 className="text-[1.3rem] sm:text-[1.6rem] font-extrabold tracking-tight text-slate-900 dark:text-slate-50">{language === 'vi' ? "Theo dõi thói quen" : "Habit Tracker"}</h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1 dark:text-slate-400">{language === 'vi' ? "Xây dựng kỷ luật hàng ngày" : "Build daily discipline"}</p>
         </div>
         <button
           onClick={() => {
@@ -227,14 +227,15 @@ export function HabitsView() {
             }
             setShowAddModal(true);
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md shadow-indigo-200 cursor-pointer"
+          className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md shadow-indigo-200 dark:shadow-none cursor-pointer shrink-0"
         >
           <Plus size={16} />
-          {language === 'vi' ? "Thêm thói quen" : "Add Habit"}
+          <span className="hidden sm:inline">{language === 'vi' ? "Thêm thói quen" : "Add Habit"}</span>
+          <span className="sm:hidden">+</span>
         </button>
       </div>
 
-      <div className="flex-1 p-8 space-y-6 max-w-[1440px] mx-auto w-full pb-12">
+      <div className="flex-1 p-4 sm:p-8 space-y-6 max-w-[1440px] mx-auto w-full pb-12">
         <HintBubble
           id="habits_intro"
           title={language === "vi" ? "Theo dõi thói quen" : "Habit Tracker"}
@@ -247,15 +248,15 @@ export function HabitsView() {
         </HintBubble>
 
         {/* Habits Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {habits.map((habit) => {
              const colors = COLOR_MAP[habit.color as EventColor];
              return (
-              <div key={habit.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 hover:shadow-md hover:border-indigo-200 transition-all relative flex flex-col group">
+              <div key={habit.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all relative flex flex-col group">
                 <div className="flex items-start justify-between mb-3">
                   <div className="min-w-0 pr-3">
-                    <h3 className="font-semibold text-zinc-950 text-base tracking-tight truncate group-hover:text-zinc-700 transition-colors">{habit.title}</h3>
-                    <p className="text-xs text-zinc-500 mt-1 line-clamp-1">{habit.description}</p>
+                    <h3 className="font-semibold text-zinc-950 dark:text-slate-100 text-base tracking-tight truncate group-hover:text-zinc-700 dark:group-hover:text-slate-350 transition-colors">{habit.title}</h3>
+                    <p className="text-xs text-zinc-500 dark:text-slate-450 mt-1 line-clamp-1">{habit.description}</p>
                   </div>
                   <div className={`text-[10px] font-semibold px-2.5 py-1 rounded-md border ${colors.badge} bg-transparent`}>
                     {getFrequencyLabel(habit.frequency)}
@@ -264,45 +265,45 @@ export function HabitsView() {
 
                 <div className="space-y-4 mt-auto">
                   {/* Current Streak */}
-                  <div className="flex items-center justify-between bg-zinc-50/50 rounded-lg p-3 border border-zinc-200">
+                  <div className="flex items-center justify-between bg-zinc-50/50 dark:bg-slate-950/40 rounded-lg p-3 border border-zinc-200 dark:border-slate-800">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-md bg-white border border-zinc-200 shadow-sm flex flex-shrink-0 items-center justify-center">
+                      <div className="w-8 h-8 rounded-md bg-white dark:bg-slate-900 border border-zinc-200 dark:border-slate-800 shadow-sm flex flex-shrink-0 items-center justify-center">
                         <Flame className="w-4 h-4 text-orange-500 flex-shrink-0" />
                       </div>
                       <div className="flex flex-col">
-                         <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">{language === 'vi' ? "Chuỗi hiện tại" : "Current Streak"}</span>
-                         <span className="font-bold text-sm text-zinc-950">{habit.currentStreak} {language === 'vi' ? "ngày" : "days"}</span>
+                         <span className="text-[10px] font-medium text-zinc-555 dark:text-slate-400 uppercase tracking-wider">{language === 'vi' ? "Chuỗi hiện tại" : "Current Streak"}</span>
+                         <span className="font-bold text-sm text-zinc-950 dark:text-slate-100">{habit.currentStreak} {language === 'vi' ? "ngày" : "days"}</span>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider block">{language === 'vi' ? "Tốt nhất" : "Best"}</span>
-                      <span className="font-bold text-sm text-zinc-700">{habit.bestStreak}</span>
+                      <span className="text-[10px] font-medium text-zinc-555 dark:text-slate-400 uppercase tracking-wider block">{language === 'vi' ? "Tốt nhất" : "Best"}</span>
+                      <span className="font-bold text-sm text-zinc-700 dark:text-slate-300">{habit.bestStreak}</span>
                     </div>
                   </div>
 
                   {/* Today's Status */}
                   <div className="flex items-center justify-between pt-2">
-                    <span className="text-sm font-semibold text-zinc-700">{language === 'vi' ? "Hôm nay" : "Today"}</span>
+                    <span className="text-sm font-semibold text-zinc-705 dark:text-slate-300">{language === 'vi' ? "Hôm nay" : "Today"}</span>
                     <button
                       onClick={() => toggleHabitDate(habit.id, new Date().toISOString().split('T')[0])}
                       className={`
                         text-xs font-semibold px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer border
                         ${isCompletedToday(habit) 
                           ? `${colors.bg} ${colors.border} text-white shadow-sm` 
-                          : "bg-white border-zinc-300 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"}
+                          : "bg-white dark:bg-slate-800 border-zinc-300 dark:border-slate-700 text-zinc-650 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-750 hover:text-zinc-900 dark:hover:text-white"}
                       `}
                     >
-                      <CheckCircle2 size={14} className={isCompletedToday(habit) ? "text-white" : "text-zinc-400"} />
+                      <CheckCircle2 size={14} className={isCompletedToday(habit) ? "text-white" : "text-zinc-400 dark:text-slate-500"} />
                       {isCompletedToday(habit) ? (language === 'vi' ? "Hoàn thành" : "Completed") : (language === 'vi' ? "Đánh dấu" : "Mark it")}
                     </button>
                   </div>
 
                   {/* Recent Activity */}
-                  <div className="border-t border-zinc-100 pt-3 mt-3">
-                    <h4 className="text-[11px] text-zinc-500 font-medium mb-3 flex items-center gap-1.5">
+                  <div className="border-t border-zinc-100 dark:border-slate-800 pt-3 mt-3">
+                    <h4 className="text-[11px] text-zinc-500 dark:text-slate-450 font-medium mb-3 flex items-center gap-1.5">
                       <Calendar size={12} /> {language === 'vi' ? "7 ngày gần đây" : "Last 7 days"}
                     </h4>
-                    <div className="flex justify-between items-center bg-zinc-50 rounded-lg p-1.5 border border-zinc-100">
+                    <div className="flex justify-between items-center bg-zinc-50 dark:bg-slate-950/60 rounded-lg p-1.5 border border-zinc-100 dark:border-slate-800">
                       {Array.from({ length: 7 }, (_, i) => {
                         const date = new Date();
                         date.setDate(date.getDate() - (6 - i));
@@ -315,7 +316,7 @@ export function HabitsView() {
                             className={`w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-bold transition-all ${
                               completed 
                                 ? `${colors.bg} text-white shadow-sm ring-1 ring-black/5` 
-                                : 'bg-transparent text-zinc-400 hover:bg-zinc-200/50'
+                                : 'bg-transparent text-zinc-400 dark:text-slate-500 hover:bg-zinc-200/50 dark:hover:bg-slate-800'
                             }`}
                             title={date.toLocaleDateString('vi-VN')}
                           >

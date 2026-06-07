@@ -77,9 +77,10 @@ export const goalApi = {
   },
 
   async incrementProgress(id: string): Promise<ApiGoal> {
-    const response = await fetch(`${API_BASE_URL}${API}/goals/${id}/increment-progress`, {
+    const response = await fetch(`${API_BASE_URL}${API}/goals/${id}`, {
       method: "PATCH",
       headers: getAuthHeaders(),
+      body: JSON.stringify({ progress: undefined }),
     });
     if (!response.ok) throw new Error("Failed to increment goal progress");
     return response.json();
