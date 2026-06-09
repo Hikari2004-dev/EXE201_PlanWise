@@ -40,10 +40,12 @@ export function RegisterPage() {
 
     try {
       await register({ email, password, fullName });
-      navigate("/", { replace: true });
+      navigate("/login", { replace: true });
     } catch (err: any) {
       console.error(err);
-      setErrorMsg(err.message || "Đăng ký thất bại. Email có thể đã được sử dụng.");
+      setErrorMsg(
+        err.message || "Đăng ký thất bại. Email có thể đã được sử dụng.",
+      );
     } finally {
       setLoading(false);
     }
@@ -62,8 +64,12 @@ export function RegisterPage() {
           <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/20 mb-3 animate-pulse">
             <Sparkles size={20} className="text-white" />
           </div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white" style={{ fontFamily: "'Outfit', 'Inter', sans-serif" }}>
-            Plan<span className="text-indigo-600 dark:text-indigo-400">Wise</span>
+          <h1
+            className="text-2xl font-black tracking-tight text-slate-900 dark:text-white"
+            style={{ fontFamily: "'Outfit', 'Inter', sans-serif" }}
+          >
+            Plan
+            <span className="text-indigo-600 dark:text-indigo-400">Wise</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest font-semibold mt-1">
             Tối ưu hóa thời gian & mục tiêu
@@ -181,7 +187,10 @@ export function RegisterPage() {
         {/* ── Footer Link ── */}
         <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-6 font-medium">
           Đã có tài khoản?{" "}
-          <Link to="/login" className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+          <Link
+            to="/login"
+            className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+          >
             Đăng nhập
           </Link>
         </p>

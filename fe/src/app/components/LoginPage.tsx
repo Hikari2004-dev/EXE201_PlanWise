@@ -39,7 +39,7 @@ export function LoginPage() {
 
     try {
       await login({ email, password });
-      navigate("/", { replace: true });
+      navigate("/dashboard", { replace: true });
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
@@ -49,8 +49,11 @@ export function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
+    // Determine frontend callback URL based on current origin
+    const currentOrigin = window.location.origin;
+    const callbackUrl = `${currentOrigin}/auth/callback`;
     // Redirect browser to Google login endpoint in Spring Boot backend
-    window.location.href = `${API_BASE_URL}/api/v1/oauth2/authorize/google`;
+    window.location.href = `${API_BASE_URL}/api/v1/oauth2/authorize/google?redirect_uri=${encodeURIComponent(callbackUrl)}`;
   };
 
   return (

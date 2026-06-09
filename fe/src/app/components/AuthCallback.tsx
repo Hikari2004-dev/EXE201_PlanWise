@@ -19,7 +19,7 @@ export function AuthCallback() {
     if (token && refreshToken) {
       loginWithToken(token, refreshToken)
         .then(() => {
-          navigate("/", { replace: true });
+          navigate("/dashboard", { replace: true });
         })
         .catch((err) => {
           console.error("OAuth callback error:", err);
