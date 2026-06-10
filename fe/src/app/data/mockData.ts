@@ -17,6 +17,8 @@ export interface CalendarEvent {
   location: string;
   notes: string;
   categoryId: string;
+  isRecurring?: boolean;
+  recurrenceRule?: string;
 }
 
 export interface Task {

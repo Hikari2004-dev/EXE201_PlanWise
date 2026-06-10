@@ -34,8 +34,8 @@ export const taskApi = {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch tasks");
-    const tasks: ApiTask[] = await response.json();
-    return tasks.map(task => ({
+    const payload: { tasks: ApiTask[] } = await response.json();
+    return (payload.tasks || []).map(task => ({
       ...task,
       eisenhowerMatrix: task.eisenhowerMatrix ? task.eisenhowerMatrix.replace(/_/g, "-") : undefined,
     }));

@@ -8,7 +8,30 @@ import { NotificationCenter } from "./NotificationCenter";
 import { useData } from "../context/DataContext";
 import { COLOR_MAP, getTimeString, type EventColor } from "../data/mockData";
 
-const TODAY_DAY = "Thu";
+function parseTaskDueDate(value?: string) {
+  if (!value) return null;
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  parsed.setHours(0, 0, 0, 0);
+  return parsed;
+}
+
+function formatTaskDueDateLabel(value?: string) {
+  const parsed = parseTaskDueDate(value);
+  if (!parsed) return value || "";
+  return `${parsed.getDate()} Th${parsed.getMonth() + 1}`;
+}
+
+const WEEKDAY_TO_EVENT_DAY: Record<number, string> = {
+  0: "CN",
+  1: "Thứ 2",
+  2: "Thứ 3",
+  3: "Thứ 4",
+  4: "Thứ 5",
+  5: "Thứ 6",
+  6: "Thứ 7",
+};
 
 function CurrentTimeIndicator() {
   const now = new Date();
@@ -27,8 +50,10 @@ function CurrentTimeIndicator() {
 
 export function DashboardView() {
   const { events, tasks, categories, language } = useData();
+  const now = new Date();
+  const todayDay = WEEKDAY_TO_EVENT_DAY[now.getDay()] || "";
 
-  const todayEvents = events.filter(e => e.day === TODAY_DAY).sort(
+  const todayEvents = events.filter(e => e.day === todayDay).sort(
     (a, b) => a.startHour - b.startHour || a.startMin - b.startMin
   );
 
@@ -38,15 +63,16 @@ export function DashboardView() {
   const highPriority    = tasks.filter(t => !t.completed && t.priority === "Cao").length;
   const completionRate  = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
 
-  const parseViDate = (s: string) => {
-    if (!s?.includes("Th")) return new Date();
-    const [day, mo] = s.split(" Th");
-    return new Date(2026, parseInt(mo) - 1, parseInt(day));
-  };
-  const today       = new Date(2026, 2, 12);
-  const sevenAgo    = new Date(today); sevenAgo.setDate(today.getDate() - 7);
-  const delayedTasks   = tasks.filter(t => !t.completed && parseViDate(t.dueDate) < today).slice(0, 3);
-  const abandonedTasks = tasks.filter(t => !t.completed && parseViDate(t.dueDate) < sevenAgo).slice(0, 3);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const sevenAgo = new Date(today); sevenAgo.setDate(today.getDate() - 7);
+  const delayedTasks = tasks.filter(t => {
+    const dueDate = parseTaskDueDate(t.dueDate);
+    return !t.completed && !!dueDate && dueDate < today;
+  }).slice(0, 3);
+  const abandonedTasks = tasks.filter(t => {
+    const dueDate = parseTaskDueDate(t.dueDate);
+    return !t.completed && !!dueDate && dueDate < sevenAgo;
+  }).slice(0, 3);
 
   const categoryStats = categories.map(cat => {
     const catTasks = tasks.filter(t => t.categoryId === cat.id);
@@ -56,7 +82,7 @@ export function DashboardView() {
   }).slice(0, 6);
 
   const getGreeting = () => {
-    const h = new Date().getHours();
+    const h = now.getHours();
     if (language === "vi") {
       if (h < 12) return "Chào buổi sáng ☀️";
       if (h < 18) return "Chào buổi chiều 🌤";
@@ -66,6 +92,13 @@ export function DashboardView() {
     if (h < 18) return "Good afternoon 🌤";
     return "Good evening 🌙";
   };
+
+  const currentDateLabel = now.toLocaleDateString(language === "vi" ? "vi-VN" : "en-US", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
   // KPI card configs with real color
   const kpiCards = [
@@ -125,7 +158,7 @@ export function DashboardView() {
             {getGreeting()}
           </h1>
           <p className="text-sm text-slate-500 mt-1 font-medium dark:text-slate-300">
-            {language === "vi" ? "Thứ Năm, 12 tháng 3, 2026" : "Thursday, March 12, 2026"}
+            {currentDateLabel}
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -297,7 +330,7 @@ export function DashboardView() {
                           <div className="w-1.5 h-1.5 rounded-full bg-rose-400 mt-2 flex-shrink-0" />
                           <div>
                             <p className="text-[13px] font-semibold text-slate-800 line-clamp-1 dark:text-slate-100">{t.title}</p>
-                            <p className="text-[11px] text-rose-500 mt-0.5 font-medium">{t.dueDate}</p>
+                            <p className="text-[11px] text-rose-500 mt-0.5 font-medium">{formatTaskDueDateLabel(t.dueDate)}</p>
                           </div>
                         </div>
                       ))}
@@ -323,7 +356,7 @@ export function DashboardView() {
                           <div className="w-1.5 h-1.5 rounded-full bg-orange-400 mt-2 flex-shrink-0" />
                           <div>
                             <p className="text-[13px] font-semibold text-slate-800 line-clamp-1 dark:text-slate-100">{t.title}</p>
-                            <p className="text-[11px] text-orange-500 mt-0.5 font-medium">{t.dueDate}</p>
+                            <p className="text-[11px] text-orange-500 mt-0.5 font-medium">{formatTaskDueDateLabel(t.dueDate)}</p>
                           </div>
                         </div>
                       ))}
@@ -364,7 +397,7 @@ export function DashboardView() {
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${priorityChip[t.priority] || "bg-slate-50 text-slate-500"}`}>
                           {t.priority}
                         </span>
-                        <span className="text-[11px] text-slate-400 dark:text-slate-300">{t.dueDate}</span>
+                        <span className="text-[11px] text-slate-400 dark:text-slate-300">{formatTaskDueDateLabel(t.dueDate)}</span>
                       </div>
                     </div>
                   </div>

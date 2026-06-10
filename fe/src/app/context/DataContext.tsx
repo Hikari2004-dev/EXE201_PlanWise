@@ -36,6 +36,9 @@ interface CalendarEvent {
   location: string;
   notes: string;
   categoryId: string;
+  isRecurring?: boolean;
+  recurrenceRule?: string;
+  eventDate?: string;
 }
 
 interface Task {
@@ -55,23 +58,6 @@ interface Task {
   categoryName?: string;
   categoryColor?: string;
   sortOrder: number;
-}
-
-function formatTaskDueDateForUi(dueDate?: string) {
-  if (!dueDate) return "";
-
-  const trimmed = dueDate.trim();
-  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (isoMatch) {
-    return `${Number(isoMatch[3])} Th${Number(isoMatch[2])}`;
-  }
-
-  const viMatch = trimmed.match(/^(\d{1,2})\s*Th(\d{1,2})$/i);
-  if (viMatch) {
-    return `${Number(viMatch[1])} Th${Number(viMatch[2])}`;
-  }
-
-  return "";
 }
 
 function normalizeTaskDueDateForApi(dueDate?: string) {
@@ -109,7 +95,7 @@ function mapApiTaskToTask(t: ApiTask): Task {
     id: t.id,
     title: t.title,
     description: t.description || "",
-    dueDate: formatTaskDueDateForUi(t.dueDate),
+    dueDate: t.dueDate || "",
     priority: priorityMap[t.priority] || "Trung bình",
     completed: t.completed,
     completedAt: t.completedAt,
@@ -122,6 +108,53 @@ function mapApiTaskToTask(t: ApiTask): Task {
     categoryName: t.categoryName,
     categoryColor: t.categoryColor,
     sortOrder: t.sortOrder,
+  };
+}
+
+function getDayName(date: Date, lang: string): string {
+  const days = lang === "vi"
+    ? ["CN", "T2", "T3", "T4", "T5", "T6", "T7"]
+    : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  return days[date.getDay()];
+}
+
+function getStartOfCurrentWeek(): Date {
+  const today = new Date();
+  const start = new Date(today);
+  const day = start.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  start.setDate(start.getDate() + diff);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function getEventDateFromWeekday(dayCode: string): string {
+  const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const index = weekDays.indexOf(dayCode);
+  const baseDate = getStartOfCurrentWeek();
+  const targetDate = new Date(baseDate);
+  targetDate.setDate(baseDate.getDate() + (index >= 0 ? index : 0));
+  const year = targetDate.getFullYear();
+  const month = String(targetDate.getMonth() + 1).padStart(2, "0");
+  const day = String(targetDate.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function mapApiEventToCalendarEvent(event: ApiCalendarEvent): CalendarEvent {
+  return {
+    id: event.id,
+    title: event.title,
+    day: getDayName(new Date(event.eventDate), "en"),
+    startHour: event.startHour,
+    startMin: event.startMin,
+    duration: event.duration,
+    color: event.color,
+    location: event.location || "",
+    notes: event.notes || "",
+    categoryId: event.categoryId || "",
+    isRecurring: event.isRecurring,
+    recurrenceRule: event.recurrenceRule,
+    eventDate: event.eventDate,
   };
 }
 
@@ -202,6 +235,18 @@ interface Notification {
   createdAt: string;
 }
 
+function dedupeCategories(categories: Category[]): Category[] {
+  const uniqueCategories = new Map<string, Category>();
+
+  categories.forEach((category) => {
+    if (!uniqueCategories.has(category.id)) {
+      uniqueCategories.set(category.id, category);
+    }
+  });
+
+  return Array.from(uniqueCategories.values());
+}
+
 interface UserSettings {
   theme: string;
   defaultFocusType: string;
@@ -236,7 +281,7 @@ interface DataContextType {
   setLanguage: (lang: "vi" | "en") => void;
   
   // Category operations
-  addCategory: (category: Omit<Category, "id">) => Promise<void>;
+  addCategory: (category: Omit<Category, "id">) => Promise<Category>;
   updateCategory: (id: string, category: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   
@@ -342,30 +387,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       // Process categories
       if (categoriesData.status === "fulfilled") {
-        setCategories(categoriesData.value.map(c => ({
+        setCategories(dedupeCategories(categoriesData.value.map(c => ({
           id: c.id,
           name: c.name,
           color: c.color,
-        })));
+        }))));
       }
 
       // Process events - convert to frontend format
       if (eventsData.status === "fulfilled") {
         const today = new Date();
-        setEvents(eventsData.value.map(e => ({
-          id: e.id,
-          title: e.title,
-          day: getDayName(new Date(e.eventDate), "vi"),
-          startHour: e.startHour,
-          startMin: e.startMin,
-          duration: e.duration,
-          color: e.color,
-          location: e.location || "",
-          notes: e.notes || "",
-          categoryId: e.categoryId || "",
-          eventDate: e.eventDate,
-        })));
-      }
+        setEvents(eventsData.value.map(mapApiEventToCalendarEvent));      }
 
       // Process tasks
       if (tasksData.status === "fulfilled") {
@@ -475,7 +507,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // Category operations
   const addCategory = async (category: Omit<Category, "id">) => {
     const created = await categoryApi.create(category);
-    setCategories(prev => [...prev, { id: created.id, name: created.name, color: created.color }]);
+    const createdCategory = { id: created.id, name: created.name, color: created.color };
+    setCategories(prev => dedupeCategories([...prev, createdCategory]));
+    return createdCategory;
   };
 
   const updateCategory = async (id: string, updates: Partial<Category>) => {
@@ -490,8 +524,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Event operations
   const addEvent = async (event: Omit<CalendarEvent, "id">) => {
-    const [day, month] = event.day.split(" ");
-    const eventDate = `2026-${month.replace("Th", "")}-${day.padStart(2, "0")}`;
+    const eventDate = event.eventDate || getEventDateFromWeekday(event.day);
     const created = await eventApi.create({
       title: event.title,
       eventDate,
@@ -501,14 +534,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
       color: event.color,
       location: event.location,
       notes: event.notes,
+      isRecurring: event.isRecurring ?? false,
+      recurrenceRule: event.isRecurring ? (event.recurrenceRule || "WEEKLY") : undefined,
       categoryId: event.categoryId || undefined,
     });
-    setEvents(prev => [...prev, { ...event, id: created.id, eventDate }]);
+    setEvents(prev => [...prev, mapApiEventToCalendarEvent(created)]);
   };
 
   const updateEvent = async (id: string, updates: Partial<CalendarEvent>) => {
     const updateData: Record<string, unknown> = {};
     if (updates.title) updateData.title = updates.title;
+    if (updates.eventDate !== undefined) {
+      updateData.eventDate = updates.eventDate;
+    } else if (updates.day !== undefined) {
+      updateData.eventDate = getEventDateFromWeekday(updates.day);
+    }
     if (updates.startHour !== undefined) updateData.startHour = updates.startHour;
     if (updates.startMin !== undefined) updateData.startMin = updates.startMin;
     if (updates.duration !== undefined) updateData.duration = updates.duration;
@@ -516,9 +556,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (updates.location !== undefined) updateData.location = updates.location;
     if (updates.notes !== undefined) updateData.notes = updates.notes;
     if (updates.categoryId !== undefined) updateData.categoryId = updates.categoryId;
+    if (updates.isRecurring !== undefined) updateData.isRecurring = updates.isRecurring;
+    if (updates.recurrenceRule !== undefined) updateData.recurrenceRule = updates.recurrenceRule;
 
-    await eventApi.update(id, updateData as Parameters<typeof eventApi.update>[1]);
-    setEvents(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+    const updated = await eventApi.update(id, updateData as Parameters<typeof eventApi.update>[1]);
+    setEvents(prev => prev.map(e => e.id === id ? mapApiEventToCalendarEvent(updated) : e));
   };
 
   const deleteEvent = async (id: string) => {

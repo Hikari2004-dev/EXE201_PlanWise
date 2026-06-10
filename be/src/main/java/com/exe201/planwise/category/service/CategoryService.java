@@ -3,6 +3,7 @@ package com.exe201.planwise.category.service;
 import com.exe201.planwise.category.dto.*;
 import com.exe201.planwise.category.entity.Category;
 import com.exe201.planwise.category.repository.CategoryRepository;
+import com.exe201.planwise.common.enums.EventColor;
 import com.exe201.planwise.exception.AppException;
 import com.exe201.planwise.exception.ErrorCode;
 import com.exe201.planwise.user.entity.User;
@@ -42,6 +43,7 @@ public class CategoryService {
     @Transactional
     public CategoryDto createCategory(UUID userId, CreateCategoryRequest request) {
         User user = findUser(userId);
+        String normalizedName = normalizeName(request.name());
 
         if (!user.isPremium()) {
             long customCount = categoryRepository.countCustomByUserId(userId);
@@ -50,7 +52,7 @@ public class CategoryService {
             }
         }
 
-        if (categoryRepository.existsByUserIdAndName(userId, request.name())) {
+        if (categoryRepository.existsByUserIdAndNameNormalized(userId, normalizedName)) {
             throw new AppException(ErrorCode.BAD_REQUEST, "Danh mục đã tồn tại");
         }
 
@@ -62,8 +64,8 @@ public class CategoryService {
 
         Category category = Category.builder()
                 .user(user)
-                .name(request.name())
-                .color(request.color())
+                .name(normalizedName)
+                .color(parseColor(request.color()))
                 .sortOrder((short) (maxSortOrder + 1))
                 .isDefault(false)
                 .build();
@@ -83,10 +85,14 @@ public class CategoryService {
         }
 
         if (request.name() != null && !category.isDefault()) {
-            category.setName(request.name());
+            String normalizedName = normalizeName(request.name());
+            if (categoryRepository.existsByUserIdAndNameNormalizedExcludingId(userId, normalizedName, categoryId)) {
+                throw new AppException(ErrorCode.BAD_REQUEST, "Danh mục đã tồn tại");
+            }
+            category.setName(normalizedName);
         }
         if (request.color() != null) {
-            category.setColor(request.color());
+            category.setColor(parseColor(request.color()));
         }
         if (request.sortOrder() != null) {
             category.setSortOrder((short) request.sortOrder().intValue());
@@ -123,5 +129,21 @@ public class CategoryService {
             throw new AppException(ErrorCode.CATEGORY_NOT_FOUND);
         }
         return category;
+    }
+
+    private EventColor parseColor(String color) {
+        if (color == null || color.isBlank()) {
+            return EventColor.indigo;
+        }
+
+        try {
+            return EventColor.valueOf(color.trim().toLowerCase());
+        } catch (IllegalArgumentException ignored) {
+            return EventColor.indigo;
+        }
+    }
+
+    private String normalizeName(String name) {
+        return name == null ? null : name.trim().replaceAll("\\s+", " ");
     }
 }
