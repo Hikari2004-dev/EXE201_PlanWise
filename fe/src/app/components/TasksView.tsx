@@ -18,10 +18,12 @@ import {
   Brain,
   Zap,
   XCircle,
+  ArrowRight,
+  Sparkles,
+  Target,
 } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { COLOR_MAP, type Task, type EventColor } from "../data/mockData";
-import { FocusView } from "./FocusView";
 import { HintBubble } from "./HintBubble";
 
 // Normalize color to lowercase for consistent lookups
@@ -48,6 +50,22 @@ function normalizeUiDateToDateString(dueDate?: string) {
   return "";
 }
 
+function formatDueDateLabel(dueDate?: string) {
+  if (!dueDate) return "";
+  const trimmed = dueDate.trim();
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    return `${Number(isoMatch[3])} Th${Number(isoMatch[2])}`;
+  }
+
+  const viMatch = trimmed.match(/^(\d{1,2})\s*Th(\d{1,2})$/i);
+  if (viMatch) {
+    return `${Number(viMatch[1])} Th${Number(viMatch[2])}`;
+  }
+
+  return trimmed;
+}
+
 const PRIORITY_COLORS: Record<string, string> = {
   Cao: "text-rose-600 bg-rose-50 border-rose-200",
   "Trung bình": "text-amber-600 bg-amber-50 border-amber-200",
@@ -65,7 +83,7 @@ const EVENT_COLORS: EventColor[] = ["indigo", "blue", "emerald", "amber", "rose"
 interface TaskModalProps {
   task?: Task;
   onClose: () => void;
-  onSave: (task: Omit<Task, "id"> | Task) => void;
+  onSave: (task: Omit<Task, "id"> | Task) => Promise<void>;
 }
 
 type FocusMethodKey = "pomodoro" | "sprint" | "deep";
@@ -107,7 +125,7 @@ function FocusSessionOverlay({
 }: {
   task: Task;
   onClose: () => void;
-  onCompleteTask: (id: string) => void;
+  onCompleteTask: (id: string) => Promise<void>;
 }) {
   const [selectedMethod, setSelectedMethod] = useState<FocusMethodKey>("pomodoro");
   const [isRunning, setIsRunning] = useState(false);
@@ -227,7 +245,9 @@ function FocusSessionOverlay({
             Làm lại
           </button>
           <button
-            onClick={() => onCompleteTask(task.id)}
+            onClick={async () => {
+              await onCompleteTask(task.id);
+            }}
             className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-5 py-3 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/20"
           >
             <Check size={16} />
@@ -238,7 +258,7 @@ function FocusSessionOverlay({
         <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-slate-300">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
             <TimerReset size={13} />
-            Hạn: {task.dueDate}
+            Hạn: {formatDueDateLabel(task.dueDate)}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
             <Zap size={13} />
@@ -251,8 +271,10 @@ function FocusSessionOverlay({
 }
 
 function TaskModal({ task, onClose, onSave }: TaskModalProps) {
-  const { categories } = useData();
+  const { categories, addCategory } = useData();
   const resolvedCategoryId = task?.categoryId || categories[0]?.id || "";
+  const [showCategoryPopup, setShowCategoryPopup] = useState(false);
+  const [categoryForm, setCategoryForm] = useState({ name: "", color: "indigo" as EventColor });
   const [form, setForm] = useState({
     title: task?.title || "",
     categoryId: resolvedCategoryId,
@@ -265,10 +287,13 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
     estimatedTime: task?.estimatedTime || "",
     contexts: task?.contexts || [] as string[],
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title.trim()) return;
+    if (!form.title.trim() || isSubmitting) return;
     
     const taskData = {
       title: form.title,
@@ -283,18 +308,44 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
       contexts: form.contexts.length > 0 ? form.contexts : undefined,
     };
 
-    if (task) {
-      onSave({
-        ...task,
-        ...taskData,
-      });
-    } else {
-      onSave({
-        ...taskData,
-        sortOrder: 0,
-      });
+    try {
+      setIsSubmitting(true);
+      if (task) {
+        await onSave({
+          ...task,
+          ...taskData,
+        });
+      } else {
+        await onSave({
+          ...taskData,
+          sortOrder: 0,
+        });
+      }
+      onClose();
+    } finally {
+      setIsSubmitting(false);
     }
-    onClose();
+  };
+
+  const handleCreateCategory = async () => {
+    if (!categoryForm.name.trim() || isCreatingCategory) return;
+
+    try {
+      setCategoryError(null);
+      setIsCreatingCategory(true);
+      const createdCategory = await addCategory({ name: categoryForm.name.trim(), color: categoryForm.color });
+      setCategoryForm({ name: "", color: "indigo" });
+      setShowCategoryPopup(false);
+      setForm((prev) => ({
+        ...prev,
+        categoryId: createdCategory.id,
+        color: normalizeColor(createdCategory.color) as EventColor,
+      }));
+    } catch (error) {
+      setCategoryError(error instanceof Error ? error.message : "Không thể tạo danh mục");
+    } finally {
+      setIsCreatingCategory(false);
+    }
   };
 
   const selectedCategory = categories.find(c => c.id === (form.categoryId || categories[0]?.id || ""));
@@ -336,6 +387,11 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
                 value={form.categoryId || categories[0]?.id || ""}
                 onChange={(e) => {
                   const catId = e.target.value;
+                  if (catId === "__other__") {
+                    setCategoryError(null);
+                    setShowCategoryPopup(true);
+                    return;
+                  }
                   const cat = categories.find(c => c.id === catId);
                   setForm({ ...form, categoryId: catId, color: normalizeColor(cat?.color) as EventColor || form.color });
                 }}
@@ -345,6 +401,7 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id} className="dark:bg-slate-900">{cat.name}</option>
                 ))}
+                <option value="__other__" className="dark:bg-slate-900">Khác</option>
               </select>
             </div>
             <div>
@@ -388,19 +445,99 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 border border-zinc-300 text-zinc-700 text-sm font-semibold py-2 rounded-lg hover:bg-zinc-50 transition-colors"
+              className="flex-1 border border-zinc-300 text-zinc-700 text-sm font-semibold py-2 rounded-lg hover:bg-zinc-50 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isSubmitting}
             >
               Hủy
             </button>
             <button
               type="submit"
-              className="flex-1 bg-zinc-900 text-white text-sm font-semibold py-2 rounded-lg hover:bg-zinc-800 transition-colors"
+              className="flex-1 bg-zinc-900 text-white text-sm font-semibold py-2 rounded-lg hover:bg-zinc-800 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isSubmitting}
             >
-              {task ? "Cập nhật" : "Thêm mới"}
+              {isSubmitting ? "Đang lưu..." : task ? "Cập nhật" : "Thêm mới"}
             </button>
           </div>
         </form>
       </div>
+      {showCategoryPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => {
+          setCategoryError(null);
+          setShowCategoryPopup(false);
+          setCategoryForm({ name: "", color: "indigo" });
+        }}>
+          <div className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h4 className="text-base font-semibold text-zinc-900">Tạo danh mục mới</h4>
+                <p className="mt-1 text-xs text-zinc-500">Danh mục này sẽ thuộc tài khoản hiện tại của bạn.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCategoryError(null);
+                  setShowCategoryPopup(false);
+                  setCategoryForm({ name: "", color: "indigo" });
+                }}
+                className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-zinc-600">Tên danh mục</label>
+                <input
+                  type="text"
+                  value={categoryForm.name}
+                  onChange={(e) => {
+                    setCategoryError(null);
+                    setCategoryForm({ ...categoryForm, name: e.target.value });
+                  }}
+                  placeholder="VD: Việc cá nhân"
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-600">Màu danh mục</label>
+                <div className="flex flex-wrap gap-2">
+                  {(["indigo", "blue", "emerald", "amber", "rose", "purple", "teal", "orange"] as EventColor[]).map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setCategoryForm({ ...categoryForm, color })}
+                      className={`h-7 w-7 rounded-full ${COLOR_MAP[color].bg} transition-all ${categoryForm.color === color ? `ring-2 ring-offset-2 ${COLOR_MAP[color].ring}` : ""}`}
+                    />
+                  ))}
+                </div>
+              </div>
+              {categoryError && <p className="text-xs font-medium text-rose-600">{categoryError}</p>}
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategoryError(null);
+                    setShowCategoryPopup(false);
+                    setCategoryForm({ name: "", color: "indigo" });
+                  }}
+                  className="flex-1 rounded-lg border border-zinc-200 py-2 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateCategory}
+                  className="flex-1 rounded-lg bg-zinc-900 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={!categoryForm.name.trim() || isCreatingCategory}
+                >
+                  {isCreatingCategory ? "Đang tạo..." : "Tạo danh mục"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -492,7 +629,7 @@ function TaskCard({
             {/* Due date */}
             <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-zinc-600 bg-zinc-100 dark:bg-slate-800 dark:text-slate-300 px-2 py-1 rounded-md border border-zinc-200 dark:border-slate-700">
               <Calendar size={10} />
-              {task.dueDate}
+              {formatDueDateLabel(task.dueDate)}
             </span>
 
             {/* Priority */}
@@ -536,6 +673,25 @@ export function TasksView() {
   const pending = tasks.filter((t) => !t.completed).length;
   const completed = tasks.filter((t) => t.completed).length;
   const highPriority = tasks.filter((t) => !t.completed && t.priority === "Cao").length;
+  const focusTasks = tasks
+    .filter((t) => {
+      const matchPriority = priorityFilter === "Tất cả" ? true : t.priority === priorityFilter;
+      const matchSearch =
+        search === "" ||
+        t.title.toLowerCase().includes(search.toLowerCase()) ||
+        (t.description || "").toLowerCase().includes(search.toLowerCase());
+      return !t.completed && matchPriority && matchSearch;
+    })
+    .sort((a, b) => {
+      const order = { Cao: 0, "Trung bình": 1, Thấp: 2 };
+      const priorityDiff = order[a.priority as keyof typeof order] - order[b.priority as keyof typeof order];
+      if (priorityDiff !== 0) return priorityDiff;
+      if (a.estimatedTime && b.estimatedTime) return a.estimatedTime - b.estimatedTime;
+      if (a.estimatedTime) return -1;
+      if (b.estimatedTime) return 1;
+      return a.sortOrder - b.sortOrder;
+    });
+  const recommendedFocusTask = focusTasks[0] ?? null;
 
   const toggleTask = (id: string) => {
     const task = tasks.find(t => t.id === id);
@@ -548,13 +704,13 @@ export function TasksView() {
     deleteTask(id);
   };
 
-  const handleSaveTask = (taskData: Omit<Task, "id"> | Task) => {
+  const handleSaveTask = async (taskData: Omit<Task, "id"> | Task) => {
     if ('id' in taskData) {
       // Editing existing task
-      updateTask(taskData.id, taskData);
+      await updateTask(taskData.id, taskData);
     } else {
       // Adding new task
-      addTask(taskData);
+      await addTask(taskData);
     }
   };
 
@@ -716,34 +872,135 @@ export function TasksView() {
           Mục này giúp bạn gom toàn bộ việc cần làm vào một nơi, lọc theo trạng thái hoặc mức ưu tiên, rồi xử lý từng việc theo đúng nhịp thay vì bị quá tải.
         </HintBubble>
         {filter === "Tập trung" ? (
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-violet-50 p-5 shadow-sm dark:border-indigo-500/20 dark:from-slate-900 dark:via-slate-950 dark:to-indigo-950/60">
-              <h3 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-50">Chọn một task để vào Focus Mode</h3>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                Mỗi công việc đều có nút <span className="font-semibold text-indigo-600 dark:text-indigo-300">Bắt đầu tập trung</span>. Khi bấm vào, màn hình sẽ chuyển sang giao diện chỉ còn đồng hồ và phương pháp làm việc bạn chọn.
-              </p>
+          <div className="space-y-5">
+            <div className="rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-5 shadow-sm dark:border-indigo-500/20 dark:from-slate-900 dark:via-slate-950 dark:to-indigo-950/60">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="max-w-2xl">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-white/80 px-3 py-1 text-xs font-semibold text-indigo-700 dark:border-indigo-400/20 dark:bg-white/5 dark:text-indigo-200">
+                    <Sparkles size={14} />
+                    {language === "vi" ? "Chế độ tập trung" : "Focus mode"}
+                  </div>
+                  <h3 className="mt-3 text-xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
+                    {language === "vi" ? "Chọn đúng một việc để bắt đầu sâu hơn" : "Pick one task to enter deep work"}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                    {language === "vi"
+                      ? "Tab này chỉ giữ lại những công việc chưa hoàn thành và ưu tiên việc quan trọng nhất trước. Hãy chọn một task, bấm Bắt đầu tập trung và làm đến khi xong hoặc hết phiên."
+                      : "This tab keeps only unfinished tasks and surfaces the best candidate first. Choose one task, start focus mode, and work until the session ends or the task is done."}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:min-w-[280px]">
+                  <div className="rounded-2xl border border-white/70 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
+                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
+                      {language === "vi" ? "Sẵn sàng focus" : "Ready to focus"}
+                    </div>
+                    <div className="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-50">{focusTasks.length}</div>
+                  </div>
+                  <div className="rounded-2xl border border-white/70 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
+                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
+                      {language === "vi" ? "Ưu tiên cao" : "High priority"}
+                    </div>
+                    <div className="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-50">{highPriority}</div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <FocusView />
-            <div className="space-y-3">
-              {tasks
-                .filter((t) => !t.completed)
-                .sort((a, b) => {
-                  const order = { Cao: 0, "Trung bình": 1, Thấp: 2 };
-                  return order[a.priority as keyof typeof order] - order[b.priority as keyof typeof order];
-                })
-                .map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    onToggle={toggleTask}
-                    onDelete={handleDeleteTask}
-                    onEdit={setEditingTask}
-                    onFocus={setFocusTask}
-                  />
-                ))}
-            </div>
-            </div>
-          ) : filtered.length === 0 ? (
+
+            {recommendedFocusTask ? (
+              <div className="rounded-3xl border border-indigo-200 bg-white p-5 shadow-sm dark:border-indigo-500/20 dark:bg-slate-900">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <div className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-200">
+                      <Target size={14} />
+                      {language === "vi" ? "Đề xuất bắt đầu ngay" : "Best task to start now"}
+                    </div>
+                    <h4 className="mt-3 text-lg font-bold text-slate-900 dark:text-slate-50">{recommendedFocusTask.title}</h4>
+                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                      {recommendedFocusTask.description || (language === "vi" ? "Không có mô tả, hãy tập trung hoàn thành từng bước nhỏ của task này." : "No description yet, focus on completing this task one small step at a time.")}
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold">
+                      <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 ${PRIORITY_COLORS[recommendedFocusTask.priority]}`}>
+                        <Zap size={12} />
+                        {language === "vi" ? `Ưu tiên ${recommendedFocusTask.priority}` : recommendedFocusTask.priority}
+                      </span>
+                      {recommendedFocusTask.estimatedTime ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          <TimerReset size={12} />
+                          {language === "vi" ? `${recommendedFocusTask.estimatedTime} phút dự kiến` : `${recommendedFocusTask.estimatedTime} min estimate`}
+                        </span>
+                      ) : null}
+                      {recommendedFocusTask.dueDate ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          <Calendar size={12} />
+                          {language === "vi" ? `Hạn ${formatDueDateLabel(recommendedFocusTask.dueDate)}` : `Due ${formatDueDateLabel(recommendedFocusTask.dueDate)}`}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setFocusTask(recommendedFocusTask)}
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-200 transition hover:brightness-105 dark:shadow-none"
+                  >
+                    <Play size={16} />
+                    {language === "vi" ? "Bắt đầu với task này" : "Start this task"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/70 px-6 py-14 text-center dark:border-emerald-500/20 dark:bg-emerald-500/10">
+                <Check size={28} className="text-emerald-500" />
+                <h3 className="mt-4 text-lg font-bold text-slate-900 dark:text-slate-50">
+                  {language === "vi" ? "Bạn không còn task nào để tập trung" : "No tasks left to focus on"}
+                </h3>
+                <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                  {language === "vi"
+                    ? "Mọi công việc hiện tại đã hoàn thành. Hãy thêm task mới hoặc quay lại tab Công việc để lên kế hoạch tiếp theo."
+                    : "All current tasks are completed. Add a new task or go back to plan your next step."}
+                </p>
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="mt-5 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-400/20 dark:bg-slate-900 dark:text-emerald-200"
+                >
+                  <Plus size={15} />
+                  {language === "vi" ? "Thêm công việc mới" : "Add a new task"}
+                </button>
+              </div>
+            )}
+
+            {focusTasks.length > 0 && (
+              <div>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+                      {language === "vi" ? "Danh sách phù hợp để tập trung" : "Focus-ready tasks"}
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      {language === "vi"
+                        ? "Các task được sắp theo độ ưu tiên rồi đến thời lượng ước tính để bạn chọn nhanh hơn."
+                        : "Tasks are ordered by priority, then estimated duration so you can choose faster."}
+                    </p>
+                  </div>
+                  <div className="hidden sm:inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                    <ArrowRight size={12} />
+                    {language === "vi" ? "Nhấn vào task hoặc nút focus" : "Click a task or start focus"}
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {focusTasks.map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      onToggle={toggleTask}
+                      onDelete={handleDeleteTask}
+                      onEdit={setEditingTask}
+                      onFocus={setFocusTask}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-zinc-400 gap-4">
             <div className="w-16 h-16 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 flex items-center justify-center">
               <FolderKanban size={24} className="text-zinc-400" />
@@ -826,8 +1083,8 @@ export function TasksView() {
         <FocusSessionOverlay
           task={focusTask}
           onClose={() => setFocusTask(null)}
-          onCompleteTask={(id) => {
-            updateTask(id, { completed: true });
+          onCompleteTask={async (id) => {
+            await updateTask(id, { completed: true });
             setFocusTask(null);
           }}
         />

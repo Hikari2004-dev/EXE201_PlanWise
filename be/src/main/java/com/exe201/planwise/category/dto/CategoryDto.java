@@ -17,7 +17,7 @@ public record CategoryDto(
         return new CategoryDto(
                 category.getId(),
                 category.getName(),
-                category.getColor(),
+                category.getColor().name(),
                 category.getSortOrder(),
                 category.isDefault(),
                 category.getCreatedAt(),

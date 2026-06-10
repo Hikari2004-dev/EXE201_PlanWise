@@ -1,8 +1,6 @@
 package com.exe201.planwise.task.dto;
 
 import com.exe201.planwise.task.entity.Task;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -45,7 +43,7 @@ public record TaskDto(
                 task.getContexts(),
                 task.getCategory() != null ? task.getCategory().getId() : null,
                 task.getCategory() != null ? task.getCategory().getName() : null,
-                task.getCategory() != null ? task.getCategory().getColor() : null,
+                task.getCategory() != null && task.getCategory().getColor() != null ? task.getCategory().getColor().name() : null,
                 task.getSortOrder(),
                 task.getCreatedAt(),
                 task.getUpdatedAt()

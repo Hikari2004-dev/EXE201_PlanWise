@@ -1,10 +1,13 @@
 package com.exe201.planwise.category.entity;
 
+import com.exe201.planwise.common.enums.EventColor;
 import com.exe201.planwise.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -30,9 +33,11 @@ public class Category {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "color", columnDefinition = "event_color", nullable = false)
     @Builder.Default
-    private String color = "indigo";
+    private EventColor color = EventColor.indigo;
 
     @Column(name = "sort_order", nullable = false)
     @Builder.Default

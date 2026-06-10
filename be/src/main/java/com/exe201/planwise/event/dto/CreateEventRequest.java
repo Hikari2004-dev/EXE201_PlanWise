@@ -29,7 +29,7 @@ public record CreateEventRequest(
 
         UUID categoryId,
 
-        boolean isRecurring,
+        Boolean isRecurring,
 
         String recurrenceRule
 ) {
@@ -38,5 +38,6 @@ public record CreateEventRequest(
         if (startMin > 59) startMin = 59;
         if (color == null || color.isBlank()) color = "indigo";
         if (duration <= 0) duration = 1;
+        if (isRecurring == null) isRecurring = false;
     }
 }

@@ -22,5 +22,9 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
     @Query("SELECT COUNT(c) FROM Category c WHERE c.user.id = :userId AND c.isDefault = false")
     long countCustomByUserId(@Param("userId") UUID userId);
 
-    boolean existsByUserIdAndName(UUID userId, String name);
+    @Query("SELECT CASE WHEN COUNT(c) > 0 THEN true ELSE false END FROM Category c WHERE c.user.id = :userId AND LOWER(TRIM(c.name)) = LOWER(TRIM(:name))")
+    boolean existsByUserIdAndNameNormalized(@Param("userId") UUID userId, @Param("name") String name);
+
+    @Query("SELECT CASE WHEN COUNT(c) > 0 THEN true ELSE false END FROM Category c WHERE c.user.id = :userId AND c.id <> :categoryId AND LOWER(TRIM(c.name)) = LOWER(TRIM(:name))")
+    boolean existsByUserIdAndNameNormalizedExcludingId(@Param("userId") UUID userId, @Param("name") String name, @Param("categoryId") UUID categoryId);
 }

@@ -41,7 +41,7 @@ public record CalendarEventDto(
                 event.getRecurrenceRule(),
                 event.getCategory() != null ? event.getCategory().getId() : null,
                 event.getCategory() != null ? event.getCategory().getName() : null,
-                event.getCategory() != null ? event.getCategory().getColor() : null,
+                event.getCategory() != null ? event.getCategory().getColor().name() : null,
                 event.getCreatedAt(),
                 event.getUpdatedAt()
         );
