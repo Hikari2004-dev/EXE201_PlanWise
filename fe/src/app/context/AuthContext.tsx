@@ -1,5 +1,12 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { UserInfo, AuthResponse, RegisterRequest, LoginRequest } from "../types/auth.types";
+import {
+  UserInfo,
+  AuthResponse,
+  RegisterRequest,
+  LoginRequest,
+  VerificationResponse,
+  ResendVerificationRequest,
+} from "../types/auth.types";
 
 interface AuthContextType {
   user: UserInfo | null;
@@ -7,7 +14,9 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   login: (credentials: LoginRequest) => Promise<void>;
-  register: (credentials: RegisterRequest) => Promise<void>;
+  register: (credentials: RegisterRequest) => Promise<VerificationResponse>;
+  resendVerification: (payload: ResendVerificationRequest) => Promise<VerificationResponse>;
+  verifyEmail: (token: string) => Promise<VerificationResponse>;
   logout: () => Promise<void>;
   loginWithToken: (token: string, refreshToken: string) => Promise<void>;
   fetchWithAuth: (path: string, options?: RequestInit) => Promise<Response>;
@@ -17,7 +26,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// API Base URL config: default to localhost:8080 or environment variable
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -50,10 +58,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data.user);
         setIsAuthenticated(true);
         return data.accessToken;
-      } else {
-        handleLogoutState();
-        return null;
       }
+
+      handleLogoutState();
+      return null;
     } catch (err) {
       console.error("Token refresh error:", err);
       handleLogoutState();
@@ -96,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         handleLogoutState();
       }
+
       setLoading(false);
     };
 
@@ -105,6 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (credentials: LoginRequest) => {
     setError(null);
     setLoading(true);
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
         method: "POST",
@@ -122,9 +132,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("refreshToken", authData.refreshToken);
         setUser(authData.user);
         setIsAuthenticated(true);
-      } else {
-        throw new Error(data.message || "Đăng nhập thất bại");
+        return;
       }
+
+      throw new Error(data.message || "Đăng nhập thất bại");
     } catch (err: any) {
       setError(err.message || "Lỗi kết nối đến máy chủ");
       throw err;
@@ -133,9 +144,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (credentials: RegisterRequest) => {
+  const register = async (credentials: RegisterRequest): Promise<VerificationResponse> => {
     setError(null);
     setLoading(true);
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
         method: "POST",
@@ -148,20 +160,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await response.json();
 
       if (response.status === 201 || response.ok) {
-        const authData = data as AuthResponse;
-        localStorage.setItem("accessToken", authData.accessToken);
-        localStorage.setItem("refreshToken", authData.refreshToken);
-        setUser(authData.user);
-        setIsAuthenticated(true);
-      } else {
-        throw new Error(data.message || "Đăng ký thất bại");
+        handleLogoutState();
+        return {
+          message: "Đăng ký thành công. Vui lòng kiểm tra Gmail để xác thực tài khoản.",
+        };
       }
+
+      throw new Error(data.message || "Đăng ký thất bại");
     } catch (err: any) {
       setError(err.message || "Lỗi kết nối đến máy chủ");
       throw err;
     } finally {
       setLoading(false);
     }
+  };
+
+  const verifyEmail = async (token: string): Promise<VerificationResponse> => {
+    setError(null);
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/auth/verify-email?token=${encodeURIComponent(token)}`,
+      {
+        method: "GET",
+      },
+    );
+
+    const data = await response.json();
+
+    if (response.ok) {
+      return data as VerificationResponse;
+    }
+
+    const message = data.message || "Xác thực email thất bại";
+    setError(message);
+    throw new Error(message);
+  };
+
+  const resendVerification = async (
+    payload: ResendVerificationRequest,
+  ): Promise<VerificationResponse> => {
+    setError(null);
+
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/resend-verification`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      return data as VerificationResponse;
+    }
+
+    const message = data.message || "Gửi lại email xác thực thất bại";
+    setError(message);
+    throw new Error(message);
   };
 
   const logout = async () => {
@@ -258,11 +314,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error,
         login,
         register,
+        resendVerification,
+        verifyEmail,
         logout,
         loginWithToken,
         fetchWithAuth,
         refreshProfile,
-        handleRefreshToken: handleRefreshToken,
+        handleRefreshToken,
       }}
     >
       {children}

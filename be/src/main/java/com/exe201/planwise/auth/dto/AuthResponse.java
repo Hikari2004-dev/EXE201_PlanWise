@@ -26,6 +26,7 @@ public record AuthResponse(
             String avatarUrl,
             String language,
             String role,
+            boolean emailVerified,
             boolean isPremium,
             java.time.OffsetDateTime premiumExpiresAt
     ) {
@@ -37,6 +38,7 @@ public record AuthResponse(
                     user.getAvatarUrl(),
                     user.getLanguage(),
                     user.getRole().name(),
+                    user.isEmailVerified(),
                     user.isPremium(),
                     user.getPremiumExpiresAt()
             );

@@ -16,8 +16,22 @@ public class AppProperties {
     private final Jwt jwt = new Jwt();
     private final OAuth2 oauth2 = new OAuth2();
     private final Cors cors = new Cors();
+    private final Mail mail = new Mail();
     private final Momo momo = new Momo();
     private final Vnpay vnpay = new Vnpay();
+
+    @Getter
+    @Setter
+    public static class Mail {
+        private String from = "no-reply@planwise.local";
+        private String verificationBaseUrl = "http://localhost:5173/verify-email";
+        private long verificationTokenExpirationMinutes = 60;
+
+        public String buildVerificationUrl(String token) {
+            String separator = verificationBaseUrl.contains("?") ? "&" : "?";
+            return verificationBaseUrl + separator + "token=" + token;
+        }
+    }
 
     @Getter
     @Setter

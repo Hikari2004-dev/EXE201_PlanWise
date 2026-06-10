@@ -8,7 +8,6 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
-import jakarta.persistence.Convert;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
@@ -80,7 +79,7 @@ public class Task {
 
     @ElementCollection
     @CollectionTable(name = "task_contexts", joinColumns = @JoinColumn(name = "task_id"))
-    @Column(name = "context")
+    @Column(name = "context", length = 100)
     @Builder.Default
     private List<String> contexts = new ArrayList<>();
 

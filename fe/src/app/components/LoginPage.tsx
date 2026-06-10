@@ -1,31 +1,41 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useAuth, API_BASE_URL } from "../context/AuthContext";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { Sparkles, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
+import {
+  Sparkles,
+  Eye,
+  EyeOff,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
+  Mail,
+} from "lucide-react";
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, resendVerification } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  // Form states
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [infoMsg, setInfoMsg] = useState<string | null>(null);
 
-  // URL status errors
   const urlError = searchParams.get("error");
-  const getUrlErrorMessage = () => {
+  const currentError = useMemo(() => {
+    if (errorMsg) return errorMsg;
     if (urlError === "oauth_failed") return "Đăng nhập bằng Google thất bại. Vui lòng thử lại.";
     if (urlError === "missing_tokens") return "Không tìm thấy token xác thực. Vui lòng đăng nhập lại.";
+    if (urlError === "email_not_verified") return "Email chưa được xác thực. Vui lòng kiểm tra Gmail hoặc gửi lại email xác thực.";
     return null;
-  };
+  }, [errorMsg, urlError]);
 
-  const currentError = errorMsg || getUrlErrorMessage();
+  const showResendAction = currentError?.toLowerCase().includes("xác thực") ?? false;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +46,7 @@ export function LoginPage() {
 
     setLoading(true);
     setErrorMsg(null);
+    setInfoMsg(null);
 
     try {
       await login({ email, password });
@@ -49,22 +60,37 @@ export function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
-    // Determine frontend callback URL based on current origin
     const currentOrigin = window.location.origin;
     const callbackUrl = `${currentOrigin}/auth/callback`;
-    // Redirect browser to Google login endpoint in Spring Boot backend
     window.location.href = `${API_BASE_URL}/api/v1/oauth2/authorize/google?redirect_uri=${encodeURIComponent(callbackUrl)}`;
+  };
+
+  const handleResendVerification = async () => {
+    if (!email.trim()) {
+      setErrorMsg("Vui lòng nhập email để gửi lại xác thực.");
+      return;
+    }
+
+    setResendLoading(true);
+    setInfoMsg(null);
+
+    try {
+      const result = await resendVerification({ email: email.trim() });
+      setInfoMsg(result.message);
+      setErrorMsg(null);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Không thể gửi lại email xác thực.");
+    } finally {
+      setResendLoading(false);
+    }
   };
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-[#020617] p-4 overflow-hidden transition-colors duration-300">
-      {/* ── Background Blobs ── */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-500/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-violet-500/10 blur-[120px] pointer-events-none" />
 
-      {/* ── Main Container ── */}
       <div className="w-full max-w-[460px] relative z-10">
-        {/* ── Logo ── */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/20 mb-3 animate-pulse">
             <Sparkles size={20} className="text-white" />
@@ -77,7 +103,6 @@ export function LoginPage() {
           </p>
         </div>
 
-        {/* ── Card ── */}
         <div className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-8 shadow-2xl shadow-slate-200/50 dark:shadow-none">
           <div className="mb-6 text-center">
             <h2 className="text-xl font-bold text-slate-950 dark:text-white">
@@ -88,15 +113,44 @@ export function LoginPage() {
             </p>
           </div>
 
-          {/* ── Error Banner ── */}
           {currentError && (
-            <div className="mb-5 flex items-start gap-2.5 bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 p-3 rounded-2xl text-xs animate-shake">
-              <AlertCircle size={15} className="shrink-0 mt-0.5" />
-              <span>{currentError}</span>
+            <div className="mb-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400 animate-shake">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle size={15} className="shrink-0 mt-0.5" />
+                <span>{currentError}</span>
+              </div>
+
+              {showResendAction && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleResendVerification}
+                  disabled={resendLoading}
+                  className="mt-3 h-9 rounded-xl border-rose-200 bg-white/80 px-3 text-rose-700 hover:bg-white dark:border-rose-500/30 dark:bg-slate-900/40 dark:text-rose-300 dark:hover:bg-slate-900/60"
+                >
+                  {resendLoading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin mr-2" />
+                      Đang gửi lại email...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw size={16} className="mr-2" />
+                      Gửi lại email xác thực
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           )}
 
-          {/* ── Form ── */}
+          {infoMsg && (
+            <div className="mb-4 flex items-start gap-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-3 rounded-2xl text-xs">
+              <Mail size={15} className="shrink-0 mt-0.5" />
+              <span>{infoMsg}</span>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
@@ -107,7 +161,7 @@ export function LoginPage() {
                 placeholder="ten@vi-du.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
+                disabled={loading || resendLoading}
                 className="h-11 px-4 rounded-xl border-slate-200 dark:border-slate-800 text-sm font-medium bg-slate-100/50 dark:bg-slate-950/30"
                 required
               />
@@ -141,8 +195,6 @@ export function LoginPage() {
                 </button>
               </div>
             </div>
-
-            {/* ── Remember Me ── */}
             <div className="flex items-center gap-2 py-1">
               <input
                 type="checkbox"
@@ -154,7 +206,6 @@ export function LoginPage() {
               </label>
             </div>
 
-            {/* ── Submit Button ── */}
             <Button
               type="submit"
               disabled={loading}
@@ -171,7 +222,6 @@ export function LoginPage() {
             </Button>
           </form>
 
-          {/* ── Divider ── */}
           <div className="relative my-6 flex items-center justify-center">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-slate-200 dark:border-slate-800" />
@@ -181,7 +231,6 @@ export function LoginPage() {
             </span>
           </div>
 
-          {/* ── Google OAuth Button ── */}
           <Button
             type="button"
             variant="outline"
@@ -211,7 +260,6 @@ export function LoginPage() {
           </Button>
         </div>
 
-        {/* ── Footer Link ── */}
         <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-6 font-medium">
           Chưa có tài khoản?{" "}
           <Link to="/register" className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline">

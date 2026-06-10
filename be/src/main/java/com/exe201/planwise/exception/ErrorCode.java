@@ -13,6 +13,9 @@ public enum ErrorCode {
     REFRESH_TOKEN_EXPIRED     (HttpStatus.UNAUTHORIZED,          "Refresh token đã hết hạn"),
     USER_NOT_FOUND            (HttpStatus.NOT_FOUND,             "Không tìm thấy người dùng"),
     USER_DISABLED             (HttpStatus.FORBIDDEN,             "Tài khoản đã bị vô hiệu hoá"),
+    EMAIL_NOT_VERIFIED        (HttpStatus.FORBIDDEN,             "Email chưa được xác thực"),
+    INVALID_VERIFICATION_TOKEN(HttpStatus.BAD_REQUEST,          "Liên kết xác thực không hợp lệ"),
+    VERIFICATION_TOKEN_EXPIRED(HttpStatus.BAD_REQUEST,          "Liên kết xác thực đã hết hạn"),
 
     // OAuth2
     OAUTH2_PROVIDER_NOT_SUPPORTED(HttpStatus.BAD_REQUEST,        "OAuth2 provider không được hỗ trợ"),

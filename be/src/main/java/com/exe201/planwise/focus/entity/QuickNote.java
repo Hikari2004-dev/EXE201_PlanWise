@@ -34,11 +34,11 @@ public class QuickNote {
     private String content;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "note_type", nullable = false, length = 10)
+    @Column(name = "note_type", columnDefinition = "quick_note_type", nullable = false)
     @Builder.Default
     private NoteType noteType = NoteType.TEXT;
 
-    @Column(name = "media_url")
+    @Column(name = "media_url", columnDefinition = "TEXT")
     private String mediaUrl;
 
     @CreationTimestamp

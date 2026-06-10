@@ -93,6 +93,23 @@ COMMENT ON COLUMN users.password_hash IS 'NULL nếu người dùng đăng nhậ
 COMMENT ON COLUMN users.language IS 'Ngôn ngữ giao diện: vi (tiếng Việt) hoặc en (tiếng Anh)';
 
 -- =============================================================================
+-- TABLE: email_verification_tokens
+-- Token xác thực email cho tài khoản đăng ký bằng email/password
+-- =============================================================================
+CREATE TABLE email_verification_tokens (
+    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id     UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    token       VARCHAR(255) NOT NULL UNIQUE,
+    expires_at  TIMESTAMPTZ NOT NULL,
+    verified_at TIMESTAMPTZ,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_email_verification_tokens_token ON email_verification_tokens(token);
+
+COMMENT ON TABLE email_verification_tokens IS 'Lưu token xác thực email cho user đăng ký local';
+
+-- =============================================================================
 -- TABLE: oauth_providers
 -- Tích hợp OAuth (Google, GitHub, Facebook)
 -- =============================================================================

@@ -4,6 +4,9 @@ import com.exe201.planwise.auth.dto.AuthResponse;
 import com.exe201.planwise.auth.dto.LoginRequest;
 import com.exe201.planwise.auth.dto.RegisterRequest;
 import com.exe201.planwise.auth.dto.TokenRefreshRequest;
+import com.exe201.planwise.auth.entity.EmailVerificationToken;
+import com.exe201.planwise.auth.repository.EmailVerificationTokenRepository;
+import com.exe201.planwise.config.AppProperties;
 import com.exe201.planwise.exception.AppException;
 import com.exe201.planwise.exception.ErrorCode;
 import com.exe201.planwise.security.JwtTokenProvider;
@@ -22,7 +25,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.OffsetDateTime;
+import java.util.Base64;
 import java.util.UUID;
 
 @Service
@@ -32,9 +37,14 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final UserSettingsRepository userSettingsRepository;
+    private final EmailVerificationTokenRepository verificationTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
+    private final EmailVerificationMailService emailVerificationMailService;
+    private final AppProperties appProperties;
+
+    private static final int TOKEN_BYTE_LENGTH = 32;
 
     // ── Register ──────────────────────────────────────────────────────────────
 
@@ -53,8 +63,6 @@ public class AuthService {
 
         user = userRepository.save(user);
 
-        // Kiểm tra settings đã tồn tại chưa (do trigger database tạo tự động)
-        // Dùng native query để bypass Hibernate cache
         if (!userSettingsRepository.existsByUserIdDirect(user.getId())) {
             UserSettings settings = UserSettings.builder()
                     .user(user)
@@ -65,11 +73,11 @@ public class AuthService {
 
         log.info("New user registered: {}", user.getEmail());
 
-        // Seed danh mục mặc định (6 categories) – gọi DB function
+        createAndSendVerificationToken(user);
         seedDefaultCategories(user.getId());
 
         UserPrincipal principal = UserPrincipal.create(user);
-        String accessToken  = jwtTokenProvider.generateAccessToken(principal);
+        String accessToken = jwtTokenProvider.generateAccessToken(principal);
         String refreshToken = jwtTokenProvider.generateRefreshToken(principal);
 
         return AuthResponse.of(accessToken, refreshToken, user);
@@ -92,11 +100,14 @@ public class AuthService {
                 throw new AppException(ErrorCode.USER_DISABLED);
             }
 
-            // Cập nhật last login
+            if (!user.isEmailVerified()) {
+                throw new AppException(ErrorCode.EMAIL_NOT_VERIFIED);
+            }
+
             user.setLastLoginAt(OffsetDateTime.now());
             userRepository.save(user);
 
-            String accessToken  = jwtTokenProvider.generateAccessToken(principal);
+            String accessToken = jwtTokenProvider.generateAccessToken(principal);
             String refreshToken = jwtTokenProvider.generateRefreshToken(principal);
 
             log.info("User logged in: {}", user.getEmail());
@@ -105,6 +116,43 @@ public class AuthService {
         } catch (BadCredentialsException ex) {
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
         }
+    }
+
+    // ── Email Verification ────────────────────────────────────────────────────
+
+    @Transactional
+    public void verifyEmail(String token) {
+        EmailVerificationToken verificationToken = verificationTokenRepository.findByToken(token)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_VERIFICATION_TOKEN));
+
+        if (verificationToken.isExpired()) {
+            throw new AppException(ErrorCode.VERIFICATION_TOKEN_EXPIRED);
+        }
+
+        if (verificationToken.isVerified()) {
+            return;
+        }
+
+        User user = verificationToken.getUser();
+        user.setEmailVerified(true);
+        userRepository.save(user);
+
+        verificationToken.setVerifiedAt(OffsetDateTime.now());
+        verificationTokenRepository.save(verificationToken);
+
+        log.info("Email verified for user: {}", user.getEmail());
+    }
+
+    @Transactional
+    public void resendVerification(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.isEmailVerified()) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Email đã được xác thực trước đó");
+        }
+
+        createAndSendVerificationToken(user);
     }
 
     // ── Refresh Token ─────────────────────────────────────────────────────────
@@ -125,9 +173,9 @@ public class AuthService {
             throw new AppException(ErrorCode.USER_DISABLED);
         }
 
-        UserPrincipal principal    = UserPrincipal.create(user);
-        String newAccessToken      = jwtTokenProvider.generateAccessToken(principal);
-        String newRefreshToken     = jwtTokenProvider.generateRefreshToken(principal);
+        UserPrincipal principal = UserPrincipal.create(user);
+        String newAccessToken = jwtTokenProvider.generateAccessToken(principal);
+        String newRefreshToken = jwtTokenProvider.generateRefreshToken(principal);
 
         return AuthResponse.of(newAccessToken, newRefreshToken, user);
     }
@@ -143,9 +191,39 @@ public class AuthService {
 
     // ── Internal ──────────────────────────────────────────────────────────────
 
-    /**
-     * Gọi PostgreSQL function seed_default_categories(uuid) đã định nghĩa trong schema.sql
-     */
+    private void createAndSendVerificationToken(User user) {
+        String rawToken = generateSecureToken();
+        OffsetDateTime expiresAt = OffsetDateTime.now()
+                .plusMinutes(appProperties.getMail().getVerificationTokenExpirationMinutes());
+
+        EmailVerificationToken token = verificationTokenRepository.findByUserId(user.getId())
+                .map(existingToken -> {
+                    existingToken.setToken(rawToken);
+                    existingToken.setExpiresAt(expiresAt);
+                    existingToken.setVerifiedAt(null);
+                    return existingToken;
+                })
+                .orElseGet(() -> EmailVerificationToken.builder()
+                        .user(user)
+                        .token(rawToken)
+                        .expiresAt(expiresAt)
+                        .build());
+
+        verificationTokenRepository.save(token);
+
+        emailVerificationMailService.sendVerificationEmail(
+                user.getEmail(),
+                user.getFullName(),
+                rawToken
+        );
+    }
+
+    private String generateSecureToken() {
+        byte[] bytes = new byte[TOKEN_BYTE_LENGTH];
+        new SecureRandom().nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
     private void seedDefaultCategories(UUID userId) {
         try {
             userRepository.seedDefaultCategories(userId);

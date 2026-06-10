@@ -15,6 +15,7 @@ import { PricingPage } from "./components/PricingPage";
 import { PaymentResultPage } from "./components/PaymentResultPage";
 import HomePage from "./components/Homepage";
 import { LoginPage } from "./components/LoginPage";
+import { VerifyEmailPage } from "./components/VerifyEmailPage";
 
 export const router = createBrowserRouter([
   {
@@ -22,12 +23,16 @@ export const router = createBrowserRouter([
     Component: HomePage,
   },
   {
-  path: "/login",
-  Component: LoginPage,
-},
+    path: "/login",
+    Component: LoginPage,
+  },
   {
     path: "/register",
     Component: RegisterPage,
+  },
+  {
+    path: "/verify-email",
+    Component: VerifyEmailPage,
   },
   {
     path: "/auth/callback",

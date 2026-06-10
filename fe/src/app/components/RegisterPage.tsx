@@ -3,13 +3,12 @@ import { Link, useNavigate } from "react-router";
 import { useAuth } from "../context/AuthContext";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { Sparkles, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
+import { Sparkles, Eye, EyeOff, Loader2, AlertCircle, MailCheck } from "lucide-react";
 
 export function RegisterPage() {
   const { register } = useAuth();
   const navigate = useNavigate();
 
-  // Form states
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,6 +16,7 @@ export function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,8 +25,8 @@ export function RegisterPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setErrorMsg("Mật khẩu phải chứa ít nhất 6 ký tự.");
+    if (password.length < 8) {
+      setErrorMsg("Mật khẩu phải chứa ít nhất 8 ký tự.");
       return;
     }
 
@@ -37,10 +37,14 @@ export function RegisterPage() {
 
     setLoading(true);
     setErrorMsg(null);
+    setSuccessMsg(null);
 
     try {
-      await register({ email, password, fullName });
-      navigate("/login", { replace: true });
+      const result = await register({ email, password, fullName });
+      setSuccessMsg(result.message);
+      navigate(`/verify-email?email=${encodeURIComponent(email)}`, {
+        replace: true,
+      });
     } catch (err: any) {
       console.error(err);
       setErrorMsg(
@@ -53,13 +57,10 @@ export function RegisterPage() {
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-[#020617] p-4 overflow-hidden transition-colors duration-300">
-      {/* ── Background Blobs ── */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-500/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-violet-500/10 blur-[120px] pointer-events-none" />
 
-      {/* ── Main Container ── */}
       <div className="w-full max-w-[460px] relative z-10">
-        {/* ── Logo ── */}
         <div className="flex flex-col items-center mb-6">
           <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/20 mb-3 animate-pulse">
             <Sparkles size={20} className="text-white" />
@@ -76,7 +77,6 @@ export function RegisterPage() {
           </p>
         </div>
 
-        {/* ── Card ── */}
         <div className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-8 shadow-2xl shadow-slate-200/50 dark:shadow-none">
           <div className="mb-6 text-center">
             <h2 className="text-xl font-bold text-slate-950 dark:text-white">
@@ -87,7 +87,6 @@ export function RegisterPage() {
             </p>
           </div>
 
-          {/* ── Error Banner ── */}
           {errorMsg && (
             <div className="mb-5 flex items-start gap-2.5 bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 p-3 rounded-2xl text-xs animate-shake">
               <AlertCircle size={15} className="shrink-0 mt-0.5" />
@@ -95,7 +94,13 @@ export function RegisterPage() {
             </div>
           )}
 
-          {/* ── Form ── */}
+          {successMsg && (
+            <div className="mb-5 flex items-start gap-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-3 rounded-2xl text-xs">
+              <MailCheck size={15} className="shrink-0 mt-0.5" />
+              <span>{successMsg}</span>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
@@ -134,7 +139,7 @@ export function RegisterPage() {
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Tối thiểu 6 ký tự"
+                  placeholder="Tối thiểu 8 ký tự"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loading}
@@ -166,7 +171,6 @@ export function RegisterPage() {
               />
             </div>
 
-            {/* ── Submit Button ── */}
             <Button
               type="submit"
               disabled={loading}
@@ -184,7 +188,6 @@ export function RegisterPage() {
           </form>
         </div>
 
-        {/* ── Footer Link ── */}
         <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-6 font-medium">
           Đã có tài khoản?{" "}
           <Link

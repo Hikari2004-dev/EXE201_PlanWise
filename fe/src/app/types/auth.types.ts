@@ -7,10 +7,10 @@ export interface UserInfo {
   avatarUrl: string | null;
   language: string;
   role: "USER" | "ADMIN";
+  emailVerified: boolean;
   isPremium: boolean;
   premiumExpiresAt: string | null;
 }
-
 
 export interface AuthResponse {
   accessToken: string;
@@ -28,6 +28,14 @@ export interface RegisterRequest {
 export interface LoginRequest {
   email: string;
   password: string;
+}
+
+export interface VerificationResponse {
+  message: string;
+}
+
+export interface ResendVerificationRequest {
+  email: string;
 }
 
 export interface ApiError {
