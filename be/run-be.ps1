@@ -28,4 +28,4 @@ if (Test-Path $envFile) {
 
 # 2. Khởi chạy Maven Spring Boot Run
 Write-Host "Starting Spring Boot application..." -ForegroundColor Green
-mvn spring-boot:run
+.\mvnw.cmd spring-boot:run
