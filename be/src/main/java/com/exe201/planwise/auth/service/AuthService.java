@@ -74,7 +74,6 @@ public class AuthService {
         log.info("New user registered: {}", user.getEmail());
 
         createAndSendVerificationToken(user);
-        seedDefaultCategories(user.getId());
 
         UserPrincipal principal = UserPrincipal.create(user);
         String accessToken = jwtTokenProvider.generateAccessToken(principal);
@@ -222,13 +221,5 @@ public class AuthService {
         byte[] bytes = new byte[TOKEN_BYTE_LENGTH];
         new SecureRandom().nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    private void seedDefaultCategories(UUID userId) {
-        try {
-            userRepository.seedDefaultCategories(userId);
-        } catch (Exception e) {
-            log.warn("Could not seed default categories for user {}: {}", userId, e.getMessage());
-        }
     }
 }
