@@ -9,13 +9,13 @@ COPY be/.mvn .mvn
 COPY be/mvnw mvnw
 
 # Download dependencies (layer caching)
-RUN ./mvnw dependency:go-offline -B
+RUN chmod +x ./mvnw && ./mvnw dependency:go-offline -B
 
 # Copy source code
 COPY be/src ./src
 
 # Build JAR
-RUN ./mvnw package -DskipTests -q
+RUN chmod +x ./mvnw && ./mvnw package -DskipTests -q
 
 # Runtime stage
 FROM eclipse-temurin:21-jre-alpine
