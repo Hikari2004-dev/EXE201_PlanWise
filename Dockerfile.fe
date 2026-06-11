@@ -1,0 +1,17 @@
+# Frontend container - Vite dev server
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY fe/package*.json ./
+RUN npm ci
+
+# Copy source code
+COPY fe/ ./
+
+# Expose port
+EXPOSE 5173
+
+# Run Vite dev server with host binding
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
