@@ -121,7 +121,8 @@ docker compose exec -T postgres psql -U postgres planwise < backup.sql
 |---------|------|-------------|
 | Frontend | 5173 | React + Vite dev server |
 | Backend | 8080 | Spring Boot API |
-| PostgreSQL | 5432 | Database |
+
+> **Note:** PostgreSQL must be running locally on port 5432 (or update `SPRING_DATASOURCE_URL` in `be/.env` to point to your existing database).
 
 ## Troubleshooting
 
