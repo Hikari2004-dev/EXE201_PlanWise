@@ -23,8 +23,8 @@ public class AppProperties {
     @Getter
     @Setter
     public static class Mail {
-        private String from = "no-reply@planwise.local";
-        private String verificationBaseUrl = "http://localhost:5173/verify-email";
+        private String from;
+        private String verificationBaseUrl;
         private long verificationTokenExpirationMinutes = 60;
 
         public String buildVerificationUrl(String token) {
@@ -40,8 +40,8 @@ public class AppProperties {
         private String accessKey;
         private String secretKey;
         private String apiUrl = "https://test-payment.momo.vn/v2/gateway/api/create";
-        private String redirectUrl = "http://localhost:5173/payment/result";
-        private String ipnUrl = "http://localhost:8080/api/v1/subscriptions/momo-ipn";
+        private String redirectUrl;
+        private String ipnUrl;
     }
 
     @Getter
@@ -65,12 +65,12 @@ public class AppProperties {
     @Getter
     @Setter
     public static class OAuth2 {
-        private List<String> authorizedRedirectUris = List.of("http://localhost:5173/auth/callback");
+        private List<String> authorizedRedirectUris;
     }
 
     @Getter
     @Setter
     public static class Cors {
-        private List<String> allowedOrigins = List.of("http://localhost:5173");
+        private List<String> allowedOrigins;
     }
 }
