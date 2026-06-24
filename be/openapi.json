@@ -903,6 +903,97 @@
                     "task-controller"
                 ],
                 "operationId": "getTasks",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "IN_PROGRESS"
+                        }
+                    },
+                    {
+                        "name": "completed",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "categoryId",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "priority",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "HIGH"
+                        }
+                    },
+                    {
+                        "name": "eisenhowerMatrix",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "urgent_important"
+                        }
+                    },
+                    {
+                        "name": "goalId",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "showOnCalendar",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "dateFrom",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-06-05"
+                        }
+                    },
+                    {
+                        "name": "dateTo",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-06-30"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -932,8 +1023,8 @@
                     "required": true
                 },
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "201": {
+                        "description": "Created",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -1660,8 +1751,8 @@
                     "required": true
                 },
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "201": {
+                        "description": "Created",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -1670,7 +1761,195 @@
                             }
                         }
                     }
-                }
+                },
+                "security": []
+            }
+        },
+        "/api/v1/auth/verify-email": {
+            "get": {
+                "tags": [
+                    "auth-controller"
+                ],
+                "operationId": "verifyEmail",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "sample-verification-token"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VerificationResultResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/api/v1/auth/resend-verification": {
+            "post": {
+                "tags": [
+                    "auth-controller"
+                ],
+                "operationId": "resendVerification",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ResendVerificationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VerificationResultResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/api/v1/auth/password/forgot": {
+            "post": {
+                "tags": [
+                    "password-reset-controller"
+                ],
+                "operationId": "forgotPassword",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ForgotPasswordRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PasswordResetResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/api/v1/auth/password/reset": {
+            "post": {
+                "tags": [
+                    "password-reset-controller"
+                ],
+                "operationId": "resetPassword",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ResetPasswordRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PasswordResetResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/api/v1/oauth2/authorize/{registrationId}": {
+            "get": {
+                "tags": [
+                    "oauth2-authentication"
+                ],
+                "operationId": "authorizeOAuth2",
+                "description": "Browser-based OAuth2 entrypoint. Redirects the user to the provider login page. Frontend currently calls this with registrationId=google and an optional redirect_uri query parameter.",
+                "parameters": [
+                    {
+                        "name": "registrationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "google"
+                    },
+                    {
+                        "name": "redirect_uri",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "uri"
+                        },
+                        "example": "http://localhost:5173/auth/callback"
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirects to the OAuth2 provider login page"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/api/v1/oauth2/callback/{registrationId}": {
+            "get": {
+                "tags": [
+                    "oauth2-authentication"
+                ],
+                "operationId": "oauth2Callback",
+                "description": "OAuth2 callback handled by Spring Security. On success, redirects to the approved redirect URI with token and refreshToken query parameters.",
+                "parameters": [
+                    {
+                        "name": "registrationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "google"
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirects back to the frontend callback URL with JWT query parameters"
+                    }
+                },
+                "security": []
             }
         },
         "/api/v1/auth/refresh": {
@@ -1700,7 +1979,8 @@
                             }
                         }
                     }
-                }
+                },
+                "security": []
             }
         },
         "/api/v1/auth/logout": {
@@ -1710,8 +1990,8 @@
                 ],
                 "operationId": "logout",
                 "responses": {
-                    "200": {
-                        "description": "OK"
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             }
@@ -1743,7 +2023,8 @@
                             }
                         }
                     }
-                }
+                },
+                "security": []
             }
         },
         "/api/v1/notifications": {
@@ -2347,6 +2628,11 @@
                         "format": "date",
                         "example": "2026-06-05"
                     },
+                    "scheduledAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T20:00:00.000Z"
+                    },
                     "priority": {
                         "type": "string",
                         "example": "MEDIUM"
@@ -2360,9 +2646,18 @@
                         "format": "uuid",
                         "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
                     },
+                    "goalId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
                     "eisenhowerMatrix": {
                         "type": "string",
                         "example": "urgent_important"
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "IN_PROGRESS"
                     },
                     "estimatedTime": {
                         "type": "integer",
@@ -2376,6 +2671,15 @@
                         "items": {
                             "type": "string"
                         }
+                    },
+                    "checklist": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "showOnCalendar": {
+                        "type": "boolean"
                     },
                     "sortOrder": {
                         "type": "integer",
@@ -2402,6 +2706,11 @@
                         "format": "date",
                         "example": "2026-06-05"
                     },
+                    "scheduledAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T20:00:00.000Z"
+                    },
                     "priority": {
                         "type": "string",
                         "example": "MEDIUM"
@@ -2409,6 +2718,10 @@
                     "color": {
                         "type": "string",
                         "example": "indigo"
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "IN_PROGRESS"
                     },
                     "completed": {
                         "type": "boolean"
@@ -2436,6 +2749,12 @@
                             "type": "string"
                         }
                     },
+                    "checklist": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
                     "categoryId": {
                         "type": "string",
                         "format": "uuid",
@@ -2446,6 +2765,14 @@
                     },
                     "categoryColor": {
                         "type": "string"
+                    },
+                    "goalId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
+                    "showOnCalendar": {
+                        "type": "boolean"
                     },
                     "sortOrder": {
                         "type": "integer",
@@ -3273,6 +3600,11 @@
                         "format": "date",
                         "example": "2026-06-05"
                     },
+                    "scheduledAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-05T20:00:00.000Z"
+                    },
                     "priority": {
                         "type": "string",
                         "example": "MEDIUM"
@@ -3286,9 +3618,18 @@
                         "format": "uuid",
                         "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
                     },
+                    "goalId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    },
                     "eisenhowerMatrix": {
                         "type": "string",
                         "example": "urgent_important"
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "IN_PROGRESS"
                     },
                     "estimatedTime": {
                         "type": "integer",
@@ -3299,6 +3640,16 @@
                         "items": {
                             "type": "string"
                         }
+                    },
+                    "checklist": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "showOnCalendar": {
+                        "type": "boolean",
+                        "example": true
                     }
                 },
                 "required": [
@@ -3709,6 +4060,70 @@
                     "email",
                     "password"
                 ]
+            },
+            "ResendVerificationRequest": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "user@example.com"
+                    }
+                },
+                "required": [
+                    "email"
+                ]
+            },
+            "ForgotPasswordRequest": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "user@example.com"
+                    }
+                },
+                "required": [
+                    "email"
+                ]
+            },
+            "ResetPasswordRequest": {
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "example": "sample-reset-token"
+                    },
+                    "newPassword": {
+                        "type": "string",
+                        "minLength": 6,
+                        "maxLength": 100,
+                        "pattern": "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).+$",
+                        "example": "Password123"
+                    }
+                },
+                "required": [
+                    "token",
+                    "newPassword"
+                ]
+            },
+            "VerificationResultResponse": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "example": "Xác thực email thành công"
+                    }
+                }
+            },
+            "PasswordResetResponse": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "example": "Đặt lại mật khẩu thành công. Bạn có thể đăng nhập ngay."
+                    }
+                }
             },
             "UpdateNotificationRequest": {
                 "type": "object",

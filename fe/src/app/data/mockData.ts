@@ -26,17 +26,22 @@ export interface Task {
   title: string;
   description?: string;
   dueDate: string;
+  scheduledAt?: string;
   priority: "Cao" | "Trung bình" | "Thấp";
+  status?: "IN_PROGRESS" | "COMPLETED" | "MISSED" | string;
   completed: boolean;
   completedAt?: string;
   color: string;
   eisenhowerMatrix?: string;
   contexts?: string[];
+  checklist?: string[];
   estimatedTime?: number;
   actualTime?: number;
   categoryId?: string;
   categoryName?: string;
   categoryColor?: string;
+  goalId?: string;
+  showOnCalendar?: boolean;
   sortOrder: number;
 }
 

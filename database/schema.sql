@@ -187,9 +187,11 @@ CREATE TABLE tasks (
     id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     category_id         UUID REFERENCES categories(id) ON DELETE SET NULL,
+    goal_id             UUID REFERENCES goals(id) ON DELETE SET NULL,
     title               VARCHAR(255) NOT NULL,
     description         TEXT,
-    due_date            DATE,                              -- Hạn chót (đổi từ string sang DATE)
+    due_date            DATE,                              -- Hạn chót
+    scheduled_at        TIMESTAMPTZ,                       -- Thời gian diễn ra nếu có
     priority            task_priority NOT NULL DEFAULT 'Trung bình',
     color               event_color NOT NULL DEFAULT 'indigo',
     completed           BOOLEAN NOT NULL DEFAULT FALSE,
@@ -197,6 +199,7 @@ CREATE TABLE tasks (
     eisenhower_matrix   eisenhower_quadrant,               -- Ma trận Eisenhower
     estimated_time      SMALLINT,                          -- Ước tính thời gian (phút)
     actual_time         SMALLINT,                          -- Thời gian thực tế (phút, tính từ focus sessions)
+    show_on_calendar    BOOLEAN NOT NULL DEFAULT TRUE,
     sort_order          INT NOT NULL DEFAULT 0,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -204,13 +207,16 @@ CREATE TABLE tasks (
 
 CREATE INDEX idx_tasks_user_id ON tasks(user_id);
 CREATE INDEX idx_tasks_category_id ON tasks(category_id);
+CREATE INDEX idx_tasks_goal_id ON tasks(goal_id);
 CREATE INDEX idx_tasks_due_date ON tasks(due_date);
 CREATE INDEX idx_tasks_user_completed ON tasks(user_id, completed);
 CREATE INDEX idx_tasks_priority ON tasks(user_id, priority) WHERE completed = FALSE;
 
 COMMENT ON TABLE tasks IS 'Công việc cần làm của người dùng với hỗ trợ Ma trận Eisenhower';
+COMMENT ON COLUMN tasks.scheduled_at IS 'Thời gian diễn ra của task nếu người dùng lên lịch cụ thể';
 COMMENT ON COLUMN tasks.estimated_time IS 'Thời gian ước tính hoàn thành (phút)';
 COMMENT ON COLUMN tasks.actual_time IS 'Thời gian thực tế đã bỏ ra (phút), tổng hợp từ focus_sessions';
+COMMENT ON COLUMN tasks.show_on_calendar IS 'Có hiển thị task trên calendar hay không';
 
 -- =============================================================================
 -- TABLE: task_contexts
@@ -226,6 +232,20 @@ CREATE TABLE task_contexts (
 CREATE INDEX idx_task_contexts_task_id ON task_contexts(task_id);
 
 COMMENT ON TABLE task_contexts IS 'Ngữ cảnh thực hiện task (Tại máy tính, Di chuyển, Tập trung sâu,...)';
+
+-- =============================================================================
+-- TABLE: task_checklist_items
+-- Checklist đơn giản của Task
+-- =============================================================================
+CREATE TABLE task_checklist_items (
+    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    task_id     UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    item        VARCHAR(255) NOT NULL
+);
+
+CREATE INDEX idx_task_checklist_items_task_id ON task_checklist_items(task_id);
+
+COMMENT ON TABLE task_checklist_items IS 'Các mục checklist dạng text của task';
 
 -- =============================================================================
 -- TABLE: goals

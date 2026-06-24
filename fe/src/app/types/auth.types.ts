@@ -38,6 +38,19 @@ export interface ResendVerificationRequest {
   email: string;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
+}
+
+export interface PasswordResetResponse {
+  message: string;
+}
+
 export interface ApiError {
   status: number;
   message: string;

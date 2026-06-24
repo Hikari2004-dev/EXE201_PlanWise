@@ -260,7 +260,16 @@ export function LoginPage() {
           </Button>
         </div>
 
-        <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-6 font-medium">
+        <div className="text-center mb-4">
+          <Link
+            to="/forgot-password"
+            className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+          >
+            Quên mật khẩu?
+          </Link>
+        </div>
+
+        <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium">
           Chưa có tài khoản?{" "}
           <Link to="/register" className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
             Đăng ký ngay

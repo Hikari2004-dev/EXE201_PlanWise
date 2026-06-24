@@ -46,17 +46,22 @@ interface Task {
   title: string;
   description?: string;
   dueDate: string;
+  scheduledAt?: string;
   priority: "Cao" | "Trung bình" | "Thấp";
+  status?: "IN_PROGRESS" | "COMPLETED" | "MISSED" | string;
   completed: boolean;
   completedAt?: string;
   color: string;
   eisenhowerMatrix?: string;
   contexts?: string[];
+  checklist?: string[];
   estimatedTime?: number;
   actualTime?: number;
   categoryId?: string;
   categoryName?: string;
   categoryColor?: string;
+  goalId?: string;
+  showOnCalendar?: boolean;
   sortOrder: number;
 }
 
@@ -96,17 +101,22 @@ function mapApiTaskToTask(t: ApiTask): Task {
     title: t.title,
     description: t.description || "",
     dueDate: t.dueDate || "",
+    scheduledAt: t.scheduledAt,
     priority: priorityMap[t.priority] || "Trung bình",
+    status: t.status || (t.completed ? "COMPLETED" : "IN_PROGRESS"),
     completed: t.completed,
     completedAt: t.completedAt,
     color: t.color,
     eisenhowerMatrix: t.eisenhowerMatrix ? t.eisenhowerMatrix.replace(/_/g, "-") : undefined,
     contexts: t.contexts,
+    checklist: t.checklist,
     estimatedTime: t.estimatedTime,
     actualTime: t.actualTime,
     categoryId: t.categoryId,
     categoryName: t.categoryName,
     categoryColor: t.categoryColor,
+    goalId: t.goalId,
+    showOnCalendar: t.showOnCalendar ?? true,
     sortOrder: t.sortOrder,
   };
 }
@@ -574,12 +584,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
       title: task.title,
       description: task.description,
       dueDate: normalizeTaskDueDateForApi(task.dueDate),
+      scheduledAt: task.scheduledAt,
       priority: task.priority,
       color: task.color,
       eisenhowerMatrix: task.eisenhowerMatrix,
+      status: task.status,
       estimatedTime: task.estimatedTime,
       contexts: task.contexts,
+      checklist: task.checklist,
       categoryId: task.categoryId,
+      goalId: task.goalId,
+      showOnCalendar: task.showOnCalendar,
     });
     setTasks(prev => [...prev, mapApiTaskToTask(created)]);
   };
@@ -594,13 +609,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
         updateData.dueDate = normalizedDueDate;
       }
     }
+    if (updates.scheduledAt !== undefined) updateData.scheduledAt = updates.scheduledAt;
     if (updates.priority) updateData.priority = updates.priority;
     if (updates.color) updateData.color = updates.color;
     if (updates.completed !== undefined) updateData.completed = updates.completed;
+    if (updates.status !== undefined) updateData.status = updates.status;
     if (updates.eisenhowerMatrix !== undefined) updateData.eisenhowerMatrix = updates.eisenhowerMatrix;
     if (updates.estimatedTime !== undefined) updateData.estimatedTime = updates.estimatedTime;
-    if (updates.contexts) updateData.contexts = updates.contexts;
+    if (updates.contexts !== undefined) updateData.contexts = updates.contexts;
+    if (updates.checklist !== undefined) updateData.checklist = updates.checklist;
     if (updates.categoryId !== undefined) updateData.categoryId = updates.categoryId;
+    if (updates.goalId !== undefined) updateData.goalId = updates.goalId;
+    if (updates.showOnCalendar !== undefined) updateData.showOnCalendar = updates.showOnCalendar;
+    if (updates.sortOrder !== undefined) updateData.sortOrder = updates.sortOrder;
 
     const updated = await taskApi.update(id, updateData as Parameters<typeof taskApi.update>[1]);
     setTasks(prev => prev.map(t => t.id === id ? mapApiTaskToTask(updated) : t));

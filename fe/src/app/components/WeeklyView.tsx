@@ -106,7 +106,10 @@ function formatHourLabel(hour: number) {
   return `${display} ${period}`;
 }
 
-type WeeklyCalendarItem = CalendarEvent & { eventDate?: string };
+type WeeklyCalendarItem = CalendarEvent & {
+  eventDate?: string;
+  kind?: "event" | "task";
+};
 
 type CalendarEventDraft = (Omit<CalendarEvent, "id"> | CalendarEvent) & { eventDate?: string };
 
@@ -140,14 +143,19 @@ function EventCard({ event, visibleStartHour, onClick }: EventCardProps) {
   const heightPx = Math.max(22, event.duration * HOUR_HEIGHT - 4);
   const showLocation = heightPx > 52;
   const showTime = heightPx > 30;
+  const isTaskItem = event.kind === "task";
 
   return (
     <div
-      draggable
+      draggable={!isTaskItem}
       onDragStart={(e) => {
+        if (isTaskItem) return;
         e.dataTransfer.setData("eventId", event.id.toString());
       }}
-      onClick={() => onClick(event)}
+      onClick={() => {
+        if (isTaskItem) return;
+        onClick(event);
+      }}
       title={`${event.title} — ${event.startHour}:${String(event.startMin).padStart(2, "0")}`}
       className={`absolute inset-x-0.5 rounded-md px-2 py-1 cursor-pointer overflow-hidden border-l-[3px] ${colors.light} ${colors.border} hover:brightness-95 active:scale-[0.99] transition-all duration-100 shadow-sm hover:shadow`}
       style={{ top: `${topPx}px`, height: `${heightPx}px`, minHeight: "22px" }}
@@ -371,7 +379,7 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
             </div>
           </label>
           <div className="flex gap-2 pt-1">
-            {event && onDelete && (
+            {event && "id" in event && onDelete && (
               <button type="button" onClick={() => {
                 onDelete(event.id);
                 onClose();
@@ -509,20 +517,25 @@ function DayDetailPanel({ date, events, onClose, onEditEvent, language }: DayDet
                   const colors = COLOR_MAP[event.color as EventColor];
                   const category = categories.find((c) => c.id === event.categoryId);
                   return (
-                    <div key={event.id} className={`rounded-xl p-3 ${colors.light} border-l-4 ${colors.border} cursor-pointer hover:brightness-95 transition-all group`} onClick={() => onEditEvent(event)}>
+                    <div key={event.id} className={`rounded-xl p-3 ${colors.light} border-l-4 ${colors.border} ${event.kind === "task" ? "cursor-default" : "cursor-pointer hover:brightness-95"} transition-all group`} onClick={() => {
+                      if (event.kind === "task") return;
+                      onEditEvent(event);
+                    }}>
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
                           <p className={`text-sm font-semibold ${colors.text}`}>{event.title}</p>
                           {category && <p className={`text-xs mt-0.5 opacity-70 ${colors.text}`}>{category.name}</p>}
                         </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={(e) => {
-                            e.stopPropagation();
-                            onEditEvent(event);
-                          }} className={`p-1 rounded hover:bg-white/50 ${colors.text}`}>
-                            <Edit2 size={12} />
-                          </button>
-                        </div>
+                        {event.kind !== "task" && (
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={(e) => {
+                              e.stopPropagation();
+                              onEditEvent(event);
+                            }} className={`p-1 rounded hover:bg-white/50 ${colors.text}`}>
+                              <Edit2 size={12} />
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <div className="mt-2 space-y-1">
                         <div className={`flex items-center gap-1.5 text-xs opacity-70 ${colors.text}`}>
@@ -621,27 +634,28 @@ export function WeeklyView() {
     const items: WeeklyCalendarItem[] = [];
 
     tasks
-      .filter((task) => !task.completed)
+      .filter((task) => !task.completed && task.showOnCalendar !== false && !!task.scheduledAt)
       .forEach((task) => {
-        const dueDate = parseIsoDate(task.dueDate) ?? parseUiDueDate(task.dueDate);
-        if (!dueDate) return;
+        const scheduledAt = task.scheduledAt ? new Date(task.scheduledAt) : null;
+        if (!scheduledAt || Number.isNaN(scheduledAt.getTime())) return;
 
-        const dayCode = DAYS[(dueDate.getDay() + 6) % 7];
+        const dayCode = DAYS[(scheduledAt.getDay() + 6) % 7];
         const durationInHours = Math.max(0.5, (task.estimatedTime || 60) / 60);
-        const eventDate = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`;
+        const eventDate = `${scheduledAt.getFullYear()}-${String(scheduledAt.getMonth() + 1).padStart(2, "0")}-${String(scheduledAt.getDate()).padStart(2, "0")}`;
 
         items.push({
           id: `task-${task.id}`,
           title: task.title,
           day: dayCode,
-          startHour: 18,
-          startMin: 0,
+          startHour: scheduledAt.getHours(),
+          startMin: scheduledAt.getMinutes(),
           duration: durationInHours,
           color: task.categoryColor || task.color || "amber",
-          location: language === "vi" ? "Công việc" : "Task",
-          notes: task.description || (language === "vi" ? "Tự động hiển thị từ công việc" : "Auto-added from task"),
+          location: language === "vi" ? "Công việc đã lên lịch" : "Scheduled task",
+          notes: task.description || (language === "vi" ? "Hiển thị từ thời gian task" : "Shown from task schedule"),
           categoryId: task.categoryId || "",
           eventDate,
+          kind: "task",
         });
       });
 
@@ -892,6 +906,9 @@ export function WeeklyView() {
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={(e) => {
                         const eventId = e.dataTransfer.getData("eventId");
+                        if (eventId?.startsWith("task-")) {
+                          return;
+                        }
                         if (eventId) {
                           const rect = e.currentTarget.getBoundingClientRect();
                           const y = e.clientY - rect.top;
@@ -997,6 +1014,9 @@ export function WeeklyView() {
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={(e) => {
                         const eventId = e.dataTransfer.getData("eventId");
+                        if (eventId?.startsWith("task-")) {
+                          return;
+                        }
                         if (eventId) {
                           e.stopPropagation();
                           updateEvent(eventId, { day: dayCode });

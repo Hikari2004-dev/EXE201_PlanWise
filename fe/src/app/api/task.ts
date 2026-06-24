@@ -5,14 +5,20 @@ const API = "/api/v1";
 
 export const taskApi = {
   async getAll(params?: {
+    q?: string;
+    status?: string;
     completed?: boolean;
     categoryId?: string;
     priority?: string;
     eisenhowerMatrix?: string;
+    goalId?: string;
+    showOnCalendar?: boolean;
     dateFrom?: string;
     dateTo?: string;
   }): Promise<ApiTask[]> {
     const searchParams = new URLSearchParams();
+    if (params?.q) searchParams.set("q", params.q);
+    if (params?.status) searchParams.set("status", params.status);
     if (params?.completed !== undefined) searchParams.set("completed", String(params.completed));
     if (params?.categoryId) searchParams.set("categoryId", params.categoryId);
     if (params?.priority) {
@@ -26,6 +32,8 @@ export const taskApi = {
     if (params?.eisenhowerMatrix) {
       searchParams.set("eisenhowerMatrix", params.eisenhowerMatrix.replace(/-/g, "_"));
     }
+    if (params?.goalId) searchParams.set("goalId", params.goalId);
+    if (params?.showOnCalendar !== undefined) searchParams.set("showOnCalendar", String(params.showOnCalendar));
     if (params?.dateFrom) searchParams.set("dateFrom", params.dateFrom);
     if (params?.dateTo) searchParams.set("dateTo", params.dateTo);
 
@@ -57,12 +65,17 @@ export const taskApi = {
     title: string;
     description?: string;
     dueDate?: string;
+    scheduledAt?: string;
     priority?: string;
     color?: string;
     eisenhowerMatrix?: string;
+    status?: string;
     estimatedTime?: number;
     contexts?: string[];
+    checklist?: string[];
     categoryId?: string;
+    goalId?: string;
+    showOnCalendar?: boolean;
   }): Promise<ApiTask> {
     const priorityMap: Record<string, string> = {
       "Cao": "HIGH",
@@ -93,13 +106,18 @@ export const taskApi = {
     title?: string;
     description?: string;
     dueDate?: string;
+    scheduledAt?: string;
     priority?: string;
     color?: string;
     completed?: boolean;
     eisenhowerMatrix?: string;
+    status?: string;
     estimatedTime?: number;
     contexts?: string[];
+    checklist?: string[];
     categoryId?: string;
+    goalId?: string;
+    showOnCalendar?: boolean;
     sortOrder?: number;
   }): Promise<ApiTask> {
     const priorityMap: Record<string, string> = {

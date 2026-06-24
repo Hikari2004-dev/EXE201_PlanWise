@@ -2,6 +2,7 @@ package com.exe201.planwise.task.entity;
 
 import com.exe201.planwise.common.enums.EventColor;
 import com.exe201.planwise.category.entity.Category;
+import com.exe201.planwise.goal.entity.Goal;
 import com.exe201.planwise.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -38,6 +39,10 @@ public class Task {
     @JoinColumn(name = "category_id")
     private Category category;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "goal_id")
+    private Goal goal;
+
     @Column(nullable = false, length = 255)
     private String title;
 
@@ -46,6 +51,9 @@ public class Task {
 
     @Column(name = "due_date")
     private LocalDate dueDate;
+
+    @Column(name = "scheduled_at")
+    private OffsetDateTime scheduledAt;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
@@ -82,6 +90,16 @@ public class Task {
     @Column(name = "context", length = 100)
     @Builder.Default
     private List<String> contexts = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "task_checklist_items", joinColumns = @JoinColumn(name = "task_id"))
+    @Column(name = "item", length = 255)
+    @Builder.Default
+    private List<String> checklist = new ArrayList<>();
+
+    @Column(name = "show_on_calendar", nullable = false)
+    @Builder.Default
+    private boolean showOnCalendar = true;
 
     @Column(name = "sort_order", nullable = false)
     @Builder.Default

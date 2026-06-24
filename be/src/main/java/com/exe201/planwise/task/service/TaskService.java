@@ -5,6 +5,8 @@ import com.exe201.planwise.category.repository.CategoryRepository;
 import com.exe201.planwise.common.enums.EventColor;
 import com.exe201.planwise.exception.AppException;
 import com.exe201.planwise.exception.ErrorCode;
+import com.exe201.planwise.goal.entity.Goal;
+import com.exe201.planwise.goal.repository.GoalRepository;
 import com.exe201.planwise.task.dto.*;
 import com.exe201.planwise.task.entity.Task;
 import com.exe201.planwise.task.repository.TaskRepository;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -28,21 +31,47 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
+    private final GoalRepository goalRepository;
 
     @Transactional(readOnly = true)
-    public TaskListResponse getTasks(UUID userId) {
-        List<Task> tasks = taskRepository.findByUserIdOrderBySortOrderAsc(userId);
-        List<TaskDto> taskDtos = tasks.stream().map(TaskDto::from).toList();
-        
-        int pendingCount = (int) tasks.stream().filter(t -> !t.isCompleted()).count();
-        int completedCount = (int) tasks.stream().filter(Task::isCompleted).count();
-        int overdueCount = (int) tasks.stream()
-                .filter(t -> !t.isCompleted() && t.getDueDate() != null && t.getDueDate().isBefore(LocalDate.now()))
+    public TaskListResponse getTasks(UUID userId,
+                                     String q,
+                                     String status,
+                                     Boolean completed,
+                                     UUID categoryId,
+                                     String priority,
+                                     String eisenhowerMatrix,
+                                     UUID goalId,
+                                     Boolean showOnCalendar,
+                                     LocalDate dateFrom,
+                                     LocalDate dateTo) {
+        List<Task> filteredTasks = taskRepository.findByUserIdOrderBySortOrderAsc(userId).stream()
+                .filter(task -> matchesSearch(task, q))
+                .filter(task -> matchesStatus(task, status))
+                .filter(task -> completed == null || task.isCompleted() == completed)
+                .filter(task -> categoryId == null || (task.getCategory() != null && categoryId.equals(task.getCategory().getId())))
+                .filter(task -> matchesPriority(task, priority))
+                .filter(task -> matchesEisenhowerMatrix(task, eisenhowerMatrix))
+                .filter(task -> goalId == null || (task.getGoal() != null && goalId.equals(task.getGoal().getId())))
+                .filter(task -> showOnCalendar == null || task.isShowOnCalendar() == showOnCalendar)
+                .filter(task -> matchesDateRange(task, dateFrom, dateTo))
+                .toList();
+
+        List<TaskDto> taskDtos = filteredTasks.stream().map(this::toTaskDto).toList();
+
+        int pendingCount = (int) filteredTasks.stream()
+                .filter(task -> "IN_PROGRESS".equals(resolveStatus(task)))
+                .count();
+        int completedCount = (int) filteredTasks.stream()
+                .filter(task -> "COMPLETED".equals(resolveStatus(task)))
+                .count();
+        int overdueCount = (int) filteredTasks.stream()
+                .filter(task -> "MISSED".equals(resolveStatus(task)))
                 .count();
 
         return TaskListResponse.builder()
                 .tasks(taskDtos)
-                .totalCount(tasks.size())
+                .totalCount(filteredTasks.size())
                 .pendingCount(pendingCount)
                 .completedCount(completedCount)
                 .overdueCount(overdueCount)
@@ -52,19 +81,14 @@ public class TaskService {
     @Transactional(readOnly = true)
     public TaskDto getTaskById(UUID userId, UUID taskId) {
         Task task = findTaskAndValidateOwnership(taskId, userId);
-        return TaskDto.from(task);
+        return toTaskDto(task);
     }
 
     @Transactional
     public TaskDto createTask(UUID userId, CreateTaskRequest request) {
         User user = findUser(userId);
-        Category category = null;
-        
-        if (request.categoryId() != null) {
-            category = categoryRepository.findById(request.categoryId())
-                    .filter(c -> c.getUser().getId().equals(userId))
-                    .orElse(null);
-        }
+        Category category = findCategory(request.categoryId(), userId);
+        Goal goal = findGoal(request.goalId(), userId);
 
         Task.TaskPriority priority = parsePriority(request.priority());
         Task.EisenhowerQuadrant quadrant = parseEisenhowerMatrix(request.eisenhowerMatrix());
@@ -73,20 +97,26 @@ public class TaskService {
         Task task = Task.builder()
                 .user(user)
                 .category(category)
+                .goal(goal)
                 .title(request.title())
                 .description(request.description())
                 .dueDate(request.dueDate())
+                .scheduledAt(request.scheduledAt())
                 .priority(priority)
-            .color(color)
+                .color(color)
                 .eisenhowerMatrix(quadrant)
                 .estimatedTime(request.estimatedTime())
-                .contexts(request.contexts())
+                .contexts(request.contexts() != null ? request.contexts() : List.of())
+                .checklist(request.checklist() != null ? request.checklist() : List.of())
+                .showOnCalendar(request.showOnCalendar())
                 .build();
+
+        applyTaskState(task, request.status(), null);
 
         task = taskRepository.save(task);
         log.info("Created task {} for user {}", task.getId(), userId);
 
-        return TaskDto.from(task);
+        return toTaskDto(task);
     }
 
     @Transactional
@@ -102,6 +132,9 @@ public class TaskService {
         if (request.dueDate() != null) {
             task.setDueDate(request.dueDate());
         }
+        if (request.scheduledAt() != null) {
+            task.setScheduledAt(request.scheduledAt());
+        }
         if (request.priority() != null) {
             task.setPriority(parsePriority(request.priority()));
         }
@@ -115,35 +148,36 @@ public class TaskService {
             task.setEstimatedTime(request.estimatedTime());
         }
         if (request.categoryId() != null) {
-            Category category = categoryRepository.findById(request.categoryId())
-                    .filter(c -> c.getUser().getId().equals(userId))
-                    .orElse(null);
-            task.setCategory(category);
+            task.setCategory(findCategory(request.categoryId(), userId));
+        }
+        if (request.goalId() != null) {
+            task.setGoal(findGoal(request.goalId(), userId));
         }
         if (request.contexts() != null) {
             task.setContexts(request.contexts());
         }
-        if (request.completed() != null) {
-            task.setCompleted(request.completed());
-            if (request.completed()) {
-                task.setCompletedAt(OffsetDateTime.now());
-            } else {
-                task.setCompletedAt(null);
-            }
+        if (request.checklist() != null) {
+            task.setChecklist(request.checklist());
+        }
+        if (request.showOnCalendar() != null) {
+            task.setShowOnCalendar(request.showOnCalendar());
+        }
+        if (request.status() != null || request.completed() != null) {
+            applyTaskState(task, request.status(), request.completed());
         }
         if (request.sortOrder() != null) {
             task.setSortOrder(request.sortOrder());
         }
 
         task = taskRepository.save(task);
-        return TaskDto.from(task);
+        return toTaskDto(task);
     }
 
     @Transactional
     public TaskDto toggleComplete(UUID userId, UUID taskId) {
         Task task = findTaskAndValidateOwnership(taskId, userId);
         task.setCompleted(!task.isCompleted());
-        
+
         if (task.isCompleted()) {
             task.setCompletedAt(OffsetDateTime.now());
         } else {
@@ -151,7 +185,7 @@ public class TaskService {
         }
 
         task = taskRepository.save(task);
-        return TaskDto.from(task);
+        return toTaskDto(task);
     }
 
     @Transactional
@@ -174,6 +208,118 @@ public class TaskService {
             throw new AppException(ErrorCode.TASK_NOT_FOUND);
         }
         return task;
+    }
+
+    private Category findCategory(UUID categoryId, UUID userId) {
+        if (categoryId == null) {
+            return null;
+        }
+
+        return categoryRepository.findById(categoryId)
+                .filter(category -> category.getUser().getId().equals(userId))
+                .orElse(null);
+    }
+
+    private Goal findGoal(UUID goalId, UUID userId) {
+        if (goalId == null) {
+            return null;
+        }
+
+        return goalRepository.findById(goalId)
+                .filter(goal -> goal.getUser().getId().equals(userId))
+                .orElse(null);
+    }
+
+    private TaskDto toTaskDto(Task task) {
+        return TaskDto.from(task, resolveStatus(task));
+    }
+
+    private String resolveStatus(Task task) {
+        if (task.isCompleted()) {
+            return "COMPLETED";
+        }
+        if (task.getDueDate() != null && task.getDueDate().isBefore(LocalDate.now())) {
+            return "MISSED";
+        }
+        return "IN_PROGRESS";
+    }
+
+    private void applyTaskState(Task task, String status, Boolean completed) {
+        if (status != null && !status.isBlank()) {
+            String normalizedStatus = normalizeStatus(status);
+            if ("COMPLETED".equals(normalizedStatus)) {
+                task.setCompleted(true);
+                task.setCompletedAt(OffsetDateTime.now());
+                return;
+            }
+            task.setCompleted(false);
+            task.setCompletedAt(null);
+            return;
+        }
+
+        if (completed != null) {
+            task.setCompleted(completed);
+            if (completed) {
+                task.setCompletedAt(OffsetDateTime.now());
+            } else {
+                task.setCompletedAt(null);
+            }
+        }
+    }
+
+    private boolean matchesSearch(Task task, String q) {
+        if (q == null || q.isBlank()) {
+            return true;
+        }
+
+        String normalized = q.trim().toLowerCase(Locale.ROOT);
+        return (task.getTitle() != null && task.getTitle().toLowerCase(Locale.ROOT).contains(normalized))
+                || (task.getDescription() != null && task.getDescription().toLowerCase(Locale.ROOT).contains(normalized));
+    }
+
+    private boolean matchesStatus(Task task, String status) {
+        if (status == null || status.isBlank()) {
+            return true;
+        }
+        return resolveStatus(task).equals(normalizeStatus(status));
+    }
+
+    private boolean matchesPriority(Task task, String priority) {
+        if (priority == null || priority.isBlank()) {
+            return true;
+        }
+
+        Task.TaskPriority expected = parsePriority(priority);
+        return task.getPriority() == expected;
+    }
+
+    private boolean matchesEisenhowerMatrix(Task task, String matrix) {
+        if (matrix == null || matrix.isBlank()) {
+            return true;
+        }
+
+        Task.EisenhowerQuadrant expected = parseEisenhowerMatrix(matrix);
+        return expected != null && task.getEisenhowerMatrix() == expected;
+    }
+
+    private boolean matchesDateRange(Task task, LocalDate dateFrom, LocalDate dateTo) {
+        if (dateFrom == null && dateTo == null) {
+            return true;
+        }
+        if (task.getDueDate() == null) {
+            return false;
+        }
+        if (dateFrom != null && task.getDueDate().isBefore(dateFrom)) {
+            return false;
+        }
+        if (dateTo != null && task.getDueDate().isAfter(dateTo)) {
+            return false;
+        }
+        return true;
+    }
+
+    private String normalizeStatus(String status) {
+        return status.trim().toUpperCase(Locale.ROOT).replace('-', '_');
     }
 
     private Task.TaskPriority parsePriority(String priority) {

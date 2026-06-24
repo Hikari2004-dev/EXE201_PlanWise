@@ -101,13 +101,18 @@ export interface UpdateTaskRequest {
   title?: string;
   description?: string;
   dueDate?: string;
+  scheduledAt?: string;
   priority?: string;
   color?: string;
   categoryId?: string;
+  goalId?: string;
   eisenhowerMatrix?: string;
+  status?: string;
   estimatedTime?: number;
   completed?: boolean;
   contexts?: string[];
+  checklist?: string[];
+  showOnCalendar?: boolean;
   sortOrder?: number;
 }
 
@@ -116,17 +121,22 @@ export interface ApiTask {
   title: string;
   description?: string;
   dueDate?: string;
+  scheduledAt?: string;
   priority: string;
   color: string;
+  status?: string;
   completed: boolean;
   completedAt?: string;
   eisenhowerMatrix?: string;
   estimatedTime?: number;
   actualTime?: number;
   contexts?: string[];
+  checklist?: string[];
   categoryId?: string;
   categoryName?: string;
   categoryColor?: string;
+  goalId?: string;
+  showOnCalendar?: boolean;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;

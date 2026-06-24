@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -21,8 +22,30 @@ public class TaskController {
 
     @GetMapping
     public ResponseEntity<TaskListResponse> getTasks(
-            @AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(taskService.getTasks(principal.getId()));
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Boolean completed,
+            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) String priority,
+            @RequestParam(required = false) String eisenhowerMatrix,
+            @RequestParam(required = false) UUID goalId,
+            @RequestParam(required = false) Boolean showOnCalendar,
+            @RequestParam(required = false) LocalDate dateFrom,
+            @RequestParam(required = false) LocalDate dateTo) {
+        return ResponseEntity.ok(taskService.getTasks(
+                principal.getId(),
+                q,
+                status,
+                completed,
+                categoryId,
+                priority,
+                eisenhowerMatrix,
+                goalId,
+                showOnCalendar,
+                dateFrom,
+                dateTo
+        ));
     }
 
     @GetMapping("/{taskId}")

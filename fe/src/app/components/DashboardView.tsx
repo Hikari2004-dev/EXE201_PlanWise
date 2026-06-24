@@ -8,6 +8,32 @@ import { NotificationCenter } from "./NotificationCenter";
 import { useData } from "../context/DataContext";
 import { COLOR_MAP, getTimeString, type EventColor } from "../data/mockData";
 
+function parseScheduledAt(value?: string) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function isSameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function getTaskStatus(task: { status?: string; completed: boolean; dueDate?: string }) {
+  if (task.status) return task.status;
+  if (task.completed) return "COMPLETED";
+  const dueDate = parseTaskDueDate(task.dueDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (dueDate && dueDate < today) return "MISSED";
+  return "IN_PROGRESS";
+}
+
+function formatScheduledTaskTime(value?: string) {
+  const parsed = parseScheduledAt(value);
+  if (!parsed) return "";
+  return parsed.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+}
+
 function parseTaskDueDate(value?: string) {
   if (!value) return null;
   const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -24,13 +50,13 @@ function formatTaskDueDateLabel(value?: string) {
 }
 
 const WEEKDAY_TO_EVENT_DAY: Record<number, string> = {
-  0: "CN",
-  1: "Thứ 2",
-  2: "Thứ 3",
-  3: "Thứ 4",
-  4: "Thứ 5",
-  5: "Thứ 6",
-  6: "Thứ 7",
+  0: "Sun",
+  1: "Mon",
+  2: "Tue",
+  3: "Wed",
+  4: "Thu",
+  5: "Fri",
+  6: "Sat",
 };
 
 function CurrentTimeIndicator() {
@@ -53,17 +79,65 @@ export function DashboardView() {
   const now = new Date();
   const todayDay = WEEKDAY_TO_EVENT_DAY[now.getDay()] || "";
 
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const todayEvents = events.filter(e => e.day === todayDay).sort(
     (a, b) => a.startHour - b.startHour || a.startMin - b.startMin
   );
+  const todayScheduledTasks = tasks
+    .filter((task) => !task.completed && task.showOnCalendar !== false)
+    .filter((task) => {
+      const scheduledAt = parseScheduledAt(task.scheduledAt);
+      return scheduledAt ? isSameDay(scheduledAt, today) : false;
+    })
+    .sort((a, b) => {
+      const aTime = parseScheduledAt(a.scheduledAt)?.getTime() || 0;
+      const bTime = parseScheduledAt(b.scheduledAt)?.getTime() || 0;
+      return aTime - bTime;
+    });
 
-  const upcomingTasks   = tasks.filter(t => !t.completed).slice(0, 5);
-  const completedCount  = tasks.filter(t => t.completed).length;
-  const totalEvents     = events.length;
-  const highPriority    = tasks.filter(t => !t.completed && t.priority === "Cao").length;
+  const upcomingTasks = tasks
+    .filter((task) => getTaskStatus(task) !== "COMPLETED")
+    .sort((a, b) => {
+      const aScheduled = parseScheduledAt(a.scheduledAt)?.getTime() || Number.MAX_SAFE_INTEGER;
+      const bScheduled = parseScheduledAt(b.scheduledAt)?.getTime() || Number.MAX_SAFE_INTEGER;
+      if (aScheduled !== bScheduled) return aScheduled - bScheduled;
+      const aDue = parseTaskDueDate(a.dueDate)?.getTime() || Number.MAX_SAFE_INTEGER;
+      const bDue = parseTaskDueDate(b.dueDate)?.getTime() || Number.MAX_SAFE_INTEGER;
+      return aDue - bDue;
+    })
+    .slice(0, 5);
+  const todayTimeline = [
+    ...todayEvents.map((event) => ({
+      kind: "event" as const,
+      id: event.id,
+      title: event.title,
+      startHour: event.startHour,
+      startMin: event.startMin,
+      duration: event.duration,
+      location: event.location,
+      color: event.color,
+      categoryId: event.categoryId,
+    })),
+    ...todayScheduledTasks.map((task) => {
+      const scheduledAt = parseScheduledAt(task.scheduledAt)!;
+      return {
+        kind: "task" as const,
+        id: task.id,
+        title: task.title,
+        startHour: scheduledAt.getHours(),
+        startMin: scheduledAt.getMinutes(),
+        duration: Math.max(0.5, (task.estimatedTime || 60) / 60),
+        location: language === "vi" ? "Task đã lên lịch" : "Scheduled task",
+        color: task.categoryColor || task.color || "indigo",
+        categoryId: task.categoryId,
+      };
+    }),
+  ].sort((a, b) => a.startHour - b.startHour || a.startMin - b.startMin);
+  const completedCount  = tasks.filter(t => getTaskStatus(t) === "COMPLETED").length;
+  const totalEvents     = events.length + todayScheduledTasks.length;
+  const highPriority    = tasks.filter(t => getTaskStatus(t) !== "COMPLETED" && t.priority === "Cao").length;
   const completionRate  = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
 
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const sevenAgo = new Date(today); sevenAgo.setDate(today.getDate() - 7);
   const delayedTasks = tasks.filter(t => {
     const dueDate = parseTaskDueDate(t.dueDate);
@@ -131,8 +205,8 @@ export function DashboardView() {
     },
     {
       label:   language === "vi" ? "Hôm nay" : "Today",
-      value:   todayEvents.length,
-      sub:     language === "vi" ? "sự kiện lịch" : "scheduled events",
+      value:   todayEvents.length + todayScheduledTasks.length,
+      sub:     language === "vi" ? "lịch + task đã lên giờ" : "events + scheduled tasks",
       icon:    Zap,
       from:    "from-amber-500", to: "to-orange-500",
       shadow:  "shadow-amber-200",
@@ -232,25 +306,25 @@ export function DashboardView() {
               </div>
 
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 bg-slate-50/50 dark:bg-slate-950/60">
-                {todayEvents.length === 0 ? (
+                {todayTimeline.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-2 dark:text-slate-500">
                     <CalendarDays size={32} className="opacity-30" />
                     <p className="text-sm font-medium">{language === "vi" ? "Lịch trống hôm nay" : "No events today"}</p>
                   </div>
-                ) : todayEvents.map(event => {
-                  const timeStr = getTimeString(event.startHour, event.startMin, event.duration);
+                ) : todayTimeline.map(item => {
+                  const timeStr = getTimeString(item.startHour, item.startMin, item.duration);
                   const now = new Date();
                   const nd = now.getHours() + now.getMinutes() / 60;
-                  const sd = event.startHour + event.startMin / 60;
-                  const ed = sd + event.duration;
+                  const sd = item.startHour + item.startMin / 60;
+                  const ed = sd + item.duration;
                   const isNow = nd >= sd && nd < ed;
                   const isPast = nd >= ed;
-                  const colors = COLOR_MAP[event.color as EventColor];
-                  const catName = categories.find(c => c.id === event.categoryId)?.name || "";
+                  const colors = COLOR_MAP[item.color as EventColor];
+                  const catName = categories.find(c => c.id === item.categoryId)?.name || "";
 
                   return (
                     <div
-                      key={event.id}
+                      key={`${item.kind}-${item.id}`}
                       className={`group flex items-center gap-4 p-3.5 rounded-xl border transition-all duration-200 ${
                         isNow
                           ? "bg-indigo-50 border-indigo-200 shadow-sm shadow-indigo-100 dark:bg-indigo-500/12 dark:border-indigo-400/30 dark:shadow-none"
@@ -259,44 +333,45 @@ export function DashboardView() {
                           : "bg-white border-slate-200 hover:border-indigo-200 hover:shadow-sm dark:bg-slate-900 dark:border-slate-800 dark:hover:border-indigo-400/30"
                       }`}
                     >
-                      {/* Time */}
                       <div className="w-16 flex-shrink-0 text-right">
                         <p className={`text-[13px] font-bold ${isNow ? "text-indigo-700 dark:text-indigo-200" : "text-slate-700 dark:text-slate-200"}`}>
-                          {event.startHour > 12 ? event.startHour - 12 : event.startHour}:{String(event.startMin).padStart(2, "0")}
+                          {item.startHour > 12 ? item.startHour - 12 : item.startHour}:{String(item.startMin).padStart(2, "0")}
                         </p>
                         <p className={`text-[10px] font-semibold uppercase ${isNow ? "text-indigo-400 dark:text-indigo-300" : "text-slate-400 dark:text-slate-500"}`}>
-                          {event.startHour >= 12 ? "PM" : "AM"}
+                          {item.startHour >= 12 ? "PM" : "AM"}
                         </p>
                       </div>
 
-                      {/* Color bar */}
                       <div className={`w-1 h-10 rounded-full flex-shrink-0 ${isNow ? "bg-indigo-500" : colors.bg}`} />
 
-                      {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className={`text-sm font-semibold truncate ${isNow ? "text-indigo-900 dark:text-indigo-100" : "text-slate-800 dark:text-slate-100"}`}>
-                            {event.title}
+                            {item.title}
                           </p>
+                          {item.kind === "task" && (
+                            <span className="flex-shrink-0 text-[9px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full uppercase tracking-wide">
+                              {language === "vi" ? "Task" : "Task"}
+                            </span>
+                          )}
                           {isNow && (
                             <span className="flex-shrink-0 text-[9px] font-bold bg-indigo-500 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">
                               Live
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 mt-1">
+                        <div className="flex items-center gap-3 mt-1 flex-wrap">
                           <span className="text-[11px] text-slate-500 flex items-center gap-1 dark:text-slate-300">
                             <Clock size={9} /> {timeStr}
                           </span>
-                          {event.location && (
+                          {item.location && (
                             <span className="text-[11px] text-slate-500 flex items-center gap-1 dark:text-slate-300">
-                              <MapPin size={9} /> {event.location}
+                              <MapPin size={9} /> {item.location}
                             </span>
                           )}
                         </div>
                       </div>
 
-                      {/* Category chip */}
                       {catName && (
                         <span className={`hidden sm:inline-flex text-[10px] font-semibold px-2.5 py-1 rounded-full ${colors.badge} flex-shrink-0`}>
                           {catName}
