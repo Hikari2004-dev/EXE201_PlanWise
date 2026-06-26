@@ -16,6 +16,7 @@ export interface CalendarEvent {
   color: string;
   location: string;
   notes: string;
+  eventDate?: string;
   categoryId: string;
   isRecurring?: boolean;
   recurrenceRule?: string;
@@ -41,6 +42,7 @@ export interface Task {
   categoryName?: string;
   categoryColor?: string;
   goalId?: string;
+  milestoneId?: string;
   showOnCalendar?: boolean;
   sortOrder: number;
 }
@@ -52,6 +54,7 @@ export interface Goal {
   description: string;
   category: "career" | "learning" | "health" | "finance";
   type: "SMART" | "OKR";
+  period?: "week" | "month" | "year";
   targetDate: string;
   progress: number; // 0-100
   milestones: Milestone[];
@@ -82,6 +85,7 @@ export interface Habit {
   description: string;
   frequency: "daily" | "weekly" | "monthly";
   targetCount: number;
+  repeatDays: string[];
   currentStreak: number;
   bestStreak: number;
   color: EventColor;
@@ -286,9 +290,9 @@ export const VISION_ITEMS: VisionItem[] = [
 ];
 
 export const HABITS: Habit[] = [
-  { id: "mock-habit-1", title: "Đọc sách", description: "Đọc ít nhất 30 phút mỗi ngày", frequency: "daily", targetCount: 1, currentStreak: 5, bestStreak: 12, color: "purple", completedDates: ["2026-03-10", "2026-03-11", "2026-03-12", "2026-03-13", "2026-03-14"] },
-  { id: "mock-habit-2", title: "Tập thể dục", description: "Workout 45 phút", frequency: "daily", targetCount: 1, currentStreak: 3, bestStreak: 8, color: "emerald", completedDates: ["2026-03-12", "2026-03-13", "2026-03-14"] },
-  { id: "mock-habit-3", title: "Code cá nhân", description: "Làm dự án side project", frequency: "daily", targetCount: 1, currentStreak: 2, bestStreak: 15, color: "blue", completedDates: ["2026-03-13", "2026-03-14"] },
+  { id: "mock-habit-1", title: "Đọc sách", description: "Đọc ít nhất 30 phút mỗi ngày", frequency: "daily", targetCount: 1, repeatDays: [], currentStreak: 5, bestStreak: 12, color: "purple", completedDates: ["2026-03-10", "2026-03-11", "2026-03-12", "2026-03-13", "2026-03-14"] },
+  { id: "mock-habit-2", title: "Tập thể dục", description: "Workout 45 phút", frequency: "daily", targetCount: 1, repeatDays: [], currentStreak: 3, bestStreak: 8, color: "emerald", completedDates: ["2026-03-12", "2026-03-13", "2026-03-14"] },
+  { id: "mock-habit-3", title: "Code cá nhân", description: "Làm dự án side project", frequency: "daily", targetCount: 1, repeatDays: [], currentStreak: 2, bestStreak: 15, color: "blue", completedDates: ["2026-03-13", "2026-03-14"] },
 ];
 
 export const DAILY_FOCUS: DailyFocus[] = [

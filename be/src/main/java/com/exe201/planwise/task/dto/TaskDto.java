@@ -2,7 +2,6 @@ package com.exe201.planwise.task.dto;
 
 import com.exe201.planwise.task.entity.Task;
 
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -11,7 +10,7 @@ public record TaskDto(
         UUID id,
         String title,
         String description,
-        LocalDate dueDate,
+        OffsetDateTime dueDate,
         OffsetDateTime scheduledAt,
         String priority,
         String color,
@@ -27,6 +26,7 @@ public record TaskDto(
         String categoryName,
         String categoryColor,
         UUID goalId,
+        UUID milestoneId,
         boolean showOnCalendar,
         int sortOrder,
         OffsetDateTime createdAt,
@@ -53,6 +53,7 @@ public record TaskDto(
                 task.getCategory() != null ? task.getCategory().getName() : null,
                 task.getCategory() != null && task.getCategory().getColor() != null ? task.getCategory().getColor().name() : null,
                 task.getGoal() != null ? task.getGoal().getId() : null,
+                task.getMilestone() != null ? task.getMilestone().getId() : null,
                 task.isShowOnCalendar(),
                 task.getSortOrder(),
                 task.getCreatedAt(),

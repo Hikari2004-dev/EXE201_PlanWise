@@ -3,7 +3,6 @@ package com.exe201.planwise.task.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -15,7 +14,7 @@ public record CreateTaskRequest(
 
         String description,
 
-        LocalDate dueDate,
+        OffsetDateTime dueDate,
 
         OffsetDateTime scheduledAt,
 
@@ -26,6 +25,8 @@ public record CreateTaskRequest(
         UUID categoryId,
 
         UUID goalId,
+
+        UUID milestoneId,
 
         String eisenhowerMatrix,
 

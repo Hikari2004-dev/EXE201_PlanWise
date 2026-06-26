@@ -722,7 +722,7 @@ export function FocusView() {
               >
                 <p>{note.content}</p>
                 <span className="text-xs text-muted-foreground">
-                  {new Date(note.timestamp).toLocaleTimeString("vi-VN")}
+                  {new Date(note.createdAt).toLocaleTimeString("vi-VN")}
                 </span>
               </div>
             ))}

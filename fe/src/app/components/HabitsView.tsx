@@ -7,7 +7,7 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router";
 
 export function HabitsView() {
-  const { habits, addHabit, toggleHabitDate, language } = useData();
+  const { habits, addHabit, toggleHabitDate, refreshData, language } = useData();
   const { user } = useAuth();
   const navigate = useNavigate();
   
@@ -18,7 +18,9 @@ export function HabitsView() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [frequency, setFrequency] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [repeatDays, setRepeatDays] = useState<string[]>([]);
   const [color, setColor] = useState<EventColor>("indigo");
+  const [formError, setFormError] = useState("");
 
   const getFrequencyLabel = (frequency: string) => {
     const labels = language === 'vi' ? {
@@ -33,28 +35,38 @@ export function HabitsView() {
     return labels[frequency as keyof typeof labels] || frequency;
   };
 
-  const isCompletedToday = (habit: any) => {
+  const isCompletedToday = (habit: { completedDates: string[] }) => {
     const today = new Date().toISOString().split('T')[0];
     return habit.completedDates.includes(today);
   };
 
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    addHabit({
-      title: title.trim(),
-      description: description.trim(),
-      frequency,
-      targetCount: 1,
-      color,
-    });
+    try {
+      setFormError("");
+      await addHabit({
+        title: title.trim(),
+        description: description.trim(),
+        frequency,
+        targetCount: 1,
+        repeatDays,
+        color,
+      });
+      await refreshData();
 
-    setTitle("");
-    setDescription("");
-    setFrequency("daily");
-    setColor("indigo");
-    setShowAddModal(false);
+      setTitle("");
+      setDescription("");
+      setFrequency("daily");
+      setRepeatDays([]);
+      setColor("indigo");
+      setShowAddModal(false);
+    } catch (error) {
+      console.error("Failed to create habit:", error);
+      const message = error instanceof Error ? error.message : "";
+      setFormError(message || (language === 'vi' ? "Không tạo được thói quen. Vui lòng thử lại." : "Failed to create habit. Please try again."));
+    }
   };
 
   const renderUpgradeModal = () => {
@@ -198,6 +210,39 @@ export function HabitsView() {
                 })}
               </div>
             </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block">
+                {language === 'vi' ? "Ngày lặp" : "Repeat Days"}
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { code: 'MON', label: 'Mon' },
+                  { code: 'TUE', label: 'Tue' },
+                  { code: 'WED', label: 'Wed' },
+                  { code: 'THU', label: 'Thu' },
+                  { code: 'FRI', label: 'Fri' },
+                  { code: 'SAT', label: 'Sat' },
+                  { code: 'SUN', label: 'Sun' },
+                ].map((day) => {
+                  const active = repeatDays.includes(day.code);
+                  return (
+                    <button
+                      key={day.code}
+                      type="button"
+                      onClick={() => setRepeatDays(prev => active ? prev.filter(item => item !== day.code) : [...prev, day.code])}
+                      className={`px-3 py-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-transparent text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:border-indigo-300'}`}
+                    >
+                      {day.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {formError && (
+              <p className="text-xs text-rose-500 font-medium">{formError}</p>
+            )}
 
             <button
               type="submit"

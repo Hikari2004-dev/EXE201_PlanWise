@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
 
@@ -16,6 +17,7 @@ public record HabitDto(
         String description,
         HabitFrequency frequency,
         short targetCount,
+        Set<String> repeatDays,
         short currentStreak,
         short bestStreak,
         String color,
@@ -32,9 +34,10 @@ public record HabitDto(
                 habit.getDescription(),
                 habit.getFrequency(),
                 habit.getTargetCount(),
+                habit.getRepeatDays() != null ? new LinkedHashSet<>(habit.getRepeatDays()) : Set.of(),
                 habit.getCurrentStreak(),
                 habit.getBestStreak(),
-                habit.getColor(),
+                habit.getColor() != null ? habit.getColor().name() : null,
                 habit.isActive(),
                 habit.getSortOrder(),
                 habit.getCompletedDates(),

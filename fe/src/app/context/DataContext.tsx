@@ -61,6 +61,7 @@ interface Task {
   categoryName?: string;
   categoryColor?: string;
   goalId?: string;
+  milestoneId?: string;
   showOnCalendar?: boolean;
   sortOrder: number;
 }
@@ -69,8 +70,14 @@ function normalizeTaskDueDateForApi(dueDate?: string) {
   if (!dueDate) return undefined;
 
   const trimmed = dueDate.trim();
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(trimmed)) {
+    const localDate = new Date(trimmed);
+    return Number.isNaN(localDate.getTime()) ? undefined : localDate.toISOString();
+  }
+
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return trimmed;
+    const localDate = new Date(`${trimmed}T00:00`);
+    return Number.isNaN(localDate.getTime()) ? undefined : localDate.toISOString();
   }
 
   const viMatch = trimmed.match(/^(\d{1,2})\s*Th(\d{1,2})$/i);
@@ -80,11 +87,12 @@ function normalizeTaskDueDateForApi(dueDate?: string) {
 
     if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
       const year = new Date().getFullYear();
-      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      return new Date(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00`).toISOString();
     }
   }
 
-  return undefined;
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 }
 
 function mapApiTaskToTask(t: ApiTask): Task {
@@ -116,6 +124,7 @@ function mapApiTaskToTask(t: ApiTask): Task {
     categoryName: t.categoryName,
     categoryColor: t.categoryColor,
     goalId: t.goalId,
+    milestoneId: t.milestoneId,
     showOnCalendar: t.showOnCalendar ?? true,
     sortOrder: t.sortOrder,
   };
@@ -174,6 +183,7 @@ interface Goal {
   description: string;
   category: string;
   type: string;
+  period: "week" | "month" | "year";
   targetDate: string;
   progress: number;
   color: string;
@@ -186,12 +196,29 @@ interface Goal {
   }>;
 }
 
+interface CreateGoalInput {
+  title: string;
+  description?: string;
+  category: string;
+  type: string;
+  period: "week" | "month" | "year";
+  targetDate?: string;
+  color?: string;
+}
+
+interface CreateMilestoneInput {
+  title: string;
+  description?: string;
+  targetDate?: string;
+}
+
 interface Habit {
   id: string;
   title: string;
   description: string;
-  frequency: string;
+  frequency: "daily" | "weekly" | "monthly";
   targetCount: number;
+  repeatDays: string[];
   currentStreak: number;
   bestStreak: number;
   color: string;
@@ -307,10 +334,13 @@ interface DataContextType {
   toggleTaskComplete: (id: string) => Promise<void>;
   
   // Goal operations
-  addGoal: (goal: Omit<Goal, "id">) => Promise<void>;
+  addGoal: (goal: CreateGoalInput) => Promise<void>;
   updateGoal: (id: string, goal: Partial<Goal>) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
-  
+  addMilestone: (goalId: string, milestone: CreateMilestoneInput) => Promise<void>;
+  updateMilestone: (goalId: string, milestoneId: string, milestone: { title?: string; description?: string; targetDate?: string; completed?: boolean }) => Promise<void>;
+  deleteMilestone: (goalId: string, milestoneId: string) => Promise<void>;
+
   // Habit operations
   addHabit: (habit: Omit<Habit, "id" | "currentStreak" | "bestStreak" | "completedDates">) => Promise<void>;
   updateHabit: (id: string, habit: Partial<Habit>) => Promise<void>;
@@ -422,6 +452,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           description: g.description || "",
           category: g.category,
           type: g.goalType,
+          period: g.period,
           targetDate: g.targetDate || "",
           progress: g.progress,
           color: g.color,
@@ -437,12 +468,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       // Process habits
       if (habitsData.status === "fulfilled") {
-        setHabits(habitsData.value.map(h => ({
+        const fetchedHabits = habitsData.value.habits || [];
+        setHabits(fetchedHabits.map(h => ({
           id: h.id,
           title: h.title,
           description: h.description || "",
           frequency: h.frequency,
           targetCount: h.targetCount,
+          repeatDays: h.repeatDays || [],
           currentStreak: h.currentStreak,
           bestStreak: h.bestStreak,
           color: h.color,
@@ -594,6 +627,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       checklist: task.checklist,
       categoryId: task.categoryId,
       goalId: task.goalId,
+      milestoneId: task.milestoneId,
       showOnCalendar: task.showOnCalendar,
     });
     setTasks(prev => [...prev, mapApiTaskToTask(created)]);
@@ -618,8 +652,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (updates.estimatedTime !== undefined) updateData.estimatedTime = updates.estimatedTime;
     if (updates.contexts !== undefined) updateData.contexts = updates.contexts;
     if (updates.checklist !== undefined) updateData.checklist = updates.checklist;
-    if (updates.categoryId !== undefined) updateData.categoryId = updates.categoryId;
+    if (updates.categoryId) updateData.categoryId = updates.categoryId;
     if (updates.goalId !== undefined) updateData.goalId = updates.goalId;
+    if (updates.milestoneId !== undefined) updateData.milestoneId = updates.milestoneId;
     if (updates.showOnCalendar !== undefined) updateData.showOnCalendar = updates.showOnCalendar;
     if (updates.sortOrder !== undefined) updateData.sortOrder = updates.sortOrder;
 
@@ -640,16 +675,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   // Goal operations
-  const addGoal = async (goal: Omit<Goal, "id">) => {
+  const addGoal = async (goal: CreateGoalInput) => {
     const created = await goalApi.create({
       title: goal.title,
       description: goal.description,
       category: goal.category,
       goalType: goal.type,
+      period: goal.period,
       targetDate: goal.targetDate || undefined,
       color: goal.color,
     });
-    setGoals(prev => [...prev, { ...goal, id: created.id }]);
+    setGoals(prev => [...prev, {
+      id: created.id,
+      title: created.title,
+      description: created.description || "",
+      category: created.category,
+      type: created.goalType,
+      period: created.period,
+      targetDate: created.targetDate || "",
+      progress: created.progress,
+      color: created.color,
+      milestones: (created.milestones || []).map(m => ({
+        id: m.id,
+        title: m.title,
+        description: m.description || "",
+        targetDate: m.targetDate || "",
+        completed: m.completed,
+      })),
+    }]);
   };
 
   const updateGoal = async (id: string, updates: Partial<Goal>) => {
@@ -658,6 +711,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.category) updateData.category = updates.category;
     if (updates.type) updateData.goalType = updates.type;
+    if (updates.period) updateData.period = updates.period;
     if (updates.targetDate !== undefined) updateData.targetDate = updates.targetDate;
     if (updates.progress !== undefined) updateData.progress = updates.progress;
     if (updates.color) updateData.color = updates.color;
@@ -671,23 +725,92 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setGoals(prev => prev.filter(g => g.id !== id));
   };
 
+  const addMilestone = async (goalId: string, milestone: CreateMilestoneInput) => {
+    const created = await goalApi.createMilestone(goalId, milestone);
+    setGoals(prev => prev.map(goal => goal.id === goalId ? {
+      ...goal,
+      milestones: [...goal.milestones, {
+        id: created.id,
+        title: created.title,
+        description: created.description || "",
+        targetDate: created.targetDate || "",
+        completed: created.completed,
+      }],
+    } : goal));
+  };
+
+  const updateMilestone = async (goalId: string, milestoneId: string, milestone: { title?: string; description?: string; targetDate?: string; completed?: boolean }) => {
+    const updated = await goalApi.updateMilestone(goalId, milestoneId, milestone);
+    setGoals(prev => prev.map(goal => goal.id === goalId ? {
+      ...goal,
+      milestones: goal.milestones.map(item => item.id === milestoneId ? {
+        id: updated.id,
+        title: updated.title,
+        description: updated.description || "",
+        targetDate: updated.targetDate || "",
+        completed: updated.completed,
+      } : item),
+    } : goal));
+  };
+
+  const deleteMilestone = async (goalId: string, milestoneId: string) => {
+    await goalApi.deleteMilestone(goalId, milestoneId);
+    setGoals(prev => prev.map(goal => goal.id === goalId ? {
+      ...goal,
+      milestones: goal.milestones.filter(milestone => milestone.id !== milestoneId),
+    } : goal));
+  };
+
   // Habit operations
   const addHabit = async (habit: Omit<Habit, "id" | "currentStreak" | "bestStreak" | "completedDates">) => {
-    const created = await habitApi.create({
+    const payload = {
       title: habit.title,
       description: habit.description,
       frequency: habit.frequency,
       targetCount: habit.targetCount,
+      repeatDays: habit.repeatDays,
       color: habit.color,
-    });
-    setHabits(prev => [...prev, {
-      ...habit,
-      id: created.id,
-      currentStreak: 0,
-      bestStreak: 0,
-      completedDates: [],
-      completedToday: false,
-    }]);
+    };
+
+    try {
+      const created = await habitApi.create(payload);
+      setHabits(prev => [...prev, {
+        id: created.id,
+        title: created.title,
+        description: created.description || "",
+        frequency: created.frequency,
+        targetCount: created.targetCount,
+        repeatDays: created.repeatDays || [],
+        currentStreak: created.currentStreak,
+        bestStreak: created.bestStreak,
+        color: created.color,
+        completedDates: created.completedDates || [],
+        completedToday: created.completedDates ? created.completedDates.includes(new Date().toISOString().split('T')[0]) : false,
+      }]);
+      return;
+    } catch (error) {
+      if (payload.repeatDays?.length) {
+        const fallback = await habitApi.create({
+          ...payload,
+          repeatDays: [],
+        });
+        setHabits(prev => [...prev, {
+          id: fallback.id,
+          title: fallback.title,
+          description: fallback.description || "",
+          frequency: fallback.frequency,
+          targetCount: fallback.targetCount,
+          repeatDays: payload.repeatDays,
+          currentStreak: fallback.currentStreak,
+          bestStreak: fallback.bestStreak,
+          color: fallback.color,
+          completedDates: fallback.completedDates || [],
+          completedToday: fallback.completedDates ? fallback.completedDates.includes(new Date().toISOString().split('T')[0]) : false,
+        }]);
+        return;
+      }
+      throw error;
+    }
   };
 
   const updateHabit = async (id: string, updates: Partial<Habit>) => {
@@ -696,16 +819,36 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.frequency) updateData.frequency = updates.frequency;
     if (updates.targetCount !== undefined) updateData.targetCount = updates.targetCount;
+    if (updates.repeatDays !== undefined) updateData.repeatDays = updates.repeatDays;
     if (updates.color) updateData.color = updates.color;
 
-    await habitApi.update(id, updateData as Parameters<typeof habitApi.update>[1]);
-    setHabits(prev => prev.map(h => h.id === id ? { ...h, ...updates } : h));
+    try {
+      await habitApi.update(id, updateData as Parameters<typeof habitApi.update>[1]);
+      setHabits(prev => prev.map(h => h.id === id ? { ...h, ...updates } : h));
+      return;
+    } catch (error) {
+      if (updates.repeatDays && updates.repeatDays.length > 0) {
+        const fallbackUpdateData = { ...updateData, repeatDays: [] };
+        await habitApi.update(id, fallbackUpdateData as Parameters<typeof habitApi.update>[1]);
+        setHabits(prev => prev.map(h => h.id === id ? { ...h, ...updates, repeatDays: updates.repeatDays || [] } : h));
+        return;
+      }
+      throw error;
+    }
   };
 
   const toggleHabitDate = async (id: string, dateStr: string) => {
     const updated = await habitApi.toggleCompletion(id, dateStr);
     setHabits(prev => prev.map(h => h.id === id ? {
       ...h,
+      title: updated.title,
+      description: updated.description || "",
+      frequency: updated.frequency,
+      targetCount: updated.targetCount,
+      repeatDays: updated.repeatDays || [],
+      currentStreak: updated.currentStreak,
+      bestStreak: updated.bestStreak,
+      color: updated.color,
       completedDates: updated.completedDates || [],
       completedToday: updated.completedDates ? updated.completedDates.includes(new Date().toISOString().split('T')[0]) : false,
     } : h));
@@ -876,6 +1019,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         addGoal,
         updateGoal,
         deleteGoal,
+        addMilestone,
+        updateMilestone,
+        deleteMilestone,
         addHabit,
         updateHabit,
         toggleHabitDate,

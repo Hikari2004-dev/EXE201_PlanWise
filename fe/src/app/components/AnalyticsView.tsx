@@ -4,14 +4,14 @@ import {
   LineChart, Line, PieChart, Pie, Cell
 } from "recharts";
 import { TrendingUp, Calendar, MessageSquare, Smile, Frown, Meh, Flame, Save, Sparkles, Bot, ArrowRight } from "lucide-react";
-import { DAILY_REFLECTIONS, HABITS } from "../data/mockData";
+import { DAILY_REFLECTIONS } from "../data/mockData";
 import { useData } from "../context/DataContext";
 import { HintBubble } from "./HintBubble";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router";
 
 export function AnalyticsView() {
-  const { language } = useData();
+  const { language, habits } = useData();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [recapRange, setRecapRange] = useState<"week" | "month">("week");
@@ -69,7 +69,9 @@ export function AnalyticsView() {
   const bestDay = weeklyProgress.reduce((best, item) => (item.completed > best.completed ? item : best), weeklyProgress[0]);
   const lowestEnergyDay = weeklyProgress.reduce((lowest, item) => (item.energy < lowest.energy ? item : lowest), weeklyProgress[0]);
   const topCategory = categoryData.reduce((top, item) => (item.value > top.value ? item : top), categoryData[0]);
-  const strongestHabit = HABITS.reduce((top, item) => (item.currentStreak > top.currentStreak ? item : top), HABITS[0]);
+  const strongestHabit = habits.length > 0
+    ? habits.reduce((top, item) => (item.currentStreak > top.currentStreak ? item : top), habits[0])
+    : null;
   const reflectionMood = reflections[0]?.mood ?? "good";
   const recentObstacle = reflections[0]?.obstacles ?? "";
 
@@ -98,15 +100,15 @@ export function AnalyticsView() {
   const monthlyRecap = {
     summary:
       language === "vi"
-        ? `Nhìn theo tháng, AI ước tính bạn đang giữ nhịp khá ổn ở nhóm thói quen và công việc cốt lõi. Chuỗi tốt nhất hiện tại là "${strongestHabit.title}" với ${strongestHabit.currentStreak} ngày liên tiếp.`
-        : `On a monthly view, your consistency is strongest around ${strongestHabit.title}.`,
+        ? `Nhìn theo tháng, AI ước tính bạn đang giữ nhịp khá ổn ở nhóm thói quen và công việc cốt lõi. Chuỗi tốt nhất hiện tại là "${strongestHabit?.title ?? (language === "vi" ? "chưa có dữ liệu" : "no data yet")}" với ${strongestHabit?.currentStreak ?? 0} ngày liên tiếp.`
+        : `On a monthly view, your consistency is strongest around ${strongestHabit?.title ?? "no data yet"}.`,
     observation:
       language === "vi"
         ? `Tâm trạng gần đây được ghi nhận là "${getMoodLabel(reflectionMood)}", và trở ngại nổi bật nhất là: ${recentObstacle || "chưa có dữ liệu trở ngại cụ thể"}.`
         : `Recent mood is ${getMoodLabel(reflectionMood)}.`,
     suggestions: language === "vi"
       ? [
-          `Giữ đà cho thói quen "${strongestHabit.title}" bằng cách neo nó vào một khung giờ cố định trong tháng.`,
+          `Giữ đà cho thói quen "${strongestHabit?.title ?? "chưa có dữ liệu"}" bằng cách neo nó vào một khung giờ cố định trong tháng.`,
           `Tạo 1 mục tiêu cải thiện nhỏ dựa trên trở ngại "${recentObstacle || "sự phân tâm"}" để đo được tiến triển mỗi tuần.`,
           `Dành thêm thời gian cho các danh mục dưới 20% nếu bạn muốn cân bằng hơn giữa công việc, sức khỏe và học tập.`,
         ]
@@ -247,7 +249,7 @@ export function AnalyticsView() {
                       : language === "vi" ? "Thói quen mạnh nhất" : "Strongest habit"}
                   </p>
                   <p className="mt-1 text-lg font-bold text-zinc-950 dark:text-slate-50">
-                    {recapRange === "week" ? `${weeklyCompletionRate}%` : `${strongestHabit.title} · ${strongestHabit.currentStreak} ngày`}
+                    {recapRange === "week" ? `${weeklyCompletionRate}%` : `${strongestHabit?.title ?? (language === "vi" ? "Chưa có dữ liệu" : "No data yet")} · ${strongestHabit?.currentStreak ?? 0} ngày`}
                   </p>
                 </div>
                 <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950">
@@ -466,7 +468,7 @@ export function AnalyticsView() {
               </h3>
             </div>
             <div className="divide-y divide-zinc-100 dark:divide-slate-800">
-              {HABITS.map(habit => (
+              {habits.map(habit => (
                 <div key={habit.id} className="flex items-center justify-between px-6 py-4 hover:bg-zinc-50/50 dark:hover:bg-slate-800/50 transition-colors">
                   <div className="min-w-0 flex-1 mr-4">
                     <h4 className="text-sm font-semibold text-zinc-950 dark:text-slate-100 truncate">{habit.title}</h4>

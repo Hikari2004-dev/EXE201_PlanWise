@@ -1,5 +1,6 @@
 package com.exe201.planwise.habit.service;
 
+import com.exe201.planwise.common.enums.EventColor;
 import com.exe201.planwise.exception.AppException;
 import com.exe201.planwise.exception.ErrorCode;
 import com.exe201.planwise.habit.dto.*;
@@ -16,8 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -66,7 +70,8 @@ public class HabitService {
                 .description(request.description())
                 .frequency(request.frequency())
                 .targetCount(request.targetCount())
-                .color(request.color())
+                .repeatDays(normalizeRepeatDays(request.repeatDays()))
+                .color(parseColor(request.color()))
                 .build();
 
         habit = habitRepository.save(habit);
@@ -91,8 +96,11 @@ public class HabitService {
         if (request.targetCount() != null) {
             habit.setTargetCount(request.targetCount());
         }
+        if (request.repeatDays() != null) {
+            habit.setRepeatDays(normalizeRepeatDays(request.repeatDays()));
+        }
         if (request.color() != null) {
-            habit.setColor(request.color());
+            habit.setColor(parseColor(request.color()));
         }
         if (request.isActive() != null) {
             habit.setActive(request.isActive());
@@ -161,6 +169,17 @@ public class HabitService {
     private void updateStreakAfterCompletion(Habit habit, LocalDate date) {
         short currentStreak = habit.getCurrentStreak();
 
+        if (!habit.getRepeatDays().isEmpty()) {
+            LocalDate previousScheduledDate = findPreviousScheduledDate(habit, date);
+            if (habit.isCompletedOn(previousScheduledDate) || currentStreak == 0) {
+                habit.setCurrentStreak((short) (currentStreak + 1));
+                if (habit.getCurrentStreak() > habit.getBestStreak()) {
+                    habit.setBestStreak(habit.getCurrentStreak());
+                }
+            }
+            return;
+        }
+
         if (habit.getFrequency() == HabitFrequency.daily) {
             LocalDate yesterday = date.minusDays(1);
             if (habit.isCompletedOn(yesterday) || currentStreak == 0) {
@@ -181,6 +200,14 @@ public class HabitService {
     }
 
     private void updateStreakAfterUncompletion(Habit habit, LocalDate date) {
+        if (!habit.getRepeatDays().isEmpty()) {
+            LocalDate previousScheduledDate = findPreviousScheduledDate(habit, date);
+            if (!habit.isCompletedOn(previousScheduledDate)) {
+                habit.setCurrentStreak((short) 0);
+            }
+            return;
+        }
+
         if (habit.getFrequency() == HabitFrequency.daily) {
             LocalDate yesterday = date.minusDays(1);
             if (!habit.isCompletedOn(yesterday)) {
@@ -191,6 +218,51 @@ public class HabitService {
             if (!habit.isCompletedOn(lastWeekStart)) {
                 habit.setCurrentStreak((short) 0);
             }
+        }
+    }
+
+    private LocalDate findPreviousScheduledDate(Habit habit, LocalDate date) {
+        for (int i = 1; i <= 7; i++) {
+            LocalDate candidate = date.minusDays(i);
+            if (habit.getRepeatDays().contains(toDayCode(candidate))) {
+                return candidate;
+            }
+        }
+        return date.minusDays(1);
+    }
+
+    private String toDayCode(LocalDate date) {
+        return switch (date.getDayOfWeek()) {
+            case MONDAY -> "MON";
+            case TUESDAY -> "TUE";
+            case WEDNESDAY -> "WED";
+            case THURSDAY -> "THU";
+            case FRIDAY -> "FRI";
+            case SATURDAY -> "SAT";
+            case SUNDAY -> "SUN";
+        };
+    }
+
+    private Set<String> normalizeRepeatDays(Set<String> repeatDays) {
+        if (repeatDays == null || repeatDays.isEmpty()) {
+            return new LinkedHashSet<>();
+        }
+
+        return repeatDays.stream()
+                .filter(day -> day != null && !day.isBlank())
+                .map(day -> day.trim().toUpperCase())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private EventColor parseColor(String color) {
+        if (color == null || color.isBlank()) {
+            return EventColor.indigo;
+        }
+
+        try {
+            return EventColor.valueOf(color.trim().toLowerCase());
+        } catch (IllegalArgumentException ignored) {
+            return EventColor.indigo;
         }
     }
 

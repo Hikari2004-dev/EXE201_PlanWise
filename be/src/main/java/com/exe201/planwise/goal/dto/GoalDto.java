@@ -1,7 +1,6 @@
 package com.exe201.planwise.goal.dto;
 
 import com.exe201.planwise.goal.entity.Goal;
-import com.exe201.planwise.goal.enums.GoalCategory;
 import com.exe201.planwise.goal.enums.GoalPeriod;
 import com.exe201.planwise.goal.enums.GoalType;
 import jakarta.validation.constraints.*;
@@ -15,7 +14,9 @@ public record GoalDto(
         UUID id,
         String title,
         String description,
-        GoalCategory category,
+        UUID categoryId,
+        String categoryName,
+        String categoryColor,
         GoalType goalType,
         GoalPeriod period,
         LocalDate targetDate,
@@ -33,9 +34,10 @@ public record GoalDto(
                 goal.getId(),
                 goal.getTitle(),
                 goal.getDescription(),
-                goal.getCategory(),
-                goal.getGoalType(),
-                goal.getPeriod(),
+                goal.getCategory().getId(),
+                goal.getCategory().getName(),
+                goal.getCategory().getColor().name(),
+                goal.getGoalType(),                goal.getPeriod(),
                 goal.getTargetDate(),
                 goal.getProgress(),
                 goal.getColor(),
@@ -55,9 +57,10 @@ public record GoalDto(
                 goal.getId(),
                 goal.getTitle(),
                 goal.getDescription(),
-                goal.getCategory(),
-                goal.getGoalType(),
-                goal.getPeriod(),
+                goal.getCategory().getId(),
+                goal.getCategory().getName(),
+                goal.getCategory().getColor().name(),
+                goal.getGoalType(),                goal.getPeriod(),
                 goal.getTargetDate(),
                 goal.getProgress(),
                 goal.getColor(),

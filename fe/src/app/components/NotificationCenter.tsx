@@ -117,7 +117,13 @@ export function NotificationCenter() {
     const overdueTask = tasks
       .filter((task) => !task.completed && parseViDate(task.dueDate) < PLAN_TODAY)
       .sort((a, b) => parseViDate(a.dueDate).getTime() - parseViDate(b.dueDate).getTime())[0];
-    const habitReminder = habits.find((habit) => !habit.completedDates.includes(PLAN_TODAY_ISO));
+    const habitReminder = habits.find((habit) => {
+      if (habit.repeatDays.length > 0) {
+        const todayCode = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][new Date(PLAN_TODAY_ISO).getDay()];
+        if (!habit.repeatDays.includes(todayCode)) return false;
+      }
+      return !habit.completedDates.includes(PLAN_TODAY_ISO);
+    });
     const progressReminder = tasks.find((task) => !task.completed && task.priority === "Cao");
     const goalReminder = goals
       .filter((goal) => goal.progress < 60)

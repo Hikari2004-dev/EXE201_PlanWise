@@ -172,9 +172,6 @@ export function LoginPage() {
                 <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Mật khẩu
                 </label>
-                <a href="#forgot" className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
-                  Quên mật khẩu?
-                </a>
               </div>
               <div className="relative">
                 <Input

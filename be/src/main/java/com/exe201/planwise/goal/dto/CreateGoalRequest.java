@@ -1,11 +1,11 @@
 package com.exe201.planwise.goal.dto;
 
-import com.exe201.planwise.goal.enums.GoalCategory;
 import com.exe201.planwise.goal.enums.GoalPeriod;
 import com.exe201.planwise.goal.enums.GoalType;
 import jakarta.validation.constraints.*;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 public record CreateGoalRequest(
         @NotBlank(message = "Tiêu đề không được để trống")
@@ -14,7 +14,8 @@ public record CreateGoalRequest(
 
         String description,
 
-        GoalCategory category,
+        @NotNull(message = "Danh mục không được để trống")
+        UUID categoryId,
 
         GoalType goalType,
 
@@ -26,7 +27,6 @@ public record CreateGoalRequest(
         String color
 ) {
     public CreateGoalRequest {
-        if (category == null) category = GoalCategory.career;
         if (goalType == null) goalType = GoalType.SMART;
         if (color == null || color.isBlank()) color = "indigo";
     }

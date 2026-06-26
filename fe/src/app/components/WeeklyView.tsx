@@ -14,7 +14,6 @@ import {
 const START_HOUR = 0;
 const END_HOUR = 24;
 const HOUR_HEIGHT = 72;
-const MODAL_HOURS = Array.from({ length: 24 }, (_, i) => i);
 const DEFAULT_START_HOUR = 8;
 const DEFAULT_END_HOUR = 18;
 const MIN_VISIBLE_HOURS = 6;
@@ -70,11 +69,14 @@ function parseUiDueDate(value?: string): Date | null {
   if (isoDate) return isoDate;
 
   const viMatch = trimmed.match(/^(\d{1,2})\s*Th(\d{1,2})$/i);
-  if (!viMatch) return null;
+  if (viMatch) {
+    const date = new Date(new Date().getFullYear(), Number(viMatch[2]) - 1, Number(viMatch[1]));
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
 
-  const date = new Date(new Date().getFullYear(), Number(viMatch[2]) - 1, Number(viMatch[1]));
-  date.setHours(0, 0, 0, 0);
-  return date;
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function formatWeekRange(weekStart: Date, language: string) {
@@ -104,6 +106,10 @@ function formatHourLabel(hour: number) {
   const period = hour >= 12 ? "CH" : "SA";
   const display = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
   return `${display} ${period}`;
+}
+
+function formatTimeValue(hour: number, minute: number) {
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
 type WeeklyCalendarItem = CalendarEvent & {
@@ -191,12 +197,17 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
   const [categoryForm, setCategoryForm] = useState({ name: "", color: "indigo" as EventColor });
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [categoryError, setCategoryError] = useState<string | null>(null);
+  const initialStartHour = event?.startHour ?? 9;
+  const initialStartMin = event?.startMin ?? 0;
+  const initialDurationMinutes = Math.max(30, Math.round((event?.duration ?? 1) * 60));
+  const initialStartTotalMinutes = initialStartHour * 60 + initialStartMin;
+  const initialEndTotalMinutes = Math.min(23 * 60 + 59, initialStartTotalMinutes + initialDurationMinutes);
+
   const [form, setForm] = useState({
     title: event?.title || "",
     day: event?.day || "Mon",
-    startHour: event?.startHour.toString() || "9",
-    startMin: event?.startMin.toString() || "0",
-    duration: event?.duration.toString() || "1",
+    startTime: formatTimeValue(initialStartHour, initialStartMin),
+    endTime: formatTimeValue(Math.floor(initialEndTotalMinutes / 60), initialEndTotalMinutes % 60),
     location: event?.location || "",
     notes: event?.notes || "",
     color: (event?.color || "indigo") as EventColor,
@@ -213,13 +224,23 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
     const selectedDate = weekDates[dayIndex] ?? weekDates[0] ?? new Date();
     const eventDate = form.eventDate || formatIsoDate(selectedDate);
 
+    const [startHourString, startMinString] = form.startTime.split(":");
+    const [endHourString, endMinString] = form.endTime.split(":");
+    const startHour = Number(startHourString);
+    const startMin = Number(startMinString);
+    const endHour = Number(endHourString);
+    const endMin = Number(endMinString);
+    const startTotalMinutes = startHour * 60 + startMin;
+    const endTotalMinutes = endHour * 60 + endMin;
+    const durationMinutes = endTotalMinutes > startTotalMinutes ? endTotalMinutes - startTotalMinutes : 60;
+
     const eventData = {
       title: form.title,
       day: form.day,
       eventDate,
-      startHour: parseInt(form.startHour),
-      startMin: parseInt(form.startMin),
-      duration: parseFloat(form.duration),
+      startHour,
+      startMin,
+      duration: durationMinutes / 60,
       color: form.color,
       location: form.location || "Chưa có",
       notes: form.notes,
@@ -329,33 +350,26 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Giờ bắt đầu</label>
-              <select value={form.startHour} onChange={(e) => setForm({ ...form, startHour: e.target.value })} className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all cursor-pointer">
-                {MODAL_HOURS.map((h) => (
-                  <option key={h} value={h} className="dark:bg-slate-900">
-                    {h}:00
-                  </option>
-                ))}
-              </select>
+              <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Thời gian bắt đầu</label>
+              <input
+                type="time"
+                step={1800}
+                value={form.startTime}
+                onChange={(e) => setForm({ ...form, startTime: e.target.value })}
+                className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all"
+              />
             </div>
             <div>
-              <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Phút</label>
-              <select value={form.startMin} onChange={(e) => setForm({ ...form, startMin: e.target.value })} className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all cursor-pointer">
-                <option value="0" className="dark:bg-slate-900">:00</option>
-                <option value="30" className="dark:bg-slate-900">:30</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Thời lượng</label>
-              <select value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all cursor-pointer">
-                {[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4].map((d) => (
-                  <option key={d} value={d} className="dark:bg-slate-900">
-                    {d}h
-                  </option>
-                ))}
-              </select>
+              <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Thời gian kết thúc</label>
+              <input
+                type="time"
+                step={1800}
+                value={form.endTime}
+                onChange={(e) => setForm({ ...form, endTime: e.target.value })}
+                className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all"
+              />
             </div>
           </div>
           <div>
@@ -634,25 +648,37 @@ export function WeeklyView() {
     const items: WeeklyCalendarItem[] = [];
 
     tasks
-      .filter((task) => !task.completed && task.showOnCalendar !== false && !!task.scheduledAt)
+      .filter((task) => !task.completed && task.showOnCalendar !== false)
       .forEach((task) => {
         const scheduledAt = task.scheduledAt ? new Date(task.scheduledAt) : null;
-        if (!scheduledAt || Number.isNaN(scheduledAt.getTime())) return;
+        const dueDate = parseUiDueDate(task.dueDate);
+        const baseDate = scheduledAt && !Number.isNaN(scheduledAt.getTime())
+          ? scheduledAt
+          : dueDate && !Number.isNaN(dueDate.getTime())
+          ? dueDate
+          : null;
 
-        const dayCode = DAYS[(scheduledAt.getDay() + 6) % 7];
-        const durationInHours = Math.max(0.5, (task.estimatedTime || 60) / 60);
-        const eventDate = `${scheduledAt.getFullYear()}-${String(scheduledAt.getMonth() + 1).padStart(2, "0")}-${String(scheduledAt.getDate()).padStart(2, "0")}`;
+        if (!baseDate) return;
+
+        const dayCode = DAYS[(baseDate.getDay() + 6) % 7];
+        const durationInHours = scheduledAt ? Math.max(0.5, (task.estimatedTime || 60) / 60) : 0.5;
+        const eventDate = `${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, "0")}-${String(baseDate.getDate()).padStart(2, "0")}`;
+        const isDeadlineOnly = !scheduledAt && !!dueDate;
 
         items.push({
           id: `task-${task.id}`,
           title: task.title,
           day: dayCode,
-          startHour: scheduledAt.getHours(),
-          startMin: scheduledAt.getMinutes(),
+          startHour: baseDate.getHours(),
+          startMin: baseDate.getMinutes(),
           duration: durationInHours,
           color: task.categoryColor || task.color || "amber",
-          location: language === "vi" ? "Công việc đã lên lịch" : "Scheduled task",
-          notes: task.description || (language === "vi" ? "Hiển thị từ thời gian task" : "Shown from task schedule"),
+          location: isDeadlineOnly
+            ? (language === "vi" ? "Hạn chót" : "Deadline")
+            : (language === "vi" ? "Công việc đã lên lịch" : "Scheduled task"),
+          notes: task.description || (isDeadlineOnly
+            ? (language === "vi" ? "Hiển thị từ deadline task" : "Shown from task deadline")
+            : (language === "vi" ? "Hiển thị từ thời gian task" : "Shown from task schedule")),
           categoryId: task.categoryId || "",
           eventDate,
           kind: "task",

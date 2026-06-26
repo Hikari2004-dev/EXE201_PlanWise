@@ -30,6 +30,7 @@ public class TaskController {
             @RequestParam(required = false) String priority,
             @RequestParam(required = false) String eisenhowerMatrix,
             @RequestParam(required = false) UUID goalId,
+            @RequestParam(required = false) UUID milestoneId,
             @RequestParam(required = false) Boolean showOnCalendar,
             @RequestParam(required = false) LocalDate dateFrom,
             @RequestParam(required = false) LocalDate dateTo) {
@@ -42,6 +43,7 @@ public class TaskController {
                 priority,
                 eisenhowerMatrix,
                 goalId,
+                milestoneId,
                 showOnCalendar,
                 dateFrom,
                 dateTo

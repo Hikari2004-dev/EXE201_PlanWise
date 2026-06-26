@@ -34,47 +34,33 @@ function normalizeColor(color: string | undefined): string {
   return color.toLowerCase();
 }
 
-function normalizeUiDateToDateString(dueDate?: string) {
-  if (!dueDate) return "";
-  const trimmed = dueDate.trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return trimmed;
-  }
-  const viMatch = trimmed.match(/^(\d{1,2})\s*Th(\d{1,2})$/i);
-  if (viMatch) {
-    const day = Number(viMatch[1]);
-    const month = Number(viMatch[2]);
-    if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
-      const year = new Date().getFullYear();
-      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    }
-  }
-  return "";
-}
-
-function formatDueDateLabel(dueDate?: string) {
-  if (!dueDate) return "";
-  const trimmed = dueDate.trim();
-  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (isoMatch) {
-    return `${Number(isoMatch[3])} Th${Number(isoMatch[2])}`;
-  }
-
-  const viMatch = trimmed.match(/^(\d{1,2})\s*Th(\d{1,2})$/i);
-  if (viMatch) {
-    return `${Number(viMatch[1])} Th${Number(viMatch[2])}`;
-  }
-
-  return trimmed;
-}
-
 function toDateTimeLocalValue(value?: string) {
   if (!value) return "";
-  const date = new Date(value);
+  const trimmed = value.trim();
+  const dateOnly = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    return `${dateOnly[1]}-${dateOnly[2]}-${dateOnly[3]}T00:00`;
+  }
+
+  const date = new Date(trimmed);
   if (Number.isNaN(date.getTime())) return "";
   const pad = (num: number) => String(num).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
+
+function formatDueDateLabel(dueDate?: string) {
+  if (!dueDate) return "";
+  const date = new Date(dueDate);
+  if (Number.isNaN(date.getTime())) return dueDate;
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date).replace(",", "");
+}
+
 
 function formatScheduledAtLabel(value?: string) {
   if (!value) return "";
@@ -83,6 +69,7 @@ function formatScheduledAtLabel(value?: string) {
   return new Intl.DateTimeFormat("vi-VN", {
     day: "2-digit",
     month: "2-digit",
+    year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   }).format(date).replace(",", "");
@@ -96,7 +83,15 @@ function normalizeChecklistItems(value: string) {
 }
 
 function getTaskStatus(task: Task) {
-  return task.status || (task.completed ? "COMPLETED" : "IN_PROGRESS");
+  if (task.status) return task.status;
+  if (task.completed) return "COMPLETED";
+
+  const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+  if (dueDate && !Number.isNaN(dueDate.getTime()) && dueDate < new Date()) {
+    return "MISSED";
+  }
+
+  return "IN_PROGRESS";
 }
 
 function getTaskStatusLabel(status: string, language: "vi" | "en") {
@@ -495,7 +490,7 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
   const [form, setForm] = useState({
     title: task?.title || "",
     categoryId: resolvedCategoryId,
-    dueDate: task?.dueDate ? normalizeUiDateToDateString(task.dueDate) : "",
+    dueDate: task?.dueDate ? toDateTimeLocalValue(task.dueDate) : "",
     scheduledAt: toDateTimeLocalValue(task?.scheduledAt),
     priority: (task?.priority || "Trung bình") as Task["priority"],
     color: normalizeColor(task?.color) || "indigo" as EventColor,
@@ -506,11 +501,15 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
     contexts: task?.contexts || [] as string[],
     checklist: task?.checklist?.join("\n") || "",
     goalId: task?.goalId || "",
+    milestoneId: task?.milestoneId || "",
     showOnCalendar: task?.showOnCalendar ?? true,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [categoryError, setCategoryError] = useState<string | null>(null);
+
+  const selectedGoal = goals.find((goal) => goal.id === form.goalId);
+  const selectedMilestones = selectedGoal?.milestones || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -518,8 +517,8 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
     
     const taskData = {
       title: form.title,
-      categoryId: form.categoryId || categories[0]?.id || "",
-      dueDate: form.dueDate || "",
+      categoryId: form.categoryId || categories[0]?.id || undefined,
+      dueDate: form.dueDate,
       scheduledAt: form.scheduledAt ? new Date(form.scheduledAt).toISOString() : undefined,
       priority: form.priority,
       completed: form.status === "COMPLETED",
@@ -531,6 +530,7 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
       contexts: form.contexts.length > 0 ? form.contexts : undefined,
       checklist: normalizeChecklistItems(form.checklist),
       goalId: form.goalId || undefined,
+      milestoneId: form.milestoneId || undefined,
       showOnCalendar: form.showOnCalendar,
     };
 
@@ -633,7 +633,7 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
             <div>
               <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Hạn chót</label>
               <input
-                type="date"
+                type="datetime-local"
                 value={form.dueDate}
                 onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
                 className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all bg-white"
@@ -685,7 +685,7 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
               <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Goal</label>
               <select
                 value={form.goalId}
-                onChange={(e) => setForm({ ...form, goalId: e.target.value })}
+                onChange={(e) => setForm({ ...form, goalId: e.target.value, milestoneId: "" })}
                 className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all bg-white"
               >
                 <option value="">Không thuộc goal</option>
@@ -694,6 +694,22 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
                 ))}
               </select>
             </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Milestone</label>
+              <select
+                value={form.milestoneId}
+                onChange={(e) => setForm({ ...form, milestoneId: e.target.value })}
+                disabled={!selectedGoal}
+                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all bg-white disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400"
+              >
+                <option value="">Không thuộc milestone</option>
+                {selectedMilestones.map((milestone) => (
+                  <option key={milestone.id} value={milestone.id}>{milestone.title}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Calendar</label>
               <label className="flex h-[42px] items-center gap-2 rounded-lg border border-zinc-300 px-3 text-sm font-medium text-zinc-700">

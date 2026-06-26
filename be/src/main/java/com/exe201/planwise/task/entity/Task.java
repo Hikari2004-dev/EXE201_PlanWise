@@ -3,6 +3,7 @@ package com.exe201.planwise.task.entity;
 import com.exe201.planwise.common.enums.EventColor;
 import com.exe201.planwise.category.entity.Category;
 import com.exe201.planwise.goal.entity.Goal;
+import com.exe201.planwise.goal.entity.Milestone;
 import com.exe201.planwise.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -11,7 +12,6 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +43,10 @@ public class Task {
     @JoinColumn(name = "goal_id")
     private Goal goal;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "milestone_id")
+    private Milestone milestone;
+
     @Column(nullable = false, length = 255)
     private String title;
 
@@ -50,7 +54,7 @@ public class Task {
     private String description;
 
     @Column(name = "due_date")
-    private LocalDate dueDate;
+    private OffsetDateTime dueDate;
 
     @Column(name = "scheduled_at")
     private OffsetDateTime scheduledAt;

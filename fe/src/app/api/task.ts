@@ -12,6 +12,7 @@ export const taskApi = {
     priority?: string;
     eisenhowerMatrix?: string;
     goalId?: string;
+    milestoneId?: string;
     showOnCalendar?: boolean;
     dateFrom?: string;
     dateTo?: string;
@@ -33,6 +34,7 @@ export const taskApi = {
       searchParams.set("eisenhowerMatrix", params.eisenhowerMatrix.replace(/-/g, "_"));
     }
     if (params?.goalId) searchParams.set("goalId", params.goalId);
+    if (params?.milestoneId) searchParams.set("milestoneId", params.milestoneId);
     if (params?.showOnCalendar !== undefined) searchParams.set("showOnCalendar", String(params.showOnCalendar));
     if (params?.dateFrom) searchParams.set("dateFrom", params.dateFrom);
     if (params?.dateTo) searchParams.set("dateTo", params.dateTo);
@@ -75,6 +77,7 @@ export const taskApi = {
     checklist?: string[];
     categoryId?: string;
     goalId?: string;
+    milestoneId?: string;
     showOnCalendar?: boolean;
   }): Promise<ApiTask> {
     const priorityMap: Record<string, string> = {
@@ -117,6 +120,7 @@ export const taskApi = {
     checklist?: string[];
     categoryId?: string;
     goalId?: string;
+    milestoneId?: string;
     showOnCalendar?: boolean;
     sortOrder?: number;
   }): Promise<ApiTask> {

@@ -1,5 +1,7 @@
 package com.exe201.planwise.goal.service;
 
+import com.exe201.planwise.category.entity.Category;
+import com.exe201.planwise.category.repository.CategoryRepository;
 import com.exe201.planwise.exception.AppException;
 import com.exe201.planwise.exception.ErrorCode;
 import com.exe201.planwise.goal.dto.*;
@@ -28,6 +30,7 @@ public class GoalService {
 
     private final GoalRepository goalRepository;
     private final MilestoneRepository milestoneRepository;
+    private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
@@ -65,7 +68,7 @@ public class GoalService {
                 .user(user)
                 .title(request.title())
                 .description(request.description())
-                .category(request.category())
+                .category(findCategory(request.categoryId(), userId))
                 .goalType(request.goalType())
                 .period(request.period())
                 .targetDate(request.targetDate())
@@ -88,8 +91,8 @@ public class GoalService {
         if (request.description() != null) {
             goal.setDescription(request.description());
         }
-        if (request.category() != null) {
-            goal.setCategory(request.category());
+        if (request.categoryId() != null) {
+            goal.setCategory(findCategory(request.categoryId(), userId));
         }
         if (request.goalType() != null) {
             goal.setGoalType(request.goalType());
@@ -218,6 +221,16 @@ public class GoalService {
     private User findUser(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    private Category findCategory(UUID categoryId, UUID userId) {
+        if (categoryId == null) {
+            throw new AppException(ErrorCode.CATEGORY_NOT_FOUND);
+        }
+
+        return categoryRepository.findById(categoryId)
+                .filter(category -> category.getUser().getId().equals(userId))
+                .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
     }
 
     private Goal findGoalAndValidateOwnership(UUID goalId, UUID userId) {

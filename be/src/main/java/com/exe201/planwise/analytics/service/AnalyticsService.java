@@ -115,7 +115,7 @@ public class AnalyticsService {
         return habits.stream().map(habit -> HabitStreakData.builder()
                         .habitId(habit.getId())
                         .title(habit.getTitle())
-                        .color(habit.getColor())
+                        .color(habit.getColor() != null ? habit.getColor().name() : null)
                         .currentStreak(habit.getCurrentStreak())
                         .bestStreak(habit.getBestStreak())
                         .completionsThisWeek(countCompletionsThisWeek(habit))

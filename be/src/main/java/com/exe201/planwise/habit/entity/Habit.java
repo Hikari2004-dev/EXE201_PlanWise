@@ -1,15 +1,19 @@
 package com.exe201.planwise.habit.entity;
 
+import com.exe201.planwise.common.enums.EventColor;
 import com.exe201.planwise.habit.enums.HabitFrequency;
 import com.exe201.planwise.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
 
@@ -54,9 +58,11 @@ public class Habit {
     @Builder.Default
     private short bestStreak = 0;
 
-    @Column(nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "color", columnDefinition = "event_color", nullable = false)
     @Builder.Default
-    private String color = "indigo";
+    private EventColor color = EventColor.indigo;
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default
@@ -65,6 +71,12 @@ public class Habit {
     @Column(name = "sort_order", nullable = false)
     @Builder.Default
     private int sortOrder = 0;
+
+    @ElementCollection
+    @CollectionTable(name = "habit_repeat_days", joinColumns = @JoinColumn(name = "habit_id"))
+    @Column(name = "day_code", length = 10)
+    @Builder.Default
+    private Set<String> repeatDays = new LinkedHashSet<>();
 
     @ElementCollection
     @CollectionTable(name = "habit_completions", joinColumns = @JoinColumn(name = "habit_id"))

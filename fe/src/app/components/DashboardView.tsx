@@ -36,17 +36,28 @@ function formatScheduledTaskTime(value?: string) {
 
 function parseTaskDueDate(value?: string) {
   if (!value) return null;
-  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return null;
-  const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  parsed.setHours(0, 0, 0, 0);
-  return parsed;
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) {
+    const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    parsed.setHours(0, 0, 0, 0);
+    return parsed;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function formatTaskDueDateLabel(value?: string) {
   const parsed = parseTaskDueDate(value);
   if (!parsed) return value || "";
-  return `${parsed.getDate()} Th${parsed.getMonth() + 1}`;
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(parsed).replace(",", "");
 }
 
 const WEEKDAY_TO_EVENT_DAY: Record<number, string> = {
@@ -87,12 +98,18 @@ export function DashboardView() {
     .filter((task) => !task.completed && task.showOnCalendar !== false)
     .filter((task) => {
       const scheduledAt = parseScheduledAt(task.scheduledAt);
-      return scheduledAt ? isSameDay(scheduledAt, today) : false;
+      if (scheduledAt && isSameDay(scheduledAt, today)) return true;
+
+      const dueDate = parseTaskDueDate(task.dueDate);
+      return !scheduledAt && !!dueDate && isSameDay(dueDate, today);
     })
     .sort((a, b) => {
-      const aTime = parseScheduledAt(a.scheduledAt)?.getTime() || 0;
-      const bTime = parseScheduledAt(b.scheduledAt)?.getTime() || 0;
-      return aTime - bTime;
+      const aScheduled = parseScheduledAt(a.scheduledAt)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const bScheduled = parseScheduledAt(b.scheduledAt)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      if (aScheduled !== bScheduled) return aScheduled - bScheduled;
+      const aDue = parseTaskDueDate(a.dueDate)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const bDue = parseTaskDueDate(b.dueDate)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      return aDue - bDue;
     });
 
   const upcomingTasks = tasks
@@ -119,15 +136,20 @@ export function DashboardView() {
       categoryId: event.categoryId,
     })),
     ...todayScheduledTasks.map((task) => {
-      const scheduledAt = parseScheduledAt(task.scheduledAt)!;
+      const scheduledAt = parseScheduledAt(task.scheduledAt);
+      const dueDate = parseTaskDueDate(task.dueDate);
+      const hasScheduledTime = !!scheduledAt;
+      const sourceDate = scheduledAt || dueDate!;
       return {
         kind: "task" as const,
         id: task.id,
         title: task.title,
-        startHour: scheduledAt.getHours(),
-        startMin: scheduledAt.getMinutes(),
-        duration: Math.max(0.5, (task.estimatedTime || 60) / 60),
-        location: language === "vi" ? "Task đã lên lịch" : "Scheduled task",
+        startHour: sourceDate.getHours(),
+        startMin: sourceDate.getMinutes(),
+        duration: hasScheduledTime ? Math.max(0.5, (task.estimatedTime || 60) / 60) : 0.5,
+        location: hasScheduledTime
+          ? (language === "vi" ? "Task đã lên lịch" : "Scheduled task")
+          : (language === "vi" ? "Hạn chót" : "Deadline"),
         color: task.categoryColor || task.color || "indigo",
         categoryId: task.categoryId,
       };
@@ -138,14 +160,13 @@ export function DashboardView() {
   const highPriority    = tasks.filter(t => getTaskStatus(t) !== "COMPLETED" && t.priority === "Cao").length;
   const completionRate  = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
 
-  const sevenAgo = new Date(today); sevenAgo.setDate(today.getDate() - 7);
   const delayedTasks = tasks.filter(t => {
     const dueDate = parseTaskDueDate(t.dueDate);
-    return !t.completed && !!dueDate && dueDate < today;
+    return !t.completed && !!dueDate && dueDate < now;
   }).slice(0, 3);
   const abandonedTasks = tasks.filter(t => {
     const dueDate = parseTaskDueDate(t.dueDate);
-    return !t.completed && !!dueDate && dueDate < sevenAgo;
+    return !t.completed && !!dueDate && dueDate < new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   }).slice(0, 3);
 
   const categoryStats = categories.map(cat => {

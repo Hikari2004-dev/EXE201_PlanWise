@@ -1,6 +1,6 @@
 package com.exe201.planwise.goal.entity;
 
-import com.exe201.planwise.goal.enums.GoalCategory;
+import com.exe201.planwise.category.entity.Category;
 import com.exe201.planwise.goal.enums.GoalPeriod;
 import com.exe201.planwise.goal.enums.GoalType;
 import com.exe201.planwise.user.entity.User;
@@ -39,10 +39,9 @@ public class Goal {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    @Builder.Default
-    private GoalCategory category = GoalCategory.career;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "category_id", nullable = false)
+    private Category category;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "goal_type", nullable = false, length = 10)

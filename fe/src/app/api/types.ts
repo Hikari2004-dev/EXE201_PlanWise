@@ -106,6 +106,7 @@ export interface UpdateTaskRequest {
   color?: string;
   categoryId?: string;
   goalId?: string;
+  milestoneId?: string;
   eisenhowerMatrix?: string;
   status?: string;
   estimatedTime?: number;
@@ -136,6 +137,7 @@ export interface ApiTask {
   categoryName?: string;
   categoryColor?: string;
   goalId?: string;
+  milestoneId?: string;
   showOnCalendar?: boolean;
   sortOrder: number;
   createdAt: string;
@@ -193,6 +195,7 @@ export interface UpdateHabitRequest {
   description?: string;
   frequency?: 'daily' | 'weekly' | 'monthly';
   targetCount?: number;
+  repeatDays?: string[];
   color?: string;
   isActive?: boolean;
   sortOrder?: number;
@@ -204,6 +207,7 @@ export interface ApiHabit {
   description?: string;
   frequency: 'daily' | 'weekly' | 'monthly';
   targetCount: number;
+  repeatDays?: string[];
   currentStreak: number;
   bestStreak: number;
   color: string;
@@ -356,12 +360,18 @@ export interface CreateTaskRequest {
   title: string;
   description?: string;
   dueDate?: string;
+  scheduledAt?: string;
   priority?: string;
   color?: string;
   categoryId?: string;
+  goalId?: string;
+  milestoneId?: string;
   eisenhowerMatrix?: string;
+  status?: string;
   estimatedTime?: number;
   contexts?: string[];
+  checklist?: string[];
+  showOnCalendar?: boolean;
 }
 
 export interface MomoIPNRequest {
@@ -394,6 +404,7 @@ export interface CreateHabitRequest {
   description?: string;
   frequency?: 'daily' | 'weekly' | 'monthly';
   targetCount?: number;
+  repeatDays?: string[];
   color?: string;
 }
 

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn -f \"d:/learning/EXE201/EXE201_PlanWise/be/pom.xml\" -DskipTests spring-boot:run)",
+      "Bash(mvn -f \"d:/learning/EXE201/EXE201_PlanWise/be/pom.xml\" clean -DskipTests spring-boot:run)",
+      "Bash(mvn -q -DskipTests compile)"
+    ]
+  }
+}

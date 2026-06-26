@@ -6,7 +6,9 @@ import com.exe201.planwise.common.enums.EventColor;
 import com.exe201.planwise.exception.AppException;
 import com.exe201.planwise.exception.ErrorCode;
 import com.exe201.planwise.goal.entity.Goal;
+import com.exe201.planwise.goal.entity.Milestone;
 import com.exe201.planwise.goal.repository.GoalRepository;
+import com.exe201.planwise.goal.repository.MilestoneRepository;
 import com.exe201.planwise.task.dto.*;
 import com.exe201.planwise.task.entity.Task;
 import com.exe201.planwise.task.repository.TaskRepository;
@@ -32,6 +34,7 @@ public class TaskService {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final GoalRepository goalRepository;
+    private final MilestoneRepository milestoneRepository;
 
     @Transactional(readOnly = true)
     public TaskListResponse getTasks(UUID userId,
@@ -42,6 +45,7 @@ public class TaskService {
                                      String priority,
                                      String eisenhowerMatrix,
                                      UUID goalId,
+                                     UUID milestoneId,
                                      Boolean showOnCalendar,
                                      LocalDate dateFrom,
                                      LocalDate dateTo) {
@@ -53,6 +57,7 @@ public class TaskService {
                 .filter(task -> matchesPriority(task, priority))
                 .filter(task -> matchesEisenhowerMatrix(task, eisenhowerMatrix))
                 .filter(task -> goalId == null || (task.getGoal() != null && goalId.equals(task.getGoal().getId())))
+                .filter(task -> milestoneId == null || (task.getMilestone() != null && milestoneId.equals(task.getMilestone().getId())))
                 .filter(task -> showOnCalendar == null || task.isShowOnCalendar() == showOnCalendar)
                 .filter(task -> matchesDateRange(task, dateFrom, dateTo))
                 .toList();
@@ -88,7 +93,8 @@ public class TaskService {
     public TaskDto createTask(UUID userId, CreateTaskRequest request) {
         User user = findUser(userId);
         Category category = findCategory(request.categoryId(), userId);
-        Goal goal = findGoal(request.goalId(), userId);
+        Milestone milestone = findMilestone(request.milestoneId(), userId);
+        Goal goal = resolveGoal(request.goalId(), milestone, userId);
 
         Task.TaskPriority priority = parsePriority(request.priority());
         Task.EisenhowerQuadrant quadrant = parseEisenhowerMatrix(request.eisenhowerMatrix());
@@ -98,6 +104,7 @@ public class TaskService {
                 .user(user)
                 .category(category)
                 .goal(goal)
+                .milestone(milestone)
                 .title(request.title())
                 .description(request.description())
                 .dueDate(request.dueDate())
@@ -150,8 +157,30 @@ public class TaskService {
         if (request.categoryId() != null) {
             task.setCategory(findCategory(request.categoryId(), userId));
         }
-        if (request.goalId() != null) {
-            task.setGoal(findGoal(request.goalId(), userId));
+        if (request.goalId() != null || request.milestoneId() != null) {
+            Goal currentGoal = task.getGoal();
+            Milestone currentMilestone = task.getMilestone();
+            Goal updatedGoal = request.goalId() != null
+                    ? findGoal(request.goalId(), userId)
+                    : currentGoal;
+            Milestone updatedMilestone = request.milestoneId() != null
+                    ? findMilestone(request.milestoneId(), userId)
+                    : currentMilestone;
+
+            if (updatedMilestone != null) {
+                Goal milestoneGoal = updatedMilestone.getGoal();
+                if (updatedGoal != null && !updatedGoal.getId().equals(milestoneGoal.getId())) {
+                    if (request.goalId() != null && request.milestoneId() == null) {
+                        updatedMilestone = null;
+                    } else {
+                        throw new AppException(ErrorCode.BAD_REQUEST, "Cột mốc không thuộc mục tiêu đã chọn");
+                    }
+                }
+                updatedGoal = milestoneGoal;
+            }
+
+            task.setGoal(updatedGoal);
+            task.setMilestone(updatedMilestone);
         }
         if (request.contexts() != null) {
             task.setContexts(request.contexts());
@@ -225,9 +254,40 @@ public class TaskService {
             return null;
         }
 
-        return goalRepository.findById(goalId)
-                .filter(goal -> goal.getUser().getId().equals(userId))
-                .orElse(null);
+        Goal goal = goalRepository.findById(goalId)
+                .orElseThrow(() -> new AppException(ErrorCode.GOAL_NOT_FOUND));
+
+        if (!goal.getUser().getId().equals(userId)) {
+            throw new AppException(ErrorCode.GOAL_NOT_FOUND);
+        }
+        return goal;
+    }
+
+    private Milestone findMilestone(UUID milestoneId, UUID userId) {
+        if (milestoneId == null) {
+            return null;
+        }
+
+        Milestone milestone = milestoneRepository.findById(milestoneId)
+                .orElseThrow(() -> new AppException(ErrorCode.MILESTONE_NOT_FOUND));
+
+        if (!milestone.getGoal().getUser().getId().equals(userId)) {
+            throw new AppException(ErrorCode.MILESTONE_NOT_FOUND);
+        }
+        return milestone;
+    }
+
+    private Goal resolveGoal(UUID goalId, Milestone milestone, UUID userId) {
+        Goal goal = findGoal(goalId, userId);
+        if (milestone == null) {
+            return goal;
+        }
+
+        Goal milestoneGoal = milestone.getGoal();
+        if (goal != null && !goal.getId().equals(milestoneGoal.getId())) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Cột mốc không thuộc mục tiêu đã chọn");
+        }
+        return milestoneGoal;
     }
 
     private TaskDto toTaskDto(Task task) {
@@ -238,7 +298,7 @@ public class TaskService {
         if (task.isCompleted()) {
             return "COMPLETED";
         }
-        if (task.getDueDate() != null && task.getDueDate().isBefore(LocalDate.now())) {
+        if (task.getDueDate() != null && task.getDueDate().isBefore(OffsetDateTime.now())) {
             return "MISSED";
         }
         return "IN_PROGRESS";
@@ -309,10 +369,11 @@ public class TaskService {
         if (task.getDueDate() == null) {
             return false;
         }
-        if (dateFrom != null && task.getDueDate().isBefore(dateFrom)) {
+        LocalDate dueDate = task.getDueDate().toLocalDate();
+        if (dateFrom != null && dueDate.isBefore(dateFrom)) {
             return false;
         }
-        if (dateTo != null && task.getDueDate().isAfter(dateTo)) {
+        if (dateTo != null && dueDate.isAfter(dateTo)) {
             return false;
         }
         return true;

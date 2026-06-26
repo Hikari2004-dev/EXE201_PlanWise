@@ -19,7 +19,8 @@ export const goalApi = {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to fetch goals");
-    return response.json();
+    const payload = await response.json();
+    return Array.isArray(payload) ? payload : (payload.goals || []);
   },
 
   async getById(id: string): Promise<ApiGoal> {
@@ -35,7 +36,7 @@ export const goalApi = {
     description?: string;
     category?: string;
     goalType?: string;
-    period?: string;
+    period: string;
     targetDate?: string;
     color?: string;
   }): Promise<ApiGoal> {

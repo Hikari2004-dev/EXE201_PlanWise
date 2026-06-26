@@ -22,6 +22,10 @@ spring:
         format_sql: true
         default_schema: public
 
+  sql:
+    init:
+      mode: always
+
   mail:
     host: ${SPRING_MAIL_HOST:smtp.gmail.com}
     port: ${SPRING_MAIL_PORT:587}
