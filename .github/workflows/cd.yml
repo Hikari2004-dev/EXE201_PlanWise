@@ -85,7 +85,7 @@ jobs:
           DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
           SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
         run: |
-          DEPLOY_PORT="${DEPLOY_PORT:-22}"
+          DEPLOY_PORT="${DEPLOY_PORT:-2217}"
           mkdir -p ~/.ssh
           if [ -n "$SSH_KNOWN_HOSTS" ]; then
             printf '%s\n' "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
@@ -101,7 +101,7 @@ jobs:
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
           DEPLOY_SHA: ${{ github.sha }}
         run: |
-          DEPLOY_PORT="${DEPLOY_PORT:-22}"
+          DEPLOY_PORT="${DEPLOY_PORT:-2217}"
           ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
             "DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_SHA='$DEPLOY_SHA' bash -s" <<'DEPLOY_SCRIPT'
           set -Eeuo pipefail
