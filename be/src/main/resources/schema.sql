@@ -30,9 +30,42 @@ ALTER TABLE tasks
 
 CREATE TABLE IF NOT EXISTS habit_repeat_days (
     habit_id UUID NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
-    day_code VARCHAR(10) NOT NULL,
+    day_code VARCHAR(10) NOT NULL CHECK (day_code IN ('MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN')),
     PRIMARY KEY (habit_id, day_code)
 );
+
+-- Existing habits with selected weekdays are weekly schedules. Preserve those
+-- selections while removing the old contradictory daily/monthly classification.
+UPDATE habits AS habit
+SET frequency = 'weekly'
+WHERE frequency <> 'weekly'
+  AND EXISTS (
+      SELECT 1
+      FROM habit_repeat_days AS repeat_day
+      WHERE repeat_day.habit_id = habit.id
+  );
+
+-- Habit.completedDates is mapped as a JPA ElementCollection, so Hibernate only
+-- supplies habit_id and completed_date. Keep the denormalized user_id column in
+-- sync for its index/RLS use without requiring it in every collection insert.
+CREATE OR REPLACE FUNCTION populate_habit_completion_user_id()
+RETURNS TRIGGER AS '
+BEGIN
+    IF NEW.user_id IS NULL THEN
+        SELECT user_id INTO NEW.user_id
+        FROM habits
+        WHERE id = NEW.habit_id;
+    END IF;
+
+    RETURN NEW;
+END;
+' LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_habit_completion_user_id ON habit_completions;
+CREATE TRIGGER trg_habit_completion_user_id
+    BEFORE INSERT OR UPDATE OF habit_id ON habit_completions
+    FOR EACH ROW
+    EXECUTE FUNCTION populate_habit_completion_user_id();
 
 CREATE OR REPLACE VIEW v_tasks_with_category AS
 SELECT

@@ -369,6 +369,27 @@ CREATE TABLE habit_completions (
     UNIQUE (habit_id, completed_date)
 );
 
+-- Hibernate maps Habit.completedDates as an ElementCollection and therefore
+-- inserts only habit_id and completed_date. Derive user_id from the owning habit
+-- so the denormalized column remains valid for indexes and row-level security.
+CREATE OR REPLACE FUNCTION populate_habit_completion_user_id()
+RETURNS TRIGGER AS '
+BEGIN
+    IF NEW.user_id IS NULL THEN
+        SELECT user_id INTO NEW.user_id
+        FROM habits
+        WHERE id = NEW.habit_id;
+    END IF;
+
+    RETURN NEW;
+END;
+' LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_habit_completion_user_id
+    BEFORE INSERT OR UPDATE OF habit_id ON habit_completions
+    FOR EACH ROW
+    EXECUTE FUNCTION populate_habit_completion_user_id();
+
 CREATE INDEX idx_habit_completions_habit_id ON habit_completions(habit_id);
 CREATE INDEX idx_habit_completions_user_date ON habit_completions(user_id, completed_date);
 
@@ -380,11 +401,12 @@ COMMENT ON TABLE habit_completions IS 'Lịch sử các ngày đã hoàn thành 
 -- =============================================================================
 CREATE TABLE habit_repeat_days (
     habit_id        UUID NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
-    day_code        VARCHAR(10) NOT NULL,
+    day_code        VARCHAR(10) NOT NULL CHECK (day_code IN ('MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN')),
     PRIMARY KEY (habit_id, day_code)
 );
 
 COMMENT ON TABLE habit_repeat_days IS 'Các ngày trong tuần mà thói quen lặp lại';
+COMMENT ON COLUMN habit_repeat_days.day_code IS 'Chỉ dùng cho habit có frequency = weekly';
 
 -- =============================================================================
 -- TABLE: daily_focus

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router";
 import {
   TrendingUp, Clock, ArrowRight, Flame, MapPin, History, XCircle,
@@ -18,13 +19,19 @@ function isSameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+function toLocalDateString(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function getTaskStatus(task: { status?: string; completed: boolean; dueDate?: string }) {
   if (task.status) return task.status;
   if (task.completed) return "COMPLETED";
   const dueDate = parseTaskDueDate(task.dueDate);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  if (dueDate && dueDate < today) return "MISSED";
+  const now = new Date();
+  if (dueDate && dueDate < now) return "MISSED";
   return "IN_PROGRESS";
 }
 
@@ -40,7 +47,7 @@ function parseTaskDueDate(value?: string) {
   const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (match) {
     const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-    parsed.setHours(0, 0, 0, 0);
+    parsed.setHours(23, 59, 59, 999);
     return parsed;
   }
 
@@ -86,11 +93,46 @@ function CurrentTimeIndicator() {
 }
 
 export function DashboardView() {
-  const { events, tasks, categories, language } = useData();
+  const { events, tasks, habits, categories, completeHabitDate, language } = useData();
+  const [togglingHabitIds, setTogglingHabitIds] = useState<string[]>([]);
   const now = new Date();
   const todayDay = WEEKDAY_TO_EVENT_DAY[now.getDay()] || "";
 
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayDate = toLocalDateString(today);
+  const todayCode = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][today.getDay()];
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+  const startOfWeekDate = toLocalDateString(startOfWeek);
+  const monthPrefix = todayDate.slice(0, 7);
+
+  const habitReminders = habits
+    .filter((habit) => {
+      const completedToday = habit.completedDates.includes(todayDate);
+
+      if (habit.repeatDays.length > 0) {
+        return habit.repeatDays.includes(todayCode) && !completedToday;
+      }
+      if (habit.frequency === "daily") return !completedToday;
+      if (habit.frequency === "weekly") {
+        return !habit.completedDates.some(date => date >= startOfWeekDate && date <= todayDate);
+      }
+      return !habit.completedDates.some(date => date.startsWith(monthPrefix));
+    })
+    .sort((a, b) => b.currentStreak - a.currentStreak || a.title.localeCompare(b.title))
+    .slice(0, 5);
+
+  const completeHabit = async (habitId: string) => {
+    if (togglingHabitIds.includes(habitId)) return;
+    setTogglingHabitIds(ids => [...ids, habitId]);
+    try {
+      await completeHabitDate(habitId, todayDate);
+    } catch (error) {
+      console.error("Failed to complete habit from dashboard:", error);
+    } finally {
+      setTogglingHabitIds(ids => ids.filter(id => id !== habitId));
+    }
+  };
   const todayEvents = events.filter(e => e.day === todayDay).sort(
     (a, b) => a.startHour - b.startHour || a.startMin - b.startMin
   );
@@ -195,25 +237,18 @@ export function DashboardView() {
     year: "numeric",
   });
 
+  const missingTaskCount = tasks.filter((task) => getTaskStatus(task) === "MISSED").length;
+
   // KPI card configs with real color
   const kpiCards = [
     {
-      label:   language === "vi" ? "Sự kiện tuần" : "Events",
-      value:   totalEvents,
-      sub:     `${categories.length} ${language === "vi" ? "danh mục" : "categories"}`,
-      icon:    CalendarDays,
-      from:    "from-violet-500", to: "to-indigo-600",
-      shadow:  "shadow-indigo-200",
-      badge:   "bg-indigo-50 text-indigo-600",
-    },
-    {
-      label:   language === "vi" ? "Hoàn thành" : "Completed",
-      value:   `${completedCount}/${tasks.length}`,
-      sub:     `${completionRate}% ${language === "vi" ? "hoàn tất" : "done"}`,
-      icon:    CheckCircle2,
-      from:    "from-emerald-500", to: "to-teal-600",
-      shadow:  "shadow-emerald-200",
-      badge:   "bg-emerald-50 text-emerald-600",
+      label:   language === "vi" ? "Hôm nay" : "Today",
+      value:   todayEvents.length + todayScheduledTasks.length,
+      sub:     language === "vi" ? "lịch + task đã lên giờ" : "events + scheduled tasks",
+      icon:    Zap,
+      from:    "from-amber-500", to: "to-orange-500",
+      shadow:  "shadow-amber-200",
+      badge:   "bg-amber-50 text-amber-600",
     },
     {
       label:   language === "vi" ? "Ưu tiên cao" : "High Priority",
@@ -225,13 +260,22 @@ export function DashboardView() {
       badge:   "bg-rose-50 text-rose-600",
     },
     {
-      label:   language === "vi" ? "Hôm nay" : "Today",
-      value:   todayEvents.length + todayScheduledTasks.length,
-      sub:     language === "vi" ? "lịch + task đã lên giờ" : "events + scheduled tasks",
-      icon:    Zap,
-      from:    "from-amber-500", to: "to-orange-500",
-      shadow:  "shadow-amber-200",
-      badge:   "bg-amber-50 text-amber-600",
+      label:   language === "vi" ? "Sự kiện tuần" : "Events",
+      value:   totalEvents,
+      sub:     `${categories.length} ${language === "vi" ? "danh mục" : "categories"}`,
+      icon:    CalendarDays,
+      from:    "from-violet-500", to: "to-indigo-600",
+      shadow:  "shadow-indigo-200",
+      badge:   "bg-indigo-50 text-indigo-600",
+    },
+    {
+      label:   "Missing Task",
+      value:   missingTaskCount,
+      sub:     language === "vi" ? "task bị trễ hạn" : "overdue tasks",
+      icon:    XCircle,
+      from:    "from-slate-500", to: "to-slate-700",
+      shadow:  "shadow-slate-200",
+      badge:   "bg-slate-50 text-slate-600",
     },
   ];
 
@@ -498,6 +542,68 @@ export function DashboardView() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Habit streak reminders */}
+            <div className="bg-white rounded-2xl border border-orange-200 shadow-sm overflow-hidden dark:bg-slate-900 dark:border-orange-500/25">
+              <div className="px-5 py-4 border-b border-orange-100 flex items-center justify-between dark:border-orange-500/20">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 bg-orange-100 rounded-lg flex items-center justify-center dark:bg-orange-500/15">
+                    <Flame size={14} className="text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-[15px] font-bold text-slate-900 dark:text-slate-50">
+                      {language === "vi" ? "Giữ Chuỗi Thói Quen" : "Keep Your Streak"}
+                    </h3>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-400">
+                      {language === "vi" ? "Hoàn thành hôm nay để không đứt chuỗi" : "Complete today to protect your streak"}
+                    </p>
+                  </div>
+                </div>
+                <Link to="/habits" className="text-xs font-semibold text-orange-700 hover:text-orange-900 bg-orange-50 px-2.5 py-1 rounded-full hover:bg-orange-100 transition-colors dark:bg-orange-500/15 dark:text-orange-200 dark:hover:bg-orange-500/25">
+                  {language === "vi" ? "Tất cả" : "All"}
+                </Link>
+              </div>
+
+              <div className="divide-y divide-orange-50 dark:divide-slate-800">
+                {habitReminders.length === 0 ? (
+                  <div className="py-6 px-4 text-center">
+                    <CheckCircle2 size={24} className="mx-auto text-emerald-500 mb-2" />
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-300">
+                      {language === "vi" ? "Các chuỗi hôm nay đều an toàn!" : "Today's streaks are safe!"}
+                    </p>
+                  </div>
+                ) : habitReminders.map(habit => {
+                  const isToggling = togglingHabitIds.includes(habit.id);
+                  return (
+                    <button
+                      key={habit.id}
+                      type="button"
+                      disabled={isToggling}
+                      onClick={() => completeHabit(habit.id)}
+                      className="group w-full px-4 py-3.5 flex items-center gap-3 text-left hover:bg-orange-50/60 transition-colors disabled:opacity-60 disabled:cursor-wait dark:hover:bg-orange-500/5"
+                    >
+                      <span className="w-5 h-5 rounded-full border-2 border-orange-300 group-hover:border-orange-500 group-hover:bg-orange-500 flex items-center justify-center flex-shrink-0 transition-colors dark:border-orange-500/60">
+                        <CheckCircle2 size={13} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-[13px] font-semibold text-slate-800 truncate group-hover:text-orange-800 dark:text-slate-100 dark:group-hover:text-orange-200">
+                          {habit.title}
+                        </span>
+                        <span className="mt-1 flex items-center gap-1 text-[11px] font-medium text-orange-600 dark:text-orange-300">
+                          <Flame size={11} />
+                          {habit.currentStreak > 0
+                            ? `${language === "vi" ? "Chuỗi" : "Streak"} ${habit.currentStreak} ${language === "vi" ? "ngày" : "days"}`
+                            : (language === "vi" ? "Bắt đầu chuỗi hôm nay" : "Start a streak today")}
+                        </span>
+                      </span>
+                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-400">
+                        {language === "vi" ? "Đánh dấu" : "Complete"}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

@@ -1,23 +1,49 @@
 import { useState } from "react";
-import { Plus, Flame, Calendar, CheckCircle2, Sparkles, X } from "lucide-react";
+import { Plus, Flame, Calendar, CheckCircle2, Sparkles, X, Pencil, Trash2 } from "lucide-react";
 import { COLOR_MAP, EventColor } from "../data/mockData";
 import { useData } from "../context/DataContext";
 import { HintBubble } from "./HintBubble";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router";
 
+const toLocalDateString = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+type HabitFrequency = "daily" | "weekly" | "monthly";
+
+const WEEK_DAYS = [
+  { code: "MON", vi: "T2", en: "Mon" },
+  { code: "TUE", vi: "T3", en: "Tue" },
+  { code: "WED", vi: "T4", en: "Wed" },
+  { code: "THU", vi: "T5", en: "Thu" },
+  { code: "FRI", vi: "T6", en: "Fri" },
+  { code: "SAT", vi: "T7", en: "Sat" },
+  { code: "SUN", vi: "CN", en: "Sun" },
+] as const;
+
+const getCurrentDayCode = () => WEEK_DAYS[(new Date().getDay() + 6) % 7].code;
+
 export function HabitsView() {
-  const { habits, addHabit, toggleHabitDate, refreshData, language } = useData();
+  const { habits, addHabit, updateHabit, deleteHabit, completeHabitDate, language } = useData();
   const { user } = useAuth();
   const navigate = useNavigate();
   
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingHabitId, setEditingHabitId] = useState<string | null>(null);
+  const [habitToDelete, setHabitToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   
   // Form State
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [frequency, setFrequency] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [frequency, setFrequency] = useState<HabitFrequency>("daily");
   const [repeatDays, setRepeatDays] = useState<string[]>([]);
   const [color, setColor] = useState<EventColor>("indigo");
   const [formError, setFormError] = useState("");
@@ -36,36 +62,86 @@ export function HabitsView() {
   };
 
   const isCompletedToday = (habit: { completedDates: string[] }) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalDateString();
     return habit.completedDates.includes(today);
   };
 
-  const handleAddSubmit = async (e: React.FormEvent) => {
+  const handleFrequencyChange = (nextFrequency: HabitFrequency) => {
+    setFrequency(nextFrequency);
+    setRepeatDays(currentDays => {
+      if (nextFrequency !== "weekly") return [];
+      return currentDays.length > 0 ? currentDays : [getCurrentDayCode()];
+    });
+  };
+
+  const resetHabitForm = () => {
+    setTitle("");
+    setDescription("");
+    setFrequency("daily");
+    setRepeatDays([]);
+    setColor("indigo");
+    setFormError("");
+    setEditingHabitId(null);
+  };
+
+  const closeHabitModal = () => {
+    setShowAddModal(false);
+    resetHabitForm();
+  };
+
+  const openEditModal = (habit: (typeof habits)[number]) => {
+    setEditingHabitId(habit.id);
+    setTitle(habit.title);
+    setDescription(habit.description);
+    setFrequency(habit.frequency);
+    setRepeatDays(habit.repeatDays);
+    setColor(habit.color as EventColor);
+    setFormError("");
+    setShowAddModal(true);
+  };
+
+  const handleHabitSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || isSaving) return;
 
     try {
+      setIsSaving(true);
       setFormError("");
-      await addHabit({
+      const values = {
         title: title.trim(),
         description: description.trim(),
         frequency,
-        targetCount: 1,
-        repeatDays,
+        repeatDays: frequency === "weekly" ? repeatDays : [],
         color,
-      });
-      await refreshData();
+      };
 
-      setTitle("");
-      setDescription("");
-      setFrequency("daily");
-      setRepeatDays([]);
-      setColor("indigo");
-      setShowAddModal(false);
+      if (editingHabitId) {
+        await updateHabit(editingHabitId, values);
+      } else {
+        await addHabit({ ...values, targetCount: 1 });
+      }
+      closeHabitModal();
     } catch (error) {
-      console.error("Failed to create habit:", error);
+      console.error("Failed to save habit:", error);
       const message = error instanceof Error ? error.message : "";
-      setFormError(message || (language === 'vi' ? "Không tạo được thói quen. Vui lòng thử lại." : "Failed to create habit. Please try again."));
+      setFormError(message || (language === 'vi' ? "Không lưu được thói quen. Vui lòng thử lại." : "Failed to save habit. Please try again."));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteHabit = async () => {
+    if (!habitToDelete || isDeleting) return;
+    try {
+      setIsDeleting(true);
+      setDeleteError("");
+      await deleteHabit(habitToDelete.id);
+      setHabitToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete habit:", error);
+      setDeleteError(error instanceof Error ? error.message : (language === "vi" ? "Không xóa được thói quen." : "Failed to delete habit."));
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -140,14 +216,16 @@ export function HabitsView() {
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl p-6 max-w-md w-full shadow-2xl relative space-y-4 text-slate-900 dark:text-slate-100">
           <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-white/[0.05]">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white" style={{ fontFamily: "'Outfit', sans-serif" }}>
-              {language === 'vi' ? "Tạo Thói Quen Mới" : "Create New Habit"}
+              {editingHabitId
+                ? (language === "vi" ? "Chỉnh Sửa Thói Quen" : "Edit Habit")
+                : (language === 'vi' ? "Tạo Thói Quen Mới" : "Create New Habit")}
             </h3>
-            <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-lg cursor-pointer">
+            <button onClick={closeHabitModal} className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-lg cursor-pointer">
               <X size={18} />
             </button>
           </div>
 
-          <form onSubmit={handleAddSubmit} className="space-y-4 text-sm">
+          <form onSubmit={handleHabitSubmit} className="space-y-4 text-sm">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">
                 {language === 'vi' ? "Tên thói quen" : "Habit Title"}
@@ -181,7 +259,7 @@ export function HabitsView() {
               </label>
               <select
                 value={frequency}
-                onChange={(e) => setFrequency(e.target.value as any)}
+                onChange={(e) => handleFrequencyChange(e.target.value as HabitFrequency)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
               >
                 <option value="daily" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{language === 'vi' ? "Hàng ngày" : "Daily"}</option>
@@ -211,34 +289,35 @@ export function HabitsView() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block">
-                {language === 'vi' ? "Ngày lặp" : "Repeat Days"}
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { code: 'MON', label: 'Mon' },
-                  { code: 'TUE', label: 'Tue' },
-                  { code: 'WED', label: 'Wed' },
-                  { code: 'THU', label: 'Thu' },
-                  { code: 'FRI', label: 'Fri' },
-                  { code: 'SAT', label: 'Sat' },
-                  { code: 'SUN', label: 'Sun' },
-                ].map((day) => {
-                  const active = repeatDays.includes(day.code);
-                  return (
-                    <button
-                      key={day.code}
-                      type="button"
-                      onClick={() => setRepeatDays(prev => active ? prev.filter(item => item !== day.code) : [...prev, day.code])}
-                      className={`px-3 py-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-transparent text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:border-indigo-300'}`}
-                    >
-                      {day.label}
-                    </button>
-                  );
-                })}
+            {frequency === "weekly" && (
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block">
+                  {language === "vi" ? "Ngày trong tuần" : "Days of week"}
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {WEEK_DAYS.map((day) => {
+                    const active = repeatDays.includes(day.code);
+                    return (
+                      <button
+                        key={day.code}
+                        type="button"
+                        onClick={() => setRepeatDays(prev => active
+                          ? (prev.length > 1 ? prev.filter(item => item !== day.code) : prev)
+                          : [...prev, day.code])}
+                        className={`px-3 py-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-transparent text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:border-indigo-300'}`}
+                      >
+                        {language === "vi" ? day.vi : day.en}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  {language === "vi"
+                    ? "Chọn ít nhất một ngày thực hiện mỗi tuần."
+                    : "Choose at least one day to repeat each week."}
+                </p>
               </div>
-            </div>
+            )}
 
             {formError && (
               <p className="text-xs text-rose-500 font-medium">{formError}</p>
@@ -246,11 +325,59 @@ export function HabitsView() {
 
             <button
               type="submit"
-              className="w-full py-3 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-indigo-500/10 cursor-pointer border border-transparent"
+              disabled={isSaving}
+              className="w-full py-3 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-indigo-500/10 cursor-pointer border border-transparent disabled:opacity-60 disabled:cursor-wait"
             >
-              {language === 'vi' ? "Tạo thói quen" : "Create Habit"}
+              {isSaving
+                ? (language === "vi" ? "Đang lưu..." : "Saving...")
+                : editingHabitId
+                  ? (language === "vi" ? "Lưu thay đổi" : "Save Changes")
+                  : (language === 'vi' ? "Tạo thói quen" : "Create Habit")}
             </button>
           </form>
+        </div>
+      </div>
+    );
+  };
+
+  const renderDeleteModal = () => {
+    if (!habitToDelete) return null;
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+          <div className="w-11 h-11 rounded-xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center mb-4">
+            <Trash2 size={20} className="text-rose-600 dark:text-rose-400" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+            {language === "vi" ? "Xóa thói quen?" : "Delete habit?"}
+          </h3>
+          <p className="text-sm text-slate-500 dark:text-slate-300 mt-2 leading-relaxed">
+            {language === "vi"
+              ? `“${habitToDelete.title}” sẽ được ẩn khỏi trang thói quen, Dashboard và mọi lời nhắc.`
+              : `“${habitToDelete.title}” will be hidden from habits, Dashboard, and all reminders.`}
+          </p>
+          {deleteError && <p className="text-xs font-medium text-rose-600 mt-3">{deleteError}</p>}
+          <div className="flex gap-3 mt-6">
+            <button
+              type="button"
+              disabled={isDeleting}
+              onClick={() => setHabitToDelete(null)}
+              className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-60"
+            >
+              {language === "vi" ? "Hủy" : "Cancel"}
+            </button>
+            <button
+              type="button"
+              disabled={isDeleting}
+              onClick={handleDeleteHabit}
+              className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold disabled:opacity-60 disabled:cursor-wait"
+            >
+              {isDeleting
+                ? (language === "vi" ? "Đang xóa..." : "Deleting...")
+                : (language === "vi" ? "Xóa" : "Delete")}
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -270,6 +397,7 @@ export function HabitsView() {
               setShowUpgradeModal(true);
               return;
             }
+            resetHabitForm();
             setShowAddModal(true);
           }}
           className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md shadow-indigo-200 dark:shadow-none cursor-pointer shrink-0"
@@ -303,8 +431,31 @@ export function HabitsView() {
                     <h3 className="font-semibold text-zinc-950 dark:text-slate-100 text-base tracking-tight truncate group-hover:text-zinc-700 dark:group-hover:text-slate-350 transition-colors">{habit.title}</h3>
                     <p className="text-xs text-zinc-500 dark:text-slate-450 mt-1 line-clamp-1">{habit.description}</p>
                   </div>
-                  <div className={`text-[10px] font-semibold px-2.5 py-1 rounded-md border ${colors.badge} bg-transparent`}>
-                    {getFrequencyLabel(habit.frequency)}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <div className={`text-[10px] font-semibold px-2.5 py-1 rounded-md border ${colors.badge} bg-transparent`}>
+                      {getFrequencyLabel(habit.frequency)}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(habit)}
+                      className="w-7 h-7 rounded-md border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-indigo-600 hover:border-indigo-300 dark:hover:text-indigo-300 flex items-center justify-center transition-colors"
+                      title={language === "vi" ? "Chỉnh sửa" : "Edit"}
+                      aria-label={language === "vi" ? `Chỉnh sửa ${habit.title}` : `Edit ${habit.title}`}
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDeleteError("");
+                        setHabitToDelete({ id: habit.id, title: habit.title });
+                      }}
+                      className="w-7 h-7 rounded-md border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-rose-600 hover:border-rose-300 dark:hover:text-rose-300 flex items-center justify-center transition-colors"
+                      title={language === "vi" ? "Xóa" : "Delete"}
+                      aria-label={language === "vi" ? `Xóa ${habit.title}` : `Delete ${habit.title}`}
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 </div>
 
@@ -330,12 +481,14 @@ export function HabitsView() {
                   <div className="flex items-center justify-between pt-2">
                     <span className="text-sm font-semibold text-zinc-705 dark:text-slate-300">{language === 'vi' ? "Hôm nay" : "Today"}</span>
                     <button
-                      onClick={() => toggleHabitDate(habit.id, new Date().toISOString().split('T')[0])}
+                      type="button"
+                      disabled={isCompletedToday(habit)}
+                      onClick={() => completeHabitDate(habit.id, toLocalDateString())}
                       className={`
-                        text-xs font-semibold px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer border
+                        text-xs font-semibold px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors border
                         ${isCompletedToday(habit) 
-                          ? `${colors.bg} ${colors.border} text-white shadow-sm` 
-                          : "bg-white dark:bg-slate-800 border-zinc-300 dark:border-slate-700 text-zinc-650 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-750 hover:text-zinc-900 dark:hover:text-white"}
+                          ? `${colors.bg} ${colors.border} text-white shadow-sm cursor-default`
+                          : "cursor-pointer bg-white dark:bg-slate-800 border-zinc-300 dark:border-slate-700 text-zinc-650 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-750 hover:text-zinc-900 dark:hover:text-white"}
                       `}
                     >
                       <CheckCircle2 size={14} className={isCompletedToday(habit) ? "text-white" : "text-zinc-400 dark:text-slate-500"} />
@@ -352,7 +505,7 @@ export function HabitsView() {
                       {Array.from({ length: 7 }, (_, i) => {
                         const date = new Date();
                         date.setDate(date.getDate() - (6 - i));
-                        const dateStr = date.toISOString().split('T')[0];
+                        const dateStr = toLocalDateString(date);
                         const completed = habit.completedDates.includes(dateStr);
                         
                         return (
@@ -379,6 +532,7 @@ export function HabitsView() {
       </div>
       {renderUpgradeModal()}
       {renderAddModal()}
+      {renderDeleteModal()}
     </div>
   );
 }

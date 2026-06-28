@@ -88,7 +88,7 @@ function getEventStatus(startHour: number, startMin: number, duration: number) {
 }
 
 export function NotificationCenter() {
-  const { events, tasks, habits, goals, updateTask, toggleHabitDate, updateGoal, language } = useData();
+  const { events, tasks, habits, goals, updateTask, completeHabitDate, updateGoal, language } = useData();
   const [isOpen, setIsOpen] = useState(false);
   const [hiddenIds, setHiddenIds] = useState<string[]>([]);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -252,7 +252,7 @@ export function NotificationCenter() {
 
   const handleHabitComplete = (id: string, habitId?: string) => {
     if (!habitId) return;
-    toggleHabitDate(habitId, PLAN_TODAY_ISO);
+    completeHabitDate(habitId, PLAN_TODAY_ISO);
     hideNotification(id);
   };
 

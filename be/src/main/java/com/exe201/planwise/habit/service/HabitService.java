@@ -29,6 +29,9 @@ import java.util.stream.Collectors;
 public class HabitService {
 
     private static final int FREE_HABIT_LIMIT = 3;
+    private static final Set<String> VALID_REPEAT_DAYS = Set.of(
+            "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"
+    );
 
     private final HabitRepository habitRepository;
     private final UserRepository userRepository;
@@ -36,7 +39,7 @@ public class HabitService {
     @Transactional(readOnly = true)
     public HabitListResponse getHabits(UUID userId) {
         User user = findUser(userId);
-        List<Habit> habits = habitRepository.findByUserIdOrderBySortOrderAsc(userId);
+        List<Habit> habits = habitRepository.findByUserIdAndIsActiveTrueOrderBySortOrderAsc(userId);
         List<HabitDto> habitDtos = habits.stream().map(HabitDto::from).toList();
         return HabitListResponse.of(habitDtos, user.isPremium());
     }
@@ -58,7 +61,7 @@ public class HabitService {
         User user = findUser(userId);
 
         if (!user.isPremium()) {
-            long currentCount = habitRepository.countByUserId(userId);
+            long currentCount = habitRepository.countActiveByUserId(userId);
             if (currentCount >= FREE_HABIT_LIMIT) {
                 throw new AppException(ErrorCode.HABIT_LIMIT_EXCEEDED);
             }
@@ -70,7 +73,7 @@ public class HabitService {
                 .description(request.description())
                 .frequency(request.frequency())
                 .targetCount(request.targetCount())
-                .repeatDays(normalizeRepeatDays(request.repeatDays()))
+                .repeatDays(normalizeRepeatDays(request.frequency(), request.repeatDays()))
                 .color(parseColor(request.color()))
                 .build();
 
@@ -96,8 +99,11 @@ public class HabitService {
         if (request.targetCount() != null) {
             habit.setTargetCount(request.targetCount());
         }
-        if (request.repeatDays() != null) {
-            habit.setRepeatDays(normalizeRepeatDays(request.repeatDays()));
+        if (request.frequency() != null || request.repeatDays() != null) {
+            Set<String> requestedDays = request.repeatDays() != null
+                    ? request.repeatDays()
+                    : habit.getRepeatDays();
+            habit.setRepeatDays(normalizeRepeatDays(habit.getFrequency(), requestedDays));
         }
         if (request.color() != null) {
             habit.setColor(parseColor(request.color()));
@@ -118,24 +124,21 @@ public class HabitService {
     @Transactional
     public void deleteHabit(UUID userId, UUID habitId) {
         Habit habit = findHabitAndValidateOwnership(habitId, userId);
-        habitRepository.delete(habit);
-        log.info("Deleted habit {} for user {}", habitId, userId);
+        habit.setActive(false);
+        habitRepository.save(habit);
+        log.info("Soft-deleted habit {} for user {}", habitId, userId);
     }
 
     @Transactional
-    public HabitDto toggleCompletion(UUID userId, UUID habitId, LocalDate date) {
+    public HabitDto completeHabit(UUID userId, UUID habitId, LocalDate date) {
         Habit habit = findHabitAndValidateOwnership(habitId, userId);
 
-        if (habit.isCompletedOn(date)) {
-            habit.unmarkCompleted(date);
-            updateStreakAfterUncompletion(habit, date);
-        } else {
+        if (!habit.isCompletedOn(date)) {
             habit.markCompleted(date);
             updateStreakAfterCompletion(habit, date);
+            habit = habitRepository.save(habit);
+            log.info("Completed habit {} for date {}", habitId, date);
         }
-
-        habit = habitRepository.save(habit);
-        log.info("Toggled habit {} completion for date {}", habitId, date);
 
         return HabitDto.from(habit);
     }
@@ -147,19 +150,6 @@ public class HabitService {
         if (!habit.isCompletedOn(date)) {
             habit.markCompleted(date);
             updateStreakAfterCompletion(habit, date);
-            habit = habitRepository.save(habit);
-        }
-
-        return HabitDto.from(habit);
-    }
-
-    @Transactional
-    public HabitDto unmarkCompleted(UUID userId, UUID habitId, LocalDate date) {
-        Habit habit = findHabitAndValidateOwnership(habitId, userId);
-
-        if (habit.isCompletedOn(date)) {
-            habit.unmarkCompleted(date);
-            updateStreakAfterUncompletion(habit, date);
             habit = habitRepository.save(habit);
         }
 
@@ -199,28 +189,6 @@ public class HabitService {
         }
     }
 
-    private void updateStreakAfterUncompletion(Habit habit, LocalDate date) {
-        if (!habit.getRepeatDays().isEmpty()) {
-            LocalDate previousScheduledDate = findPreviousScheduledDate(habit, date);
-            if (!habit.isCompletedOn(previousScheduledDate)) {
-                habit.setCurrentStreak((short) 0);
-            }
-            return;
-        }
-
-        if (habit.getFrequency() == HabitFrequency.daily) {
-            LocalDate yesterday = date.minusDays(1);
-            if (!habit.isCompletedOn(yesterday)) {
-                habit.setCurrentStreak((short) 0);
-            }
-        } else if (habit.getFrequency() == HabitFrequency.weekly) {
-            LocalDate lastWeekStart = date.minusWeeks(1).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-            if (!habit.isCompletedOn(lastWeekStart)) {
-                habit.setCurrentStreak((short) 0);
-            }
-        }
-    }
-
     private LocalDate findPreviousScheduledDate(Habit habit, LocalDate date) {
         for (int i = 1; i <= 7; i++) {
             LocalDate candidate = date.minusDays(i);
@@ -243,14 +211,15 @@ public class HabitService {
         };
     }
 
-    private Set<String> normalizeRepeatDays(Set<String> repeatDays) {
-        if (repeatDays == null || repeatDays.isEmpty()) {
+    private Set<String> normalizeRepeatDays(HabitFrequency frequency, Set<String> repeatDays) {
+        if (frequency != HabitFrequency.weekly || repeatDays == null || repeatDays.isEmpty()) {
             return new LinkedHashSet<>();
         }
 
         return repeatDays.stream()
                 .filter(day -> day != null && !day.isBlank())
                 .map(day -> day.trim().toUpperCase())
+                .filter(VALID_REPEAT_DAYS::contains)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
@@ -272,12 +241,7 @@ public class HabitService {
     }
 
     private Habit findHabitAndValidateOwnership(UUID habitId, UUID userId) {
-        Habit habit = habitRepository.findById(habitId)
+        return habitRepository.findByIdAndUserIdAndIsActiveTrue(habitId, userId)
                 .orElseThrow(() -> new AppException(ErrorCode.HABIT_NOT_FOUND));
-
-        if (!habit.getUser().getId().equals(userId)) {
-            throw new AppException(ErrorCode.HABIT_NOT_FOUND);
-        }
-        return habit;
     }
 }

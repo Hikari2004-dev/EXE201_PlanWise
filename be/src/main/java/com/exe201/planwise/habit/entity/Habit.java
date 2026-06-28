@@ -42,7 +42,8 @@ public class Habit {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "frequency", columnDefinition = "habit_frequency", nullable = false)
     @Builder.Default
     private HabitFrequency frequency = HabitFrequency.daily;
 
@@ -94,10 +95,6 @@ public class Habit {
 
     public void markCompleted(LocalDate date) {
         this.completedDates.add(date);
-    }
-
-    public void unmarkCompleted(LocalDate date) {
-        this.completedDates.remove(date);
     }
 
     public boolean isCompletedOn(LocalDate date) {

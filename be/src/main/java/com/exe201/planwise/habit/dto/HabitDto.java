@@ -40,7 +40,7 @@ public record HabitDto(
                 habit.getColor() != null ? habit.getColor().name() : null,
                 habit.isActive(),
                 habit.getSortOrder(),
-                habit.getCompletedDates(),
+                habit.getCompletedDates() != null ? new LinkedHashSet<>(habit.getCompletedDates()) : Set.of(),
                 habit.getCreatedAt(),
                 habit.getUpdatedAt()
         );

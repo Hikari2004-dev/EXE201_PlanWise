@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { visionApi } from "../api";
+import { COLOR_MAP } from "../data/mockData";
 import {
   Plus,
   Target,
@@ -22,18 +24,15 @@ type GoalPeriod = "week" | "month" | "year";
 type VisionDraft = {
   title: string;
   description: string;
-  category: string;
+  categoryId: string;
   imageUrl: string;
   quote: string;
 };
 
-const GOAL_CATEGORY_NAMES = ["career", "learning", "health", "finance"] as const;
-type GoalCategoryName = (typeof GOAL_CATEGORY_NAMES)[number];
-
 const EMPTY_VISION_DRAFT: VisionDraft = {
   title: "",
   description: "",
-  category: "career",
+  categoryId: "",
   imageUrl: "",
   quote: "",
 };
@@ -73,15 +72,17 @@ export function GoalsView() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [draftGoals, setDraftGoals] = useState<Record<GoalPeriod, { title: string; category: GoalCategoryName }>>({
-    week: { title: "", category: "career" },
-    month: { title: "", category: "career" },
-    year: { title: "", category: "career" },
+  const defaultCategoryId = categories[0]?.id || "";
+  const [draftGoals, setDraftGoals] = useState<Record<GoalPeriod, { title: string; categoryId: string }>>({
+    week: { title: "", categoryId: "" },
+    month: { title: "", categoryId: "" },
+    year: { title: "", categoryId: "" },
   });
   const [milestoneDrafts, setMilestoneDrafts] = useState<Record<string, { title: string; description: string; targetDate: string }>>({});
   const [milestoneEdits, setMilestoneEdits] = useState<Record<string, { title: string; description: string; targetDate: string }>>({});
   const [visionDraft, setVisionDraft] = useState<VisionDraft>(EMPTY_VISION_DRAFT);
   const [editingVisionId, setEditingVisionId] = useState<string | null>(null);
+  const [visionUploading, setVisionUploading] = useState(false);
 
   const VISION_ICON_MAP = {
     career: { icon: Briefcase, color: "text-blue-500", bg: "bg-blue-50" },
@@ -104,17 +105,42 @@ export function GoalsView() {
   type TaskItem = (typeof tasks)[number];
 
   const totalGoals = goals.length;
-  const goalCategoryOptions = useMemo<GoalCategoryName[]>(() => {
-    const fromApi = categories
-      .map((category) => category.name)
-      .filter((name): name is GoalCategoryName => (GOAL_CATEGORY_NAMES as readonly string[]).includes(name));
 
-    return fromApi.length ? fromApi : [...GOAL_CATEGORY_NAMES];
-  }, [categories]);
+  const resolveVisionCategory = (categoryId: string) => categories.find((category) => category.id === categoryId);
+
+  const handleVisionImageSelect = async (file: File | null) => {
+    if (!file) return;
+
+    setVisionUploading(true);
+    try {
+      const { uploadUrl, publicUrl } = await visionApi.presignImageUpload({
+        filename: file.name,
+        contentType: file.type || "application/octet-stream",
+        sizeBytes: file.size,
+      });
+
+      const response = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+        },
+        body: file,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to upload vision image");
+      }
+
+      setVisionDraft((prev) => ({ ...prev, imageUrl: publicUrl }));
+    } finally {
+      setVisionUploading(false);
+    }
+  };
 
   const handleAddGoal = async (period: GoalPeriod) => {
     const title = draftGoals[period].title.trim();
-    if (!title) return;
+    const categoryId = draftGoals[period].categoryId || defaultCategoryId;
+    if (!title || !categoryId) return;
 
     if (!user?.isPremium && totalGoals >= 3) {
       setShowUpgradeModal(true);
@@ -124,14 +150,14 @@ export function GoalsView() {
     await addGoal({
       title,
       description: "",
-      category: draftGoals[period].category,
+      categoryId,
       type: "SMART",
       period,
       targetDate: "",
       color: period === "week" ? "emerald" : period === "month" ? "blue" : "violet",
     });
 
-    setDraftGoals((prev) => ({ ...prev, [period]: { title: "", category: prev[period].category } }));
+    setDraftGoals((prev) => ({ ...prev, [period]: { title: "", categoryId } }));
   };
 
   const bumpProgress = (goal: GoalItem) => {
@@ -180,12 +206,12 @@ export function GoalsView() {
     cancelEditMilestone(milestoneId);
   };
 
-  const beginEditVisionItem = (item: { id: string; title: string; description?: string; category?: string; imageUrl?: string; quote?: string }) => {
+  const beginEditVisionItem = (item: { id: string; title: string; description?: string; categoryId?: string; imageUrl?: string; quote?: string }) => {
     setEditingVisionId(item.id);
     setVisionDraft({
       title: item.title,
       description: item.description || "",
-      category: item.category || "career",
+      categoryId: item.categoryId || defaultCategoryId,
       imageUrl: item.imageUrl || "",
       quote: item.quote || "",
     });
@@ -198,13 +224,17 @@ export function GoalsView() {
 
   const saveVisionItem = async () => {
     const title = visionDraft.title.trim();
-    if (!title) return;
+    const categoryId = visionDraft.categoryId || defaultCategoryId;
+    const category = resolveVisionCategory(categoryId);
+    if (!title || !categoryId || !category) return;
 
     if (editingVisionId) {
       await updateVisionItem(editingVisionId, {
         title,
         description: visionDraft.description.trim() || undefined,
-        category: visionDraft.category.trim() || undefined,
+        categoryId,
+        categoryName: category.name,
+        categoryColor: category.color,
         imageUrl: visionDraft.imageUrl.trim() || undefined,
         quote: visionDraft.quote.trim() || undefined,
       });
@@ -215,7 +245,9 @@ export function GoalsView() {
     await addVisionItem({
       title,
       description: visionDraft.description.trim(),
-      category: visionDraft.category.trim() || "career",
+      categoryId,
+      categoryName: category.name,
+      categoryColor: category.color,
       imageUrl: visionDraft.imageUrl.trim() || undefined,
       quote: visionDraft.quote.trim() || undefined,
     });
@@ -285,7 +317,7 @@ export function GoalsView() {
           </div>
           <div className="mt-2 flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
             <span>{goal.progress}%</span>
-            <span>{goal.category}</span>
+            <span>{goal.categoryName}</span>
           </div>
         </div>
 
@@ -550,13 +582,18 @@ export function GoalsView() {
                 placeholder={language === "vi" ? "Tiêu đề vision" : "Vision title"}
                 className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
-              <input
-                type="text"
-                value={visionDraft.category}
-                onChange={(e) => setVisionDraft((prev) => ({ ...prev, category: e.target.value }))}
-                placeholder={language === "vi" ? "career, health, finance..." : "career, health, finance..."}
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
-              />
+              <select
+                value={visionDraft.categoryId || defaultCategoryId}
+                onChange={(e) => setVisionDraft((prev) => ({ ...prev, categoryId: e.target.value }))}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 transition-all focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                disabled={!categories.length}
+              >
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
               <textarea
                 value={visionDraft.description}
                 onChange={(e) => setVisionDraft((prev) => ({ ...prev, description: e.target.value }))}
@@ -564,13 +601,22 @@ export function GoalsView() {
                 placeholder={language === "vi" ? "Mô tả ngắn" : "Short description"}
                 className="sm:col-span-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
-              <input
-                type="text"
-                value={visionDraft.imageUrl}
-                onChange={(e) => setVisionDraft((prev) => ({ ...prev, imageUrl: e.target.value }))}
-                placeholder={language === "vi" ? "Link hình ảnh" : "Image URL"}
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
-              />
+              <div className="space-y-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => void handleVisionImageSelect(e.target.files?.[0] || null)}
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 transition-all file:mr-3 file:rounded-md file:border-0 file:bg-violet-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-violet-700 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:file:bg-violet-500/10 dark:file:text-violet-200"
+                  disabled={visionUploading}
+                />
+                <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+                  {visionUploading
+                    ? (language === "vi" ? "Đang tải ảnh lên R2..." : "Uploading image to R2...")
+                    : visionDraft.imageUrl
+                    ? visionDraft.imageUrl
+                    : (language === "vi" ? "Chưa có ảnh nào được chọn" : "No image selected")}
+                </div>
+              </div>
               <input
                 type="text"
                 value={visionDraft.quote}
@@ -601,8 +647,10 @@ export function GoalsView() {
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {visionItems.length ? visionItems.map((item) => {
-              const iconConfig = VISION_ICON_MAP[(item.category as keyof typeof VISION_ICON_MAP) || "default"] || VISION_ICON_MAP.default;
+              const iconKey = item.categoryName.trim().toLowerCase() as keyof typeof VISION_ICON_MAP;
+              const iconConfig = VISION_ICON_MAP[iconKey] || VISION_ICON_MAP.default;
               const Icon = iconConfig.icon;
+              const colorConfig = COLOR_MAP[item.categoryColor || "indigo"] || COLOR_MAP.indigo;
               return (
                 <div key={item.id} className="flex flex-col rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
                   <div className="flex items-start justify-between gap-3">
@@ -625,6 +673,18 @@ export function GoalsView() {
                         {language === "vi" ? "Xóa" : "Delete"}
                       </button>
                     </div>
+                  </div>
+                  {item.imageUrl ? (
+                    <img
+                      src={item.imageUrl}
+                      alt={item.title}
+                      className="mb-3 h-32 w-full rounded-lg object-cover"
+                    />
+                  ) : null}
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${colorConfig.badge}`}>
+                      {item.categoryName || (language === "vi" ? "Chưa chọn danh mục" : "No category")}
+                    </span>
                   </div>
                   <h3 className="mb-1 text-sm font-semibold text-zinc-950 dark:text-slate-100">{item.title}</h3>
                   <p className="min-h-[40px] text-xs leading-relaxed text-zinc-500 dark:text-slate-400">{item.description || (language === "vi" ? "Chưa có mô tả" : "No description yet")}</p>
@@ -704,13 +764,14 @@ export function GoalsView() {
                           className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
                         />
                         <select
-                          value={draftGoals[period].category}
-                          onChange={(e) => setDraftGoals((prev) => ({ ...prev, [period]: { ...prev[period], category: e.target.value as GoalCategoryName } }))}
+                          value={draftGoals[period].categoryId || defaultCategoryId}
+                          onChange={(e) => setDraftGoals((prev) => ({ ...prev, [period]: { ...prev[period], categoryId: e.target.value } }))}
                           className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                          disabled={!categories.length}
                         >
-                          {goalCategoryOptions.map((category) => (
-                            <option key={category} value={category}>
-                              {categories.find((item) => item.name === category)?.name || category}
+                          {categories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.name}
                             </option>
                           ))}
                         </select>

@@ -71,8 +71,9 @@ export const habitApi = {
     if (!response.ok) throw new Error(await readApiError(response, "Failed to delete habit"));
   },
 
-  async toggleCompletion(id: string, date: string): Promise<ApiHabit> {
-    const formattedDate = new Date(date).toISOString().split("T")[0];
+  async complete(id: string, date: string): Promise<ApiHabit> {
+    const formattedDate = date.match(/^\d{4}-\d{2}-\d{2}$/)?.[0];
+    if (!formattedDate) throw new Error("Invalid habit completion date");
     const response = await fetch(`${API_BASE_URL}${API}/habits/${id}/completions/${formattedDate}`, {
       method: "PATCH",
       headers: getAuthHeaders(),

@@ -26,6 +26,13 @@ public class VisionController {
         return ResponseEntity.ok(visionService.getVisionItems(principal.getId()));
     }
 
+    @PostMapping("/images/presign")
+    public ResponseEntity<PresignVisionImageUploadResponse> presignVisionImageUpload(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody PresignVisionImageUploadRequest request) {
+        return ResponseEntity.ok(visionService.presignVisionImageUpload(principal.getId(), request));
+    }
+
     @PostMapping
     public ResponseEntity<VisionItemDto> createVisionItem(
             @AuthenticationPrincipal UserPrincipal principal,

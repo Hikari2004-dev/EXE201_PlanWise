@@ -71,7 +71,6 @@ export type {
   FocusSession,
   QuickNote,
   DailyReflection,
-  VisionItem,
   EventColor,
 } from "../data/mockData";
 
@@ -79,7 +78,7 @@ export type {
 export interface UpdateVisionItemRequest {
   title?: string;
   description?: string;
-  category?: string;
+  categoryId?: string;
   imageUrl?: string;
   quote?: string;
   sortOrder?: number;
@@ -89,12 +88,26 @@ export interface ApiVisionItem {
   id: string;
   title: string;
   description?: string;
-  category?: string;
+  categoryId?: string;
+  categoryName?: string;
+  categoryColor?: string;
   imageUrl?: string;
   quote?: string;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface VisionImageUploadRequest {
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+}
+
+export interface VisionImageUploadResponse {
+  uploadUrl: string;
+  publicUrl: string;
+  objectKey: string;
 }
 
 export interface UpdateTaskRequest {
@@ -234,7 +247,9 @@ export interface ApiGoal {
   id: string;
   title: string;
   description?: string;
-  category: 'career' | 'learning' | 'health' | 'finance';
+  categoryId?: string;
+  categoryName?: string;
+  categoryColor?: string;
   goalType: 'SMART' | 'OKR';
   period: 'week' | 'month' | 'year';
   targetDate?: string;
@@ -351,9 +366,20 @@ export interface ApiCategory {
 export interface CreateVisionItemRequest {
   title: string;
   description?: string;
-  category?: string;
+  categoryId: string;
   imageUrl?: string;
   quote?: string;
+}
+
+export interface VisionItem {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl?: string;
+  quote?: string;
+  categoryId: string;
+  categoryName: string;
+  categoryColor?: string;
 }
 
 export interface CreateTaskRequest {

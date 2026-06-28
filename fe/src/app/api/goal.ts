@@ -34,7 +34,7 @@ export const goalApi = {
   async create(data: {
     title: string;
     description?: string;
-    category?: string;
+    categoryId?: string;
     goalType?: string;
     period: string;
     targetDate?: string;
@@ -52,7 +52,7 @@ export const goalApi = {
   async update(id: string, data: {
     title?: string;
     description?: string;
-    category?: string;
+    categoryId?: string;
     goalType?: string;
     period?: string;
     targetDate?: string;

@@ -19,6 +19,7 @@ public class AppProperties {
     private final Mail mail = new Mail();
     private final Momo momo = new Momo();
     private final Vnpay vnpay = new Vnpay();
+    private final R2 r2 = new R2();
 
     @Getter
     @Setter
@@ -52,6 +53,20 @@ public class AppProperties {
         private String payUrl;
         private String returnUrl;
         private String ipnUrl;
+    }
+
+    @Getter
+    @Setter
+    public static class R2 {
+        private boolean enabled = false;
+        private String endpoint;
+        private String region = "auto";
+        private String bucket;
+        private String accessKeyId;
+        private String secretAccessKey;
+        private String publicBaseUrl;
+        private long presignTtlSeconds = 300;
+        private long maxUploadSizeBytes = 5_242_880L;
     }
 
     @Getter

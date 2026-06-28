@@ -181,7 +181,8 @@ interface Goal {
   id: string;
   title: string;
   description: string;
-  category: string;
+  categoryId: string;
+  categoryName: string;
   type: string;
   period: "week" | "month" | "year";
   targetDate: string;
@@ -199,7 +200,7 @@ interface Goal {
 interface CreateGoalInput {
   title: string;
   description?: string;
-  category: string;
+  categoryId: string;
   type: string;
   period: "week" | "month" | "year";
   targetDate?: string;
@@ -250,7 +251,9 @@ interface VisionItem {
   description: string;
   imageUrl?: string;
   quote?: string;
-  category: string;
+  categoryId: string;
+  categoryName: string;
+  categoryColor?: string;
 }
 
 interface Category {
@@ -344,7 +347,8 @@ interface DataContextType {
   // Habit operations
   addHabit: (habit: Omit<Habit, "id" | "currentStreak" | "bestStreak" | "completedDates">) => Promise<void>;
   updateHabit: (id: string, habit: Partial<Habit>) => Promise<void>;
-  toggleHabitDate: (id: string, dateStr: string) => Promise<void>;
+  deleteHabit: (id: string) => Promise<void>;
+  completeHabitDate: (id: string, dateStr: string) => Promise<void>;
   
   // Focus operations
   updateDailyFocus: (date: string, topTasks: string[]) => Promise<void>;
@@ -450,7 +454,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
           id: g.id,
           title: g.title,
           description: g.description || "",
-          category: g.category,
+          categoryId: g.categoryId || "",
+          categoryName: g.categoryName || "",
           type: g.goalType,
           period: g.period,
           targetDate: g.targetDate || "",
@@ -492,7 +497,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
           description: v.description || "",
           imageUrl: v.imageUrl,
           quote: v.quote,
-          category: v.category || "",
+          categoryId: v.categoryId || "",
+          categoryName: v.categoryName || "",
+          categoryColor: v.categoryColor,
         })));
       }
 
@@ -679,7 +686,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const created = await goalApi.create({
       title: goal.title,
       description: goal.description,
-      category: goal.category,
+      categoryId: goal.categoryId,
       goalType: goal.type,
       period: goal.period,
       targetDate: goal.targetDate || undefined,
@@ -689,7 +696,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       id: created.id,
       title: created.title,
       description: created.description || "",
-      category: created.category,
+      categoryId: created.categoryId || goal.categoryId,
+      categoryName: created.categoryName || categories.find((category) => category.id === goal.categoryId)?.name || "",
       type: created.goalType,
       period: created.period,
       targetDate: created.targetDate || "",
@@ -709,7 +717,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const updateData: Record<string, unknown> = {};
     if (updates.title) updateData.title = updates.title;
     if (updates.description !== undefined) updateData.description = updates.description;
-    if (updates.category) updateData.category = updates.category;
+    if (updates.categoryId !== undefined) updateData.categoryId = updates.categoryId;
     if (updates.type) updateData.goalType = updates.type;
     if (updates.period) updateData.period = updates.period;
     if (updates.targetDate !== undefined) updateData.targetDate = updates.targetDate;
@@ -772,45 +780,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
       color: habit.color,
     };
 
-    try {
-      const created = await habitApi.create(payload);
-      setHabits(prev => [...prev, {
-        id: created.id,
-        title: created.title,
-        description: created.description || "",
-        frequency: created.frequency,
-        targetCount: created.targetCount,
-        repeatDays: created.repeatDays || [],
-        currentStreak: created.currentStreak,
-        bestStreak: created.bestStreak,
-        color: created.color,
-        completedDates: created.completedDates || [],
-        completedToday: created.completedDates ? created.completedDates.includes(new Date().toISOString().split('T')[0]) : false,
-      }]);
-      return;
-    } catch (error) {
-      if (payload.repeatDays?.length) {
-        const fallback = await habitApi.create({
-          ...payload,
-          repeatDays: [],
-        });
-        setHabits(prev => [...prev, {
-          id: fallback.id,
-          title: fallback.title,
-          description: fallback.description || "",
-          frequency: fallback.frequency,
-          targetCount: fallback.targetCount,
-          repeatDays: payload.repeatDays,
-          currentStreak: fallback.currentStreak,
-          bestStreak: fallback.bestStreak,
-          color: fallback.color,
-          completedDates: fallback.completedDates || [],
-          completedToday: fallback.completedDates ? fallback.completedDates.includes(new Date().toISOString().split('T')[0]) : false,
-        }]);
-        return;
-      }
-      throw error;
-    }
+    const created = await habitApi.create(payload);
+    setHabits(prev => [...prev, {
+      id: created.id,
+      title: created.title,
+      description: created.description || "",
+      frequency: created.frequency,
+      targetCount: created.targetCount,
+      repeatDays: created.repeatDays || [],
+      currentStreak: created.currentStreak,
+      bestStreak: created.bestStreak,
+      color: created.color,
+      completedDates: created.completedDates || [],
+      completedToday: created.completedDates ? created.completedDates.includes(new Date().toISOString().split('T')[0]) : false,
+    }]);
   };
 
   const updateHabit = async (id: string, updates: Partial<Habit>) => {
@@ -822,23 +805,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (updates.repeatDays !== undefined) updateData.repeatDays = updates.repeatDays;
     if (updates.color) updateData.color = updates.color;
 
-    try {
-      await habitApi.update(id, updateData as Parameters<typeof habitApi.update>[1]);
-      setHabits(prev => prev.map(h => h.id === id ? { ...h, ...updates } : h));
-      return;
-    } catch (error) {
-      if (updates.repeatDays && updates.repeatDays.length > 0) {
-        const fallbackUpdateData = { ...updateData, repeatDays: [] };
-        await habitApi.update(id, fallbackUpdateData as Parameters<typeof habitApi.update>[1]);
-        setHabits(prev => prev.map(h => h.id === id ? { ...h, ...updates, repeatDays: updates.repeatDays || [] } : h));
-        return;
-      }
-      throw error;
-    }
+    const updated = await habitApi.update(id, updateData as Parameters<typeof habitApi.update>[1]);
+    setHabits(prev => prev.map(h => h.id === id ? {
+      ...h,
+      title: updated.title,
+      description: updated.description || "",
+      frequency: updated.frequency,
+      targetCount: updated.targetCount,
+      repeatDays: updated.repeatDays || [],
+      currentStreak: updated.currentStreak,
+      bestStreak: updated.bestStreak,
+      color: updated.color,
+      completedDates: updated.completedDates || [],
+      completedToday: updated.completedDates ? updated.completedDates.includes(new Date().toISOString().split('T')[0]) : false,
+    } : h));
   };
 
-  const toggleHabitDate = async (id: string, dateStr: string) => {
-    const updated = await habitApi.toggleCompletion(id, dateStr);
+  const deleteHabit = async (id: string) => {
+    await habitApi.delete(id);
+    setHabits(prev => prev.filter(habit => habit.id !== id));
+  };
+
+  const completeHabitDate = async (id: string, dateStr: string) => {
+    const updated = await habitApi.complete(id, dateStr);
     setHabits(prev => prev.map(h => h.id === id ? {
       ...h,
       title: updated.title,
@@ -943,13 +932,43 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Vision operations
   const addVisionItem = async (item: Omit<VisionItem, "id">) => {
-    const created = await visionApi.create(item);
-    setVisionItems(prev => [...prev, { ...item, id: created.id }]);
+    const created = await visionApi.create({
+      title: item.title,
+      description: item.description || undefined,
+      categoryId: item.categoryId,
+      imageUrl: item.imageUrl,
+      quote: item.quote,
+    });
+    setVisionItems(prev => [...prev, {
+      id: created.id,
+      title: created.title,
+      description: created.description || "",
+      imageUrl: created.imageUrl,
+      quote: created.quote,
+      categoryId: created.categoryId || item.categoryId,
+      categoryName: created.categoryName || item.categoryName,
+      categoryColor: created.categoryColor || item.categoryColor,
+    }]);
   };
 
   const updateVisionItem = async (id: string, updates: Partial<VisionItem>) => {
-    await visionApi.update(id, updates as Parameters<typeof visionApi.update>[1]);
-    setVisionItems(prev => prev.map(v => v.id === id ? { ...v, ...updates } : v));
+    const updated = await visionApi.update(id, {
+      title: updates.title,
+      description: updates.description,
+      categoryId: updates.categoryId,
+      imageUrl: updates.imageUrl,
+      quote: updates.quote,
+    });
+    setVisionItems(prev => prev.map(v => v.id === id ? {
+      id: updated.id,
+      title: updated.title,
+      description: updated.description || "",
+      imageUrl: updated.imageUrl,
+      quote: updated.quote,
+      categoryId: updated.categoryId || v.categoryId,
+      categoryName: updated.categoryName || v.categoryName,
+      categoryColor: updated.categoryColor || v.categoryColor,
+    } : v));
   };
 
   const deleteVisionItem = async (id: string) => {
@@ -1024,7 +1043,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         deleteMilestone,
         addHabit,
         updateHabit,
-        toggleHabitDate,
+        deleteHabit,
+        completeHabitDate,
         updateDailyFocus,
         addFocusSession,
         endFocusSession,
