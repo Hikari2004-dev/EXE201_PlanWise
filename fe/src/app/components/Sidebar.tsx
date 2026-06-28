@@ -328,20 +328,9 @@ export function Sidebar({
 
       <div className="flex-1" />
 
-      {/* ── Mini Calendar ── */}
-      {effectiveOpen && !isMobile && (
-        <div className="border-t border-white/[0.05] pt-4 mx-1">
-          <div className="px-3 mb-2">
-            <span className="text-[9px] text-slate-600 uppercase tracking-widest font-bold">
-              {language === "vi" ? "Tháng này" : "This month"}
-            </span>
-          </div>
-          <MiniCalendar />
-        </div>
-      )}
-
       {/* ── User profile ── */}
-      <div className="border-t border-white/[0.05] p-3">
+      <div className="border-t border-white/[0.05] p-3 space-y-3">
+        {/* User info */}
         <div className="flex items-center gap-2.5">
           {user?.avatarUrl ? (
             <img
@@ -355,67 +344,72 @@ export function Sidebar({
             </div>
           )}
           {effectiveOpen && (
-            <>
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] text-slate-200 font-semibold truncate tracking-tight flex items-center gap-1">
-                  <span>{user?.fullName || "Người dùng"}</span>
-                  {user?.isPremium && (
-                    <span className="bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 text-[8px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider scale-90 shrink-0">
-                      PREMIUM
-                    </span>
-                  )}
-                </div>
-                <div className="text-[10px] text-slate-600 truncate">
-                  {user?.email || (language === "vi" ? "Người dùng" : "User")}
-                </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] text-slate-200 font-semibold truncate tracking-tight flex items-center gap-1">
+                <span>{user?.fullName || "Người dùng"}</span>
+                {user?.isPremium && (
+                  <span className="bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 text-[8px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider scale-90 shrink-0">
+                    PREMIUM
+                  </span>
+                )}
               </div>
-              <button
-                onClick={toggleLanguage}
-                title={
-                  language === "vi" ? "Switch to English" : "Chuyển tiếng Việt"
-                }
-                className="flex items-center gap-1.5 px-1.5 py-1 rounded-lg border border-white/10 bg-white/5 hover:bg-indigo-600 hover:border-indigo-500 transition-all group shrink-0"
-              >
-                <Globe
+              <div className="text-[10px] text-slate-600 truncate">
+                {user?.email || (language === "vi" ? "Người dùng" : "User")}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Controls row */}
+        {effectiveOpen && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleLanguage}
+              title={
+                language === "vi" ? "Switch to English" : "Chuyển tiếng Việt"
+              }
+              className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-indigo-600 hover:border-indigo-500 transition-all group shrink-0"
+            >
+              <Globe
+                size={11}
+                className="text-slate-400 group-hover:text-white transition-colors"
+              />
+              <span className="text-[9px] font-bold text-slate-500 group-hover:text-white transition-colors">
+                {language === "vi" ? "VI" : "EN"}
+              </span>
+            </button>
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              title={
+                theme === "dark" ? "Chuyển light mode" : "Chuyển dark mode"
+              }
+              className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-indigo-600 hover:border-indigo-500 transition-all group shrink-0"
+            >
+              {theme === "dark" ? (
+                <Sun
                   size={11}
                   className="text-slate-400 group-hover:text-white transition-colors"
                 />
-                <span className="text-[9px] font-bold text-slate-500 group-hover:text-white transition-colors">
-                  {language === "vi" ? "VI" : "EN"}
-                </span>
-              </button>
-              <button
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                title={
-                  theme === "dark" ? "Chuyển light mode" : "Chuyển dark mode"
-                }
-                className="flex items-center gap-1.5 px-1.5 py-1 rounded-lg border border-white/10 bg-white/5 hover:bg-indigo-600 hover:border-indigo-500 transition-all group shrink-0"
-              >
-                {theme === "dark" ? (
-                  <Sun
-                    size={11}
-                    className="text-slate-400 group-hover:text-white transition-colors"
-                  />
-                ) : (
-                  <Moon
-                    size={11}
-                    className="text-slate-400 group-hover:text-white transition-colors"
-                  />
-                )}
-                <span className="text-[9px] font-bold text-slate-500 group-hover:text-white transition-colors">
-                  {theme === "dark" ? "Light" : "Dark"}
-                </span>
-              </button>
-              <button
-                onClick={logout}
-                title={language === "vi" ? "Đăng xuất" : "Logout"}
-                className="flex items-center justify-center p-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-rose-600 hover:border-rose-500 hover:text-white text-slate-400 transition-all shrink-0 group"
-              >
-                <LogOut size={11} className="transition-colors" />
-              </button>
-            </>
-          )}
-        </div>
+              ) : (
+                <Moon
+                  size={11}
+                  className="text-slate-400 group-hover:text-white transition-colors"
+                />
+              )}
+              <span className="text-[9px] font-bold text-slate-500 group-hover:text-white transition-colors">
+                {theme === "dark" ? "Light" : "Dark"}
+              </span>
+            </button>
+            <div className="flex-1" />
+            <button
+              onClick={logout}
+              title={language === "vi" ? "Đăng xuất" : "Logout"}
+              className="flex items-center justify-center p-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-rose-600 hover:border-rose-500 hover:text-white text-slate-400 transition-all shrink-0 group"
+            >
+              <LogOut size={11} className="transition-colors" />
+            </button>
+          </div>
+        )}
       </div>
 
       {showCategoryModal && (

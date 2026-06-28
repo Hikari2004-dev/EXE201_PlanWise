@@ -71,7 +71,6 @@ export type {
   FocusSession,
   QuickNote,
   DailyReflection,
-  VisionItem,
   EventColor,
 } from "../data/mockData";
 
@@ -79,7 +78,7 @@ export type {
 export interface UpdateVisionItemRequest {
   title?: string;
   description?: string;
-  category?: string;
+  categoryId?: string;
   imageUrl?: string;
   quote?: string;
   sortOrder?: number;
@@ -89,7 +88,9 @@ export interface ApiVisionItem {
   id: string;
   title: string;
   description?: string;
-  category?: string;
+  categoryId?: string;
+  categoryName?: string;
+  categoryColor?: string;
   imageUrl?: string;
   quote?: string;
   sortOrder: number;
@@ -97,17 +98,35 @@ export interface ApiVisionItem {
   updatedAt: string;
 }
 
+export interface VisionImageUploadRequest {
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+}
+
+export interface VisionImageUploadResponse {
+  uploadUrl: string;
+  publicUrl: string;
+  objectKey: string;
+}
+
 export interface UpdateTaskRequest {
   title?: string;
   description?: string;
   dueDate?: string;
+  scheduledAt?: string;
   priority?: string;
   color?: string;
   categoryId?: string;
+  goalId?: string;
+  milestoneId?: string;
   eisenhowerMatrix?: string;
+  status?: string;
   estimatedTime?: number;
   completed?: boolean;
   contexts?: string[];
+  checklist?: string[];
+  showOnCalendar?: boolean;
   sortOrder?: number;
 }
 
@@ -116,17 +135,23 @@ export interface ApiTask {
   title: string;
   description?: string;
   dueDate?: string;
+  scheduledAt?: string;
   priority: string;
   color: string;
+  status?: string;
   completed: boolean;
   completedAt?: string;
   eisenhowerMatrix?: string;
   estimatedTime?: number;
   actualTime?: number;
   contexts?: string[];
+  checklist?: string[];
   categoryId?: string;
   categoryName?: string;
   categoryColor?: string;
+  goalId?: string;
+  milestoneId?: string;
+  showOnCalendar?: boolean;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -183,6 +208,7 @@ export interface UpdateHabitRequest {
   description?: string;
   frequency?: 'daily' | 'weekly' | 'monthly';
   targetCount?: number;
+  repeatDays?: string[];
   color?: string;
   isActive?: boolean;
   sortOrder?: number;
@@ -194,6 +220,7 @@ export interface ApiHabit {
   description?: string;
   frequency: 'daily' | 'weekly' | 'monthly';
   targetCount: number;
+  repeatDays?: string[];
   currentStreak: number;
   bestStreak: number;
   color: string;
@@ -220,7 +247,9 @@ export interface ApiGoal {
   id: string;
   title: string;
   description?: string;
-  category: 'career' | 'learning' | 'health' | 'finance';
+  categoryId?: string;
+  categoryName?: string;
+  categoryColor?: string;
   goalType: 'SMART' | 'OKR';
   period: 'week' | 'month' | 'year';
   targetDate?: string;
@@ -337,21 +366,38 @@ export interface ApiCategory {
 export interface CreateVisionItemRequest {
   title: string;
   description?: string;
-  category?: string;
+  categoryId: string;
   imageUrl?: string;
   quote?: string;
+}
+
+export interface VisionItem {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl?: string;
+  quote?: string;
+  categoryId: string;
+  categoryName: string;
+  categoryColor?: string;
 }
 
 export interface CreateTaskRequest {
   title: string;
   description?: string;
   dueDate?: string;
+  scheduledAt?: string;
   priority?: string;
   color?: string;
   categoryId?: string;
+  goalId?: string;
+  milestoneId?: string;
   eisenhowerMatrix?: string;
+  status?: string;
   estimatedTime?: number;
   contexts?: string[];
+  checklist?: string[];
+  showOnCalendar?: boolean;
 }
 
 export interface MomoIPNRequest {
@@ -384,6 +430,7 @@ export interface CreateHabitRequest {
   description?: string;
   frequency?: 'daily' | 'weekly' | 'monthly';
   targetCount?: number;
+  repeatDays?: string[];
   color?: string;
 }
 

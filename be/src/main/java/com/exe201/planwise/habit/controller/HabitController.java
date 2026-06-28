@@ -80,7 +80,7 @@ public class HabitController {
 
     /**
      * DELETE /api/v1/habits/{habitId}
-     * Xóa thói quen.
+     * Xóa mềm thói quen.
      */
     @DeleteMapping("/{habitId}")
     public ResponseEntity<Void> deleteHabit(
@@ -92,13 +92,13 @@ public class HabitController {
 
     /**
      * PATCH /api/v1/habits/{habitId}/completions/{date}
-     * Bật/tắt hoàn thành thói quen trong một ngày.
+     * Đánh dấu hoàn thành thói quen trong một ngày (không thể hoàn tác).
      */
     @PatchMapping("/{habitId}/completions/{date}")
-    public ResponseEntity<HabitDto> toggleCompletion(
+    public ResponseEntity<HabitDto> completeHabit(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID habitId,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ResponseEntity.ok(habitService.toggleCompletion(principal.getId(), habitId, date));
+        return ResponseEntity.ok(habitService.completeHabit(principal.getId(), habitId, date));
     }
 }

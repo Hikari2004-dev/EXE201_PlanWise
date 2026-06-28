@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import {
   AlertCircle,
@@ -25,15 +25,20 @@ export function VerifyEmailPage() {
   const [resending, setResending] = useState(false);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [message, setMessage] = useState<string>("");
+  const hasVerified = useRef(false);
 
   const hasToken = useMemo(() => token.length > 0, [token]);
 
   useEffect(() => {
-    if (!hasToken) {
+    if (!hasToken || hasVerified.current) {
       setStatus("idle");
-      setMessage("Vui lòng mở liên kết xác thực trong email hoặc yêu cầu gửi lại email xác thực.");
+      if (!hasToken) {
+        setMessage("Vui lòng mở liên kết xác thực trong email hoặc yêu cầu gửi lại email xác thực.");
+      }
       return;
     }
+
+    hasVerified.current = true;
 
     const runVerification = async () => {
       setVerifying(true);

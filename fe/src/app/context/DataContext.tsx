@@ -46,17 +46,23 @@ interface Task {
   title: string;
   description?: string;
   dueDate: string;
+  scheduledAt?: string;
   priority: "Cao" | "Trung bình" | "Thấp";
+  status?: "IN_PROGRESS" | "COMPLETED" | "MISSED" | string;
   completed: boolean;
   completedAt?: string;
   color: string;
   eisenhowerMatrix?: string;
   contexts?: string[];
+  checklist?: string[];
   estimatedTime?: number;
   actualTime?: number;
   categoryId?: string;
   categoryName?: string;
   categoryColor?: string;
+  goalId?: string;
+  milestoneId?: string;
+  showOnCalendar?: boolean;
   sortOrder: number;
 }
 
@@ -64,8 +70,14 @@ function normalizeTaskDueDateForApi(dueDate?: string) {
   if (!dueDate) return undefined;
 
   const trimmed = dueDate.trim();
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(trimmed)) {
+    const localDate = new Date(trimmed);
+    return Number.isNaN(localDate.getTime()) ? undefined : localDate.toISOString();
+  }
+
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return trimmed;
+    const localDate = new Date(`${trimmed}T00:00`);
+    return Number.isNaN(localDate.getTime()) ? undefined : localDate.toISOString();
   }
 
   const viMatch = trimmed.match(/^(\d{1,2})\s*Th(\d{1,2})$/i);
@@ -75,11 +87,12 @@ function normalizeTaskDueDateForApi(dueDate?: string) {
 
     if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
       const year = new Date().getFullYear();
-      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      return new Date(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00`).toISOString();
     }
   }
 
-  return undefined;
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 }
 
 function mapApiTaskToTask(t: ApiTask): Task {
@@ -96,17 +109,23 @@ function mapApiTaskToTask(t: ApiTask): Task {
     title: t.title,
     description: t.description || "",
     dueDate: t.dueDate || "",
+    scheduledAt: t.scheduledAt,
     priority: priorityMap[t.priority] || "Trung bình",
+    status: t.status || (t.completed ? "COMPLETED" : "IN_PROGRESS"),
     completed: t.completed,
     completedAt: t.completedAt,
     color: t.color,
     eisenhowerMatrix: t.eisenhowerMatrix ? t.eisenhowerMatrix.replace(/_/g, "-") : undefined,
     contexts: t.contexts,
+    checklist: t.checklist,
     estimatedTime: t.estimatedTime,
     actualTime: t.actualTime,
     categoryId: t.categoryId,
     categoryName: t.categoryName,
     categoryColor: t.categoryColor,
+    goalId: t.goalId,
+    milestoneId: t.milestoneId,
+    showOnCalendar: t.showOnCalendar ?? true,
     sortOrder: t.sortOrder,
   };
 }
@@ -162,8 +181,10 @@ interface Goal {
   id: string;
   title: string;
   description: string;
-  category: string;
+  categoryId: string;
+  categoryName: string;
   type: string;
+  period: "week" | "month" | "year";
   targetDate: string;
   progress: number;
   color: string;
@@ -176,12 +197,29 @@ interface Goal {
   }>;
 }
 
+interface CreateGoalInput {
+  title: string;
+  description?: string;
+  categoryId: string;
+  type: string;
+  period: "week" | "month" | "year";
+  targetDate?: string;
+  color?: string;
+}
+
+interface CreateMilestoneInput {
+  title: string;
+  description?: string;
+  targetDate?: string;
+}
+
 interface Habit {
   id: string;
   title: string;
   description: string;
-  frequency: string;
+  frequency: "daily" | "weekly" | "monthly";
   targetCount: number;
+  repeatDays: string[];
   currentStreak: number;
   bestStreak: number;
   color: string;
@@ -213,7 +251,9 @@ interface VisionItem {
   description: string;
   imageUrl?: string;
   quote?: string;
-  category: string;
+  categoryId: string;
+  categoryName: string;
+  categoryColor?: string;
 }
 
 interface Category {
@@ -297,14 +337,18 @@ interface DataContextType {
   toggleTaskComplete: (id: string) => Promise<void>;
   
   // Goal operations
-  addGoal: (goal: Omit<Goal, "id">) => Promise<void>;
+  addGoal: (goal: CreateGoalInput) => Promise<void>;
   updateGoal: (id: string, goal: Partial<Goal>) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
-  
+  addMilestone: (goalId: string, milestone: CreateMilestoneInput) => Promise<void>;
+  updateMilestone: (goalId: string, milestoneId: string, milestone: { title?: string; description?: string; targetDate?: string; completed?: boolean }) => Promise<void>;
+  deleteMilestone: (goalId: string, milestoneId: string) => Promise<void>;
+
   // Habit operations
   addHabit: (habit: Omit<Habit, "id" | "currentStreak" | "bestStreak" | "completedDates">) => Promise<void>;
   updateHabit: (id: string, habit: Partial<Habit>) => Promise<void>;
-  toggleHabitDate: (id: string, dateStr: string) => Promise<void>;
+  deleteHabit: (id: string) => Promise<void>;
+  completeHabitDate: (id: string, dateStr: string) => Promise<void>;
   
   // Focus operations
   updateDailyFocus: (date: string, topTasks: string[]) => Promise<void>;
@@ -410,8 +454,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
           id: g.id,
           title: g.title,
           description: g.description || "",
-          category: g.category,
+          categoryId: g.categoryId || "",
+          categoryName: g.categoryName || "",
           type: g.goalType,
+          period: g.period,
           targetDate: g.targetDate || "",
           progress: g.progress,
           color: g.color,
@@ -427,12 +473,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       // Process habits
       if (habitsData.status === "fulfilled") {
-        setHabits(habitsData.value.map(h => ({
+        const fetchedHabits = habitsData.value.habits || [];
+        setHabits(fetchedHabits.map(h => ({
           id: h.id,
           title: h.title,
           description: h.description || "",
           frequency: h.frequency,
           targetCount: h.targetCount,
+          repeatDays: h.repeatDays || [],
           currentStreak: h.currentStreak,
           bestStreak: h.bestStreak,
           color: h.color,
@@ -449,7 +497,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
           description: v.description || "",
           imageUrl: v.imageUrl,
           quote: v.quote,
-          category: v.category || "",
+          categoryId: v.categoryId || "",
+          categoryName: v.categoryName || "",
+          categoryColor: v.categoryColor,
         })));
       }
 
@@ -574,12 +624,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
       title: task.title,
       description: task.description,
       dueDate: normalizeTaskDueDateForApi(task.dueDate),
+      scheduledAt: task.scheduledAt,
       priority: task.priority,
       color: task.color,
       eisenhowerMatrix: task.eisenhowerMatrix,
+      status: task.status,
       estimatedTime: task.estimatedTime,
       contexts: task.contexts,
+      checklist: task.checklist,
       categoryId: task.categoryId,
+      goalId: task.goalId,
+      milestoneId: task.milestoneId,
+      showOnCalendar: task.showOnCalendar,
     });
     setTasks(prev => [...prev, mapApiTaskToTask(created)]);
   };
@@ -594,13 +650,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
         updateData.dueDate = normalizedDueDate;
       }
     }
+    if (updates.scheduledAt !== undefined) updateData.scheduledAt = updates.scheduledAt;
     if (updates.priority) updateData.priority = updates.priority;
     if (updates.color) updateData.color = updates.color;
     if (updates.completed !== undefined) updateData.completed = updates.completed;
+    if (updates.status !== undefined) updateData.status = updates.status;
     if (updates.eisenhowerMatrix !== undefined) updateData.eisenhowerMatrix = updates.eisenhowerMatrix;
     if (updates.estimatedTime !== undefined) updateData.estimatedTime = updates.estimatedTime;
-    if (updates.contexts) updateData.contexts = updates.contexts;
-    if (updates.categoryId !== undefined) updateData.categoryId = updates.categoryId;
+    if (updates.contexts !== undefined) updateData.contexts = updates.contexts;
+    if (updates.checklist !== undefined) updateData.checklist = updates.checklist;
+    if (updates.categoryId) updateData.categoryId = updates.categoryId;
+    if (updates.goalId !== undefined) updateData.goalId = updates.goalId;
+    if (updates.milestoneId !== undefined) updateData.milestoneId = updates.milestoneId;
+    if (updates.showOnCalendar !== undefined) updateData.showOnCalendar = updates.showOnCalendar;
+    if (updates.sortOrder !== undefined) updateData.sortOrder = updates.sortOrder;
 
     const updated = await taskApi.update(id, updateData as Parameters<typeof taskApi.update>[1]);
     setTasks(prev => prev.map(t => t.id === id ? mapApiTaskToTask(updated) : t));
@@ -619,24 +682,44 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   // Goal operations
-  const addGoal = async (goal: Omit<Goal, "id">) => {
+  const addGoal = async (goal: CreateGoalInput) => {
     const created = await goalApi.create({
       title: goal.title,
       description: goal.description,
-      category: goal.category,
+      categoryId: goal.categoryId,
       goalType: goal.type,
+      period: goal.period,
       targetDate: goal.targetDate || undefined,
       color: goal.color,
     });
-    setGoals(prev => [...prev, { ...goal, id: created.id }]);
+    setGoals(prev => [...prev, {
+      id: created.id,
+      title: created.title,
+      description: created.description || "",
+      categoryId: created.categoryId || goal.categoryId,
+      categoryName: created.categoryName || categories.find((category) => category.id === goal.categoryId)?.name || "",
+      type: created.goalType,
+      period: created.period,
+      targetDate: created.targetDate || "",
+      progress: created.progress,
+      color: created.color,
+      milestones: (created.milestones || []).map(m => ({
+        id: m.id,
+        title: m.title,
+        description: m.description || "",
+        targetDate: m.targetDate || "",
+        completed: m.completed,
+      })),
+    }]);
   };
 
   const updateGoal = async (id: string, updates: Partial<Goal>) => {
     const updateData: Record<string, unknown> = {};
     if (updates.title) updateData.title = updates.title;
     if (updates.description !== undefined) updateData.description = updates.description;
-    if (updates.category) updateData.category = updates.category;
+    if (updates.categoryId !== undefined) updateData.categoryId = updates.categoryId;
     if (updates.type) updateData.goalType = updates.type;
+    if (updates.period) updateData.period = updates.period;
     if (updates.targetDate !== undefined) updateData.targetDate = updates.targetDate;
     if (updates.progress !== undefined) updateData.progress = updates.progress;
     if (updates.color) updateData.color = updates.color;
@@ -650,22 +733,66 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setGoals(prev => prev.filter(g => g.id !== id));
   };
 
+  const addMilestone = async (goalId: string, milestone: CreateMilestoneInput) => {
+    const created = await goalApi.createMilestone(goalId, milestone);
+    setGoals(prev => prev.map(goal => goal.id === goalId ? {
+      ...goal,
+      milestones: [...goal.milestones, {
+        id: created.id,
+        title: created.title,
+        description: created.description || "",
+        targetDate: created.targetDate || "",
+        completed: created.completed,
+      }],
+    } : goal));
+  };
+
+  const updateMilestone = async (goalId: string, milestoneId: string, milestone: { title?: string; description?: string; targetDate?: string; completed?: boolean }) => {
+    const updated = await goalApi.updateMilestone(goalId, milestoneId, milestone);
+    setGoals(prev => prev.map(goal => goal.id === goalId ? {
+      ...goal,
+      milestones: goal.milestones.map(item => item.id === milestoneId ? {
+        id: updated.id,
+        title: updated.title,
+        description: updated.description || "",
+        targetDate: updated.targetDate || "",
+        completed: updated.completed,
+      } : item),
+    } : goal));
+  };
+
+  const deleteMilestone = async (goalId: string, milestoneId: string) => {
+    await goalApi.deleteMilestone(goalId, milestoneId);
+    setGoals(prev => prev.map(goal => goal.id === goalId ? {
+      ...goal,
+      milestones: goal.milestones.filter(milestone => milestone.id !== milestoneId),
+    } : goal));
+  };
+
   // Habit operations
   const addHabit = async (habit: Omit<Habit, "id" | "currentStreak" | "bestStreak" | "completedDates">) => {
-    const created = await habitApi.create({
+    const payload = {
       title: habit.title,
       description: habit.description,
       frequency: habit.frequency,
       targetCount: habit.targetCount,
+      repeatDays: habit.repeatDays,
       color: habit.color,
-    });
+    };
+
+    const created = await habitApi.create(payload);
     setHabits(prev => [...prev, {
-      ...habit,
       id: created.id,
-      currentStreak: 0,
-      bestStreak: 0,
-      completedDates: [],
-      completedToday: false,
+      title: created.title,
+      description: created.description || "",
+      frequency: created.frequency,
+      targetCount: created.targetCount,
+      repeatDays: created.repeatDays || [],
+      currentStreak: created.currentStreak,
+      bestStreak: created.bestStreak,
+      color: created.color,
+      completedDates: created.completedDates || [],
+      completedToday: created.completedDates ? created.completedDates.includes(new Date().toISOString().split('T')[0]) : false,
     }]);
   };
 
@@ -675,16 +802,42 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.frequency) updateData.frequency = updates.frequency;
     if (updates.targetCount !== undefined) updateData.targetCount = updates.targetCount;
+    if (updates.repeatDays !== undefined) updateData.repeatDays = updates.repeatDays;
     if (updates.color) updateData.color = updates.color;
 
-    await habitApi.update(id, updateData as Parameters<typeof habitApi.update>[1]);
-    setHabits(prev => prev.map(h => h.id === id ? { ...h, ...updates } : h));
-  };
-
-  const toggleHabitDate = async (id: string, dateStr: string) => {
-    const updated = await habitApi.toggleCompletion(id, dateStr);
+    const updated = await habitApi.update(id, updateData as Parameters<typeof habitApi.update>[1]);
     setHabits(prev => prev.map(h => h.id === id ? {
       ...h,
+      title: updated.title,
+      description: updated.description || "",
+      frequency: updated.frequency,
+      targetCount: updated.targetCount,
+      repeatDays: updated.repeatDays || [],
+      currentStreak: updated.currentStreak,
+      bestStreak: updated.bestStreak,
+      color: updated.color,
+      completedDates: updated.completedDates || [],
+      completedToday: updated.completedDates ? updated.completedDates.includes(new Date().toISOString().split('T')[0]) : false,
+    } : h));
+  };
+
+  const deleteHabit = async (id: string) => {
+    await habitApi.delete(id);
+    setHabits(prev => prev.filter(habit => habit.id !== id));
+  };
+
+  const completeHabitDate = async (id: string, dateStr: string) => {
+    const updated = await habitApi.complete(id, dateStr);
+    setHabits(prev => prev.map(h => h.id === id ? {
+      ...h,
+      title: updated.title,
+      description: updated.description || "",
+      frequency: updated.frequency,
+      targetCount: updated.targetCount,
+      repeatDays: updated.repeatDays || [],
+      currentStreak: updated.currentStreak,
+      bestStreak: updated.bestStreak,
+      color: updated.color,
       completedDates: updated.completedDates || [],
       completedToday: updated.completedDates ? updated.completedDates.includes(new Date().toISOString().split('T')[0]) : false,
     } : h));
@@ -779,13 +932,43 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Vision operations
   const addVisionItem = async (item: Omit<VisionItem, "id">) => {
-    const created = await visionApi.create(item);
-    setVisionItems(prev => [...prev, { ...item, id: created.id }]);
+    const created = await visionApi.create({
+      title: item.title,
+      description: item.description || undefined,
+      categoryId: item.categoryId,
+      imageUrl: item.imageUrl,
+      quote: item.quote,
+    });
+    setVisionItems(prev => [...prev, {
+      id: created.id,
+      title: created.title,
+      description: created.description || "",
+      imageUrl: created.imageUrl,
+      quote: created.quote,
+      categoryId: created.categoryId || item.categoryId,
+      categoryName: created.categoryName || item.categoryName,
+      categoryColor: created.categoryColor || item.categoryColor,
+    }]);
   };
 
   const updateVisionItem = async (id: string, updates: Partial<VisionItem>) => {
-    await visionApi.update(id, updates as Parameters<typeof visionApi.update>[1]);
-    setVisionItems(prev => prev.map(v => v.id === id ? { ...v, ...updates } : v));
+    const updated = await visionApi.update(id, {
+      title: updates.title,
+      description: updates.description,
+      categoryId: updates.categoryId,
+      imageUrl: updates.imageUrl,
+      quote: updates.quote,
+    });
+    setVisionItems(prev => prev.map(v => v.id === id ? {
+      id: updated.id,
+      title: updated.title,
+      description: updated.description || "",
+      imageUrl: updated.imageUrl,
+      quote: updated.quote,
+      categoryId: updated.categoryId || v.categoryId,
+      categoryName: updated.categoryName || v.categoryName,
+      categoryColor: updated.categoryColor || v.categoryColor,
+    } : v));
   };
 
   const deleteVisionItem = async (id: string) => {
@@ -855,9 +1038,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         addGoal,
         updateGoal,
         deleteGoal,
+        addMilestone,
+        updateMilestone,
+        deleteMilestone,
         addHabit,
         updateHabit,
-        toggleHabitDate,
+        deleteHabit,
+        completeHabitDate,
         updateDailyFocus,
         addFocusSession,
         endFocusSession,

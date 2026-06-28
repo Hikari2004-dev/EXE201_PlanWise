@@ -21,6 +21,8 @@ import {
   ArrowRight,
   Sparkles,
   Target,
+  AlertTriangle,
+  Maximize2,
 } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { COLOR_MAP, type Task, type EventColor } from "../data/mockData";
@@ -32,38 +34,81 @@ function normalizeColor(color: string | undefined): string {
   return color.toLowerCase();
 }
 
-function normalizeUiDateToDateString(dueDate?: string) {
-  if (!dueDate) return "";
-  const trimmed = dueDate.trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return trimmed;
+function toDateTimeLocalValue(value?: string) {
+  if (!value) return "";
+  const trimmed = value.trim();
+  const dateOnly = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    return `${dateOnly[1]}-${dateOnly[2]}-${dateOnly[3]}T00:00`;
   }
-  const viMatch = trimmed.match(/^(\d{1,2})\s*Th(\d{1,2})$/i);
-  if (viMatch) {
-    const day = Number(viMatch[1]);
-    const month = Number(viMatch[2]);
-    if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
-      const year = new Date().getFullYear();
-      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    }
-  }
-  return "";
+
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (num: number) => String(num).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function formatDueDateLabel(dueDate?: string) {
   if (!dueDate) return "";
-  const trimmed = dueDate.trim();
-  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (isoMatch) {
-    return `${Number(isoMatch[3])} Th${Number(isoMatch[2])}`;
+  const date = new Date(dueDate);
+  if (Number.isNaN(date.getTime())) return dueDate;
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date).replace(",", "");
+}
+
+
+function formatScheduledAtLabel(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date).replace(",", "");
+}
+
+function normalizeChecklistItems(value: string) {
+  return value
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function getTaskStatus(task: Task) {
+  if (task.status) return task.status;
+  if (task.completed) return "COMPLETED";
+
+  const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+  if (dueDate && !Number.isNaN(dueDate.getTime()) && dueDate < new Date()) {
+    return "MISSED";
   }
 
-  const viMatch = trimmed.match(/^(\d{1,2})\s*Th(\d{1,2})$/i);
-  if (viMatch) {
-    return `${Number(viMatch[1])} Th${Number(viMatch[2])}`;
-  }
+  return "IN_PROGRESS";
+}
 
-  return trimmed;
+function getTaskStatusLabel(status: string, language: "vi" | "en") {
+  if (language === "en") {
+    if (status === "COMPLETED") return "Completed";
+    if (status === "MISSED") return "Missed";
+    return "In Progress";
+  }
+  if (status === "COMPLETED") return "Hoàn thành";
+  if (status === "MISSED") return "Trễ hạn";
+  return "Đang làm";
+}
+
+function getTaskStatusClasses(status: string) {
+  if (status === "COMPLETED") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (status === "MISSED") return "border-rose-200 bg-rose-50 text-rose-700";
+  return "border-blue-200 bg-blue-50 text-blue-700";
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -79,6 +124,9 @@ const PRIORITY_DOT: Record<string, string> = {
 };
 
 const EVENT_COLORS: EventColor[] = ["indigo", "blue", "emerald", "amber", "rose", "purple", "teal", "orange"];
+
+// Focus Mode Constants
+const MAX_PAUSE_COUNT = 3;
 
 interface TaskModalProps {
   task?: Task;
@@ -129,8 +177,52 @@ function FocusSessionOverlay({
 }) {
   const [selectedMethod, setSelectedMethod] = useState<FocusMethodKey>("pomodoro");
   const [isRunning, setIsRunning] = useState(false);
-  const initialSeconds = FOCUS_METHODS[selectedMethod].minutes * 60;
-  const [timeLeft, setTimeLeft] = useState(initialSeconds);
+  const [isPaused, setIsPaused] = useState(false);
+  const [pauseCount, setPauseCount] = useState(0);
+  const [showPreFocusDialog, setShowPreFocusDialog] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(FOCUS_METHODS["pomodoro"].minutes * 60);
+
+  const method = FOCUS_METHODS[selectedMethod];
+  const progress = useMemo(() => {
+    const total = method.minutes * 60;
+    return ((total - timeLeft) / total) * 100;
+  }, [method.minutes, timeLeft]);
+
+  // Fullscreen handlers
+  const enterFullscreen = async () => {
+    try {
+      await document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } catch (err) {
+      console.log("Fullscreen not supported or denied");
+    }
+  };
+
+  const exitFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+      setIsFullscreen(false);
+    } catch (err) {
+      console.log("Exit fullscreen error");
+    }
+  };
+
+  // Prevent browser close/refresh
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "Bạn đang trong Focus Mode. Bạn có chắc muốn rời đi?";
+      return e.returnValue;
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
 
   useEffect(() => {
     setTimeLeft(FOCUS_METHODS[selectedMethod].minutes * 60);
@@ -157,139 +249,267 @@ function FocusSessionOverlay({
     return () => window.clearInterval(timer);
   }, [isRunning, timeLeft]);
 
-  const method = FOCUS_METHODS[selectedMethod];
-  const progress = useMemo(() => {
-    const total = method.minutes * 60;
-    return ((total - timeLeft) / total) * 100;
-  }, [method.minutes, timeLeft]);
+  const startFocusMode = async () => {
+    setShowPreFocusDialog(false);
+    await enterFullscreen();
+    setIsRunning(true);
+  };
+
+  const handlePause = () => {
+    if (isRunning) {
+      // Đang chạy -> tạm dừng (chưa dùng lượt)
+      if (pauseCount < MAX_PAUSE_COUNT) {
+        setIsRunning(false);
+        setIsPaused(true);
+        setPauseCount((prev) => prev + 1);
+        exitFullscreen();
+      }
+    } else if (isPaused) {
+      // Đang tạm dừng -> tiếp tục (vẫn còn lượt)
+      if (pauseCount < MAX_PAUSE_COUNT) {
+        setIsPaused(false);
+        setIsRunning(true);
+        enterFullscreen();
+      }
+    }
+  };
+
+  const endFocusMode = async () => {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    }
+    setIsRunning(false);
+    setIsPaused(false);
+    onClose();
+  };
+
+  // Pre-focus Dialog
+  if (showPreFocusDialog) {
+    return (
+      <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+          <div className="p-6 text-center border-b border-slate-100 dark:border-slate-800">
+            <div className="mx-auto mb-4 w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
+              <AlertTriangle className="w-8 h-8 text-indigo-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Chuẩn bị vào Focus Mode</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+              Task: <strong>{task.title}</strong>
+            </p>
+          </div>
+
+          <div className="p-6 space-y-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <h4 className="font-semibold text-amber-800 mb-3 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                Lưu ý quan trọng
+              </h4>
+              <ul className="space-y-2 text-sm text-amber-700">
+                <li className="flex items-start gap-2">
+                  <span className="font-bold">1.</span>
+                  <span>
+                    <strong>Fullscreen:</strong> Trình duyệt sẽ tự động chuyển sang toàn màn hình.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold">2.</span>
+                  <span>
+                    <strong>Tạm dừng:</strong> Không giới hạn - bạn có thể ra ngoài làm việc riêng bất cứ lúc nào.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold">3.</span>
+                  <span>
+                    <strong>Tiếp tục:</strong> Khi quay lại, bấm <strong>Tiếp tục</strong> để chạy tiếp timer.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold">4.</span>
+                  <span>
+                    <strong>Thời gian:</strong> Mặc định <strong>25 phút</strong> (Pomodoro).
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold">5.</span>
+                  <span>
+                    <strong>Cảnh báo:</strong> Trình duyệt sẽ cảnh báo nếu bạn cố đóng tab.
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={onClose}
+                className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={startFocusMode}
+                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold hover:from-indigo-700 hover:to-violet-700 transition flex items-center justify-center gap-2"
+              >
+                <Maximize2 size={18} />
+                Bắt đầu
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Focus Mode Fullscreen View
+  const isCompleted = timeLeft === 0;
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950 px-6 py-8 text-white">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.28),_transparent_32%),radial-gradient(circle_at_bottom,_rgba(16,185,129,0.18),_transparent_25%)]" />
-      <button
-        onClick={onClose}
-        className="absolute left-6 top-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/85 transition hover:bg-white/10 hover:text-white"
-      >
-        <XCircle size={16} />
-        Thoát focus
-      </button>
+
+      {/* Nút thoát - chỉ hiện khi tạm dừng hoặc đã hết lượt */}
+      {(isPaused || pauseCount >= MAX_PAUSE_COUNT) && (
+        <button
+          onClick={endFocusMode}
+          className="absolute left-6 top-6 inline-flex items-center gap-2 rounded-full border border-rose-500/50 bg-rose-500/20 px-4 py-2 text-sm font-semibold text-rose-300 transition hover:bg-rose-500/30 hover:text-rose-200"
+        >
+          <XCircle size={16} />
+          Thoát focus ({MAX_PAUSE_COUNT - pauseCount + (isPaused ? 1 : 0)}/{MAX_PAUSE_COUNT})
+        </button>
+      )}
 
       <div className="relative z-10 flex w-full max-w-5xl flex-col items-center justify-center gap-8">
-        <div className="text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-200/80">Focus Mode</p>
-          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-white">{task.title}</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-300">
-            {task.description || "Chỉ giữ lại một việc quan trọng này trên màn hình để bạn bắt đầu tập trung ngay."}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          {(Object.entries(FOCUS_METHODS) as [FocusMethodKey, (typeof FOCUS_METHODS)[FocusMethodKey]][]).map(([key, option]) => (
-            <button
-              key={key}
-              onClick={() => setSelectedMethod(key)}
-              className={`rounded-2xl border px-4 py-3 text-left transition-all ${
-                selectedMethod === key
-                  ? "border-white/20 bg-white text-slate-950 shadow-[0_12px_40px_-18px_rgba(255,255,255,0.55)]"
-                  : "border-white/10 bg-white/5 text-white/85 hover:bg-white/10"
-              }`}
-            >
-              <div className="text-sm font-bold">{option.label}</div>
-              <div className={`mt-2 h-1.5 rounded-full bg-gradient-to-r ${option.accent}`} />
-              <div className={`mt-2 text-xs leading-relaxed ${selectedMethod === key ? "text-slate-600" : "text-slate-300"}`}>
-                {option.helper}
-              </div>
-            </button>
-          ))}
-        </div>
-
-        <div className="relative flex h-[280px] w-[280px] sm:h-[360px] sm:w-[360px] items-center justify-center rounded-full border border-white/10 bg-white/5 shadow-[0_30px_120px_-40px_rgba(79,70,229,0.65)] backdrop-blur flex-shrink-0">
-          <div
-            className="absolute inset-3 rounded-full"
-            style={{
-              background: `conic-gradient(rgba(255,255,255,0.95) ${progress}%, rgba(255,255,255,0.06) ${progress}% 100%)`,
-              mask: "radial-gradient(farthest-side, transparent calc(100% - 16px), black calc(100% - 15px))",
-              WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 16px), black calc(100% - 15px))",
-            }}
-          />
-          <div className="relative flex h-[230px] w-[230px] sm:h-[300px] sm:w-[300px] flex-col items-center justify-center rounded-full border border-white/10 bg-slate-950/80 text-center">
-            <div className="mb-2 sm:mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-indigo-200">
-              <Brain size={13} />
-              {method.label}
+        {isCompleted ? (
+          <div className="text-center space-y-6">
+            <div className="text-6xl font-bold text-emerald-400 mb-4">
+              Hoàn thành!
             </div>
-            <div className="text-5xl font-black tracking-tight text-white sm:text-7xl">{formatFocusTime(timeLeft)}</div>
-            <p className="mt-2 sm:mt-3 max-w-[180px] sm:max-w-[220px] text-xs sm:text-sm leading-relaxed text-slate-300">{method.helper}</p>
+            <p className="text-xl text-white/70 mb-8">
+              Bạn đã hoàn thành phiên Focus Mode
+            </p>
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={async () => { await onCompleteTask(task.id); }}
+                className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition"
+              >
+                Đánh dấu hoàn thành
+              </button>
+              <button
+                onClick={endFocusMode}
+                className="px-6 py-3 rounded-xl border border-white/30 text-white font-semibold hover:bg-white/10 transition"
+              >
+                Thoát
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="text-center">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-200/80">Focus Mode</p>
+              <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-white">{task.title}</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-300">
+                {task.description || "Chỉ giữ lại một việc quan trọng này trên màn hình để bạn bắt đầu tập trung ngay."}
+              </p>
+            </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <button
-            onClick={() => setIsRunning((prev) => !prev)}
-            className={`inline-flex min-w-[170px] items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-extrabold shadow-[0_18px_40px_-20px_rgba(99,102,241,0.9)] transition ${
-              isRunning
-                ? "border border-amber-300/30 bg-gradient-to-r from-amber-300 via-orange-300 to-amber-200 text-slate-950 hover:brightness-105"
-                : "bg-gradient-to-r from-white via-indigo-50 to-violet-100 text-indigo-950 hover:brightness-105"
-            }`}
-          >
-            {isRunning ? <Pause size={17} className="text-slate-950" /> : <Play size={17} className="text-indigo-700" />}
-            {isRunning ? "Tạm dừng" : "Bắt đầu"}
-          </button>
-          <button
-            onClick={() => {
-              setIsRunning(false);
-              setTimeLeft(method.minutes * 60);
-            }}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-          >
-            <RotateCcw size={15} />
-            Làm lại
-          </button>
-          <button
-            onClick={async () => {
-              await onCompleteTask(task.id);
-            }}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-5 py-3 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/20"
-          >
-            <Check size={16} />
-            Đánh dấu hoàn thành
-          </button>
-        </div>
+            <div className="relative flex h-[280px] w-[280px] sm:h-[360px] sm:w-[360px] items-center justify-center rounded-full border border-white/10 bg-white/5 shadow-[0_30px_120px_-40px_rgba(79,70,229,0.65)] backdrop-blur flex-shrink-0">
+              <div
+                className="absolute inset-3 rounded-full"
+                style={{
+                  background: `conic-gradient(rgba(255,255,255,0.95) ${progress}%, rgba(255,255,255,0.06) ${progress}% 100%)`,
+                  mask: "radial-gradient(farthest-side, transparent calc(100% - 16px), black calc(100% - 15px))",
+                  WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 16px), black calc(100% - 15px))",
+                }}
+              />
+              <div className="relative flex h-[230px] w-[230px] sm:h-[300px] sm:w-[300px] flex-col items-center justify-center rounded-full border border-white/10 bg-slate-950/80 text-center">
+                <div className="mb-2 sm:mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-indigo-200">
+                  <Brain size={13} />
+                  {method.label}
+                </div>
+                <div className="text-5xl font-black tracking-tight text-white sm:text-7xl">{formatFocusTime(timeLeft)}</div>
+                <p className="mt-2 sm:mt-3 max-w-[180px] sm:max-w-[220px] text-xs sm:text-sm leading-relaxed text-slate-300">{method.helper}</p>
+              </div>
+            </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-slate-300">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-            <TimerReset size={13} />
-            Hạn: {formatDueDateLabel(task.dueDate)}
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-            <Zap size={13} />
-            Ưu tiên: {task.priority}
-          </span>
-        </div>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              {isPaused ? (
+                <button
+                  onClick={handlePause}
+                  className="inline-flex min-w-[170px] items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-extrabold bg-gradient-to-r from-white via-indigo-50 to-violet-100 text-indigo-950 hover:brightness-105 shadow-[0_18px_40px_-20px_rgba(99,102,241,0.9)] transition"
+                >
+                  <Play size={17} className="text-indigo-700" />
+                  Tiếp tục ({MAX_PAUSE_COUNT - pauseCount} lượt)
+                </button>
+              ) : pauseCount >= MAX_PAUSE_COUNT ? (
+                <button
+                  disabled
+                  className="inline-flex min-w-[170px] items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-extrabold opacity-50 cursor-not-allowed border border-white/15 bg-white/5 text-white/50"
+                >
+                  <Pause size={17} />
+                  Hết lượt
+                </button>
+              ) : (
+                <button
+                  onClick={handlePause}
+                  className="inline-flex min-w-[170px] items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-extrabold shadow-[0_18px_40px_-20px_rgba(99,102,241,0.9)] transition border border-amber-300/30 bg-gradient-to-r from-amber-300 via-orange-300 to-amber-200 text-slate-950 hover:brightness-105"
+                >
+                  <Pause size={17} className="text-slate-950" />
+                  Tạm dừng ({MAX_PAUSE_COUNT - pauseCount} lượt)
+                </button>
+              )}
+              <button
+                onClick={async () => { await onCompleteTask(task.id); }}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-5 py-3 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/20"
+              >
+                <Check size={16} />
+                Đánh dấu hoàn thành
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-slate-300">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
+                <TimerReset size={13} />
+                Hạn: {formatDueDateLabel(task.dueDate)}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
+                <Zap size={13} />
+                Ưu tiên: {task.priority}
+              </span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
 function TaskModal({ task, onClose, onSave }: TaskModalProps) {
-  const { categories, addCategory } = useData();
+  const { categories, goals, addCategory } = useData();
   const resolvedCategoryId = task?.categoryId || categories[0]?.id || "";
   const [showCategoryPopup, setShowCategoryPopup] = useState(false);
   const [categoryForm, setCategoryForm] = useState({ name: "", color: "indigo" as EventColor });
   const [form, setForm] = useState({
     title: task?.title || "",
     categoryId: resolvedCategoryId,
-    dueDate: task?.dueDate ? normalizeUiDateToDateString(task.dueDate) : "",
+    dueDate: task?.dueDate ? toDateTimeLocalValue(task.dueDate) : "",
+    scheduledAt: toDateTimeLocalValue(task?.scheduledAt),
     priority: (task?.priority || "Trung bình") as Task["priority"],
     color: normalizeColor(task?.color) || "indigo" as EventColor,
     description: task?.description || "",
-    completed: task?.completed || false,
+    status: task?.status || (task?.completed ? "COMPLETED" : "IN_PROGRESS"),
     eisenhowerMatrix: task?.eisenhowerMatrix || "",
     estimatedTime: task?.estimatedTime || "",
     contexts: task?.contexts || [] as string[],
+    checklist: task?.checklist?.join("\n") || "",
+    goalId: task?.goalId || "",
+    milestoneId: task?.milestoneId || "",
+    showOnCalendar: task?.showOnCalendar ?? true,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [categoryError, setCategoryError] = useState<string | null>(null);
+
+  const selectedGoal = goals.find((goal) => goal.id === form.goalId);
+  const selectedMilestones = selectedGoal?.milestones || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -297,15 +517,21 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
     
     const taskData = {
       title: form.title,
-      categoryId: form.categoryId || categories[0]?.id || "",
-      dueDate: form.dueDate || "",
+      categoryId: form.categoryId || categories[0]?.id || undefined,
+      dueDate: form.dueDate,
+      scheduledAt: form.scheduledAt ? new Date(form.scheduledAt).toISOString() : undefined,
       priority: form.priority,
-      completed: form.completed,
+      completed: form.status === "COMPLETED",
+      status: form.status,
       color: form.color,
       description: form.description,
       eisenhowerMatrix: form.eisenhowerMatrix || undefined,
       estimatedTime: form.estimatedTime ? Number(form.estimatedTime) : undefined,
       contexts: form.contexts.length > 0 ? form.contexts : undefined,
+      checklist: normalizeChecklistItems(form.checklist),
+      goalId: form.goalId || undefined,
+      milestoneId: form.milestoneId || undefined,
+      showOnCalendar: form.showOnCalendar,
     };
 
     try {
@@ -407,9 +633,32 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
             <div>
               <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Hạn chót</label>
               <input
-                type="date"
+                type="datetime-local"
                 value={form.dueDate}
                 onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all bg-white"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Trạng thái</label>
+              <select
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value })}
+                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all bg-white"
+              >
+                <option value="IN_PROGRESS">Đang làm</option>
+                <option value="COMPLETED">Hoàn thành</option>
+                <option value="MISSED">Trễ hạn</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Thời gian diễn ra</label>
+              <input
+                type="datetime-local"
+                value={form.scheduledAt}
+                onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })}
                 className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all bg-white"
               />
             </div>
@@ -431,6 +680,49 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
               ))}
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Goal</label>
+              <select
+                value={form.goalId}
+                onChange={(e) => setForm({ ...form, goalId: e.target.value, milestoneId: "" })}
+                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all bg-white"
+              >
+                <option value="">Không thuộc goal</option>
+                {goals.map((goal) => (
+                  <option key={goal.id} value={goal.id}>{goal.title}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Milestone</label>
+              <select
+                value={form.milestoneId}
+                onChange={(e) => setForm({ ...form, milestoneId: e.target.value })}
+                disabled={!selectedGoal}
+                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all bg-white disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400"
+              >
+                <option value="">Không thuộc milestone</option>
+                {selectedMilestones.map((milestone) => (
+                  <option key={milestone.id} value={milestone.id}>{milestone.title}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Calendar</label>
+              <label className="flex h-[42px] items-center gap-2 rounded-lg border border-zinc-300 px-3 text-sm font-medium text-zinc-700">
+                <input
+                  type="checkbox"
+                  checked={form.showOnCalendar}
+                  onChange={(e) => setForm({ ...form, showOnCalendar: e.target.checked })}
+                  className="rounded border-zinc-300"
+                />
+                Hiển thị trên lịch
+              </label>
+            </div>
+          </div>
           <div>
             <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Mô tả</label>
             <textarea
@@ -438,6 +730,16 @@ function TaskModal({ task, onClose, onSave }: TaskModalProps) {
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               placeholder="Thêm chi tiết..."
               rows={2}
+              className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all resize-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Checklist</label>
+            <textarea
+              value={form.checklist}
+              onChange={(e) => setForm({ ...form, checklist: e.target.value })}
+              placeholder="Mỗi dòng là một checklist item"
+              rows={3}
               className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all resize-none"
             />
           </div>
@@ -555,8 +857,10 @@ function TaskCard({
   onEdit: (task: Task) => void;
   onFocus: (task: Task) => void;
 }) {
-  const { categories, language } = useData();
+  const { categories, goals, language } = useData();
   const category = categories.find(c => c.id === task.categoryId);
+  const goal = goals.find((item) => item.id === task.goalId);
+  const status = getTaskStatus(task);
   const normalizedColor = normalizeColor(task.color);
   const colors = category ? COLOR_MAP[normalizeColor(category.color)] : COLOR_MAP[normalizedColor];
 
@@ -618,7 +922,10 @@ function TaskCard({
             <p className="text-xs text-zinc-500 dark:text-slate-400 mt-1 leading-relaxed line-clamp-2">{task.description}</p>
 
           <div className="flex items-center gap-2 mt-3 flex-wrap">
-            {/* Category badge - use task's categoryName/categoryColor if available, fallback to context */}
+            <span className={`inline-flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-md border font-semibold ${getTaskStatusClasses(status)}`}>
+              {getTaskStatusLabel(status, language)}
+            </span>
+
             {(task.categoryName || category) && (
               <span className={`inline-flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-md font-semibold border ${colors.badge} bg-transparent`}>
                 <div className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
@@ -626,19 +933,44 @@ function TaskCard({
               </span>
             )}
 
-            {/* Due date */}
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-zinc-600 bg-zinc-100 dark:bg-slate-800 dark:text-slate-300 px-2 py-1 rounded-md border border-zinc-200 dark:border-slate-700">
-              <Calendar size={10} />
-              {formatDueDateLabel(task.dueDate)}
-            </span>
+            {task.dueDate && (
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-zinc-600 bg-zinc-100 dark:bg-slate-800 dark:text-slate-300 px-2 py-1 rounded-md border border-zinc-200 dark:border-slate-700">
+                <Calendar size={10} />
+                {formatDueDateLabel(task.dueDate)}
+              </span>
+            )}
 
-            {/* Priority */}
-            <span
-              className={`inline-flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-md border font-semibold ${PRIORITY_COLORS[task.priority].replace('bg-', 'bg-transparent text-').replace('text-', '')}`}
-            >
+            {task.scheduledAt && (
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-zinc-600 bg-zinc-100 dark:bg-slate-800 dark:text-slate-300 px-2 py-1 rounded-md border border-zinc-200 dark:border-slate-700">
+                <TimerReset size={10} />
+                {formatScheduledAtLabel(task.scheduledAt)}
+              </span>
+            )}
+
+            <span className={`inline-flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-md border font-semibold ${PRIORITY_COLORS[task.priority].replace('bg-', 'bg-transparent text-').replace('text-', '')}`}>
               <div className={`w-1.5 h-1.5 rounded-full ${PRIORITY_DOT[task.priority]}`} />
               {task.priority}
             </span>
+
+            {goal && (
+              <span className="inline-flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-md font-semibold border border-violet-200 bg-violet-50 text-violet-700">
+                <Target size={10} />
+                {goal.title}
+              </span>
+            )}
+
+            <span className={`inline-flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-md font-semibold border ${task.showOnCalendar === false ? "border-zinc-200 bg-zinc-50 text-zinc-500" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
+              {task.showOnCalendar === false
+                ? (language === "vi" ? "Ẩn lịch" : "Hidden from calendar")
+                : (language === "vi" ? "Hiện trên lịch" : "On calendar")}
+            </span>
+
+            {task.checklist && task.checklist.length > 0 && (
+              <span className="inline-flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-md font-semibold border border-amber-200 bg-amber-50 text-amber-700">
+                <Check size={10} />
+                {language === "vi" ? `${task.checklist.length} checklist` : `${task.checklist.length} checklist items`}
+              </span>
+            )}
 
             {!task.completed && (
               <button
@@ -653,6 +985,16 @@ function TaskCard({
               </button>
             )}
           </div>
+          {task.checklist && task.checklist.length > 0 && (
+            <div className="mt-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+              <div className="font-semibold mb-1">Checklist</div>
+              <ul className="space-y-1 list-disc pl-4">
+                {task.checklist.slice(0, 3).map((item, index) => (
+                  <li key={`${task.id}-check-${index}`}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -662,9 +1004,12 @@ function TaskCard({
 type FilterTab = "Tất cả" | "Đang làm" | "Hoàn thành" | "Tập trung";
 
 export function TasksView() {
-  const { tasks, categories, updateTask, deleteTask, addTask, language } = useData();
+  const { tasks, categories, goals, updateTask, deleteTask, addTask, language } = useData();
   const [filter, setFilter] = useState<FilterTab>("Tất cả");
   const [priorityFilter, setPriorityFilter] = useState<string>("Tất cả");
+  const [statusFilter, setStatusFilter] = useState<string>("Tất cả");
+  const [goalFilter, setGoalFilter] = useState<string>("Tất cả");
+  const [calendarFilter, setCalendarFilter] = useState<string>("Tất cả");
   const [search, setSearch] = useState("");
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -675,12 +1020,13 @@ export function TasksView() {
   const highPriority = tasks.filter((t) => !t.completed && t.priority === "Cao").length;
   const focusTasks = tasks
     .filter((t) => {
+      const status = getTaskStatus(t);
       const matchPriority = priorityFilter === "Tất cả" ? true : t.priority === priorityFilter;
       const matchSearch =
         search === "" ||
         t.title.toLowerCase().includes(search.toLowerCase()) ||
         (t.description || "").toLowerCase().includes(search.toLowerCase());
-      return !t.completed && matchPriority && matchSearch;
+      return status === "IN_PROGRESS" && matchPriority && matchSearch;
     })
     .sort((a, b) => {
       const order = { Cao: 0, "Trung bình": 1, Thấp: 2 };
@@ -715,18 +1061,26 @@ export function TasksView() {
   };
 
   const filtered = tasks.filter((t) => {
+    const status = getTaskStatus(t);
     const matchFilter =
       filter === "Tất cả"
         ? true
         : filter === "Đang làm" || filter === "Tập trung"
-        ? !t.completed
-        : t.completed;
+        ? status === "IN_PROGRESS" || status === "MISSED"
+        : status === "COMPLETED";
     const matchPriority = priorityFilter === "Tất cả" ? true : t.priority === priorityFilter;
+    const matchStatus = statusFilter === "Tất cả" ? true : status === statusFilter;
+    const matchGoal = goalFilter === "Tất cả" ? true : (goalFilter === "none" ? !t.goalId : t.goalId === goalFilter);
+    const matchCalendar = calendarFilter === "Tất cả"
+      ? true
+      : calendarFilter === "shown"
+      ? t.showOnCalendar !== false
+      : t.showOnCalendar === false;
     const matchSearch =
       search === "" ||
       t.title.toLowerCase().includes(search.toLowerCase()) ||
       (t.description || "").toLowerCase().includes(search.toLowerCase());
-    return matchFilter && matchPriority && matchSearch;
+    return matchFilter && matchPriority && matchStatus && matchGoal && matchCalendar && matchSearch;
   });
   return (
     <div className="flex flex-col h-full bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -829,8 +1183,7 @@ export function TasksView() {
           })}
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
-          {/* Priority filter */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto flex-wrap">
           <div className="flex items-center gap-2 px-3 py-1.5 border border-zinc-200 rounded-md bg-zinc-50 dark:bg-slate-900 dark:border-slate-800 w-full sm:w-auto">
             <Flag size={14} className="text-zinc-400" />
             <select
@@ -845,7 +1198,45 @@ export function TasksView() {
             </select>
           </div>
 
-          {/* Search */}
+          <div className="flex items-center gap-2 px-3 py-1.5 border border-zinc-200 rounded-md bg-zinc-50 dark:bg-slate-900 dark:border-slate-800 w-full sm:w-auto">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="text-xs sm:text-sm font-medium border-none bg-transparent text-zinc-700 dark:text-slate-300 focus:outline-none cursor-pointer w-full"
+            >
+              <option value="Tất cả">{language === "vi" ? "Tất cả trạng thái" : "All Statuses"}</option>
+              <option value="IN_PROGRESS">{language === "vi" ? "Đang làm" : "In Progress"}</option>
+              <option value="COMPLETED">{language === "vi" ? "Hoàn thành" : "Completed"}</option>
+              <option value="MISSED">{language === "vi" ? "Trễ hạn" : "Missed"}</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 px-3 py-1.5 border border-zinc-200 rounded-md bg-zinc-50 dark:bg-slate-900 dark:border-slate-800 w-full sm:w-auto">
+            <select
+              value={goalFilter}
+              onChange={(e) => setGoalFilter(e.target.value)}
+              className="text-xs sm:text-sm font-medium border-none bg-transparent text-zinc-700 dark:text-slate-300 focus:outline-none cursor-pointer w-full"
+            >
+              <option value="Tất cả">{language === "vi" ? "Tất cả goal" : "All Goals"}</option>
+              <option value="none">{language === "vi" ? "Không thuộc goal" : "No Goal"}</option>
+              {goals.map((goal) => (
+                <option key={goal.id} value={goal.id}>{goal.title}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 px-3 py-1.5 border border-zinc-200 rounded-md bg-zinc-50 dark:bg-slate-900 dark:border-slate-800 w-full sm:w-auto">
+            <select
+              value={calendarFilter}
+              onChange={(e) => setCalendarFilter(e.target.value)}
+              className="text-xs sm:text-sm font-medium border-none bg-transparent text-zinc-700 dark:text-slate-300 focus:outline-none cursor-pointer w-full"
+            >
+              <option value="Tất cả">{language === "vi" ? "Tất cả lịch" : "All Calendar"}</option>
+              <option value="shown">{language === "vi" ? "Đang hiện trên lịch" : "Shown on calendar"}</option>
+              <option value="hidden">{language === "vi" ? "Đang ẩn khỏi lịch" : "Hidden from calendar"}</option>
+            </select>
+          </div>
+
           <div className="flex items-center gap-2 bg-white border border-zinc-200 rounded-md px-3 py-1.5 w-full sm:w-64 shadow-sm focus-within:ring-1 focus-within:ring-zinc-400 focus-within:border-zinc-400 transition-all dark:bg-slate-900 dark:border-slate-800 dark:focus-within:ring-indigo-500">
             <Search size={14} className="text-zinc-400 flex-shrink-0" />
             <input

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import {
   UserInfo,
   AuthResponse,
@@ -6,6 +6,9 @@ import {
   LoginRequest,
   VerificationResponse,
   ResendVerificationRequest,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
+  PasswordResetResponse,
 } from "../types/auth.types";
 
 interface AuthContextType {
@@ -17,6 +20,8 @@ interface AuthContextType {
   register: (credentials: RegisterRequest) => Promise<VerificationResponse>;
   resendVerification: (payload: ResendVerificationRequest) => Promise<VerificationResponse>;
   verifyEmail: (token: string) => Promise<VerificationResponse>;
+  forgotPassword: (payload: ForgotPasswordRequest) => Promise<PasswordResetResponse>;
+  resetPassword: (payload: ResetPasswordRequest) => Promise<PasswordResetResponse>;
   logout: () => Promise<void>;
   loginWithToken: (token: string, refreshToken: string) => Promise<void>;
   fetchWithAuth: (path: string, options?: RequestInit) => Promise<Response>;
@@ -26,7 +31,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+  || (import.meta.env.DEV ? "http://localhost:8080" : "");
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null);
@@ -175,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const verifyEmail = async (token: string): Promise<VerificationResponse> => {
+  const verifyEmail = useCallback(async (token: string): Promise<VerificationResponse> => {
     setError(null);
 
     const response = await fetch(
@@ -194,7 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const message = data.message || "Xác thực email thất bại";
     setError(message);
     throw new Error(message);
-  };
+  }, []);
 
   const resendVerification = async (
     payload: ResendVerificationRequest,
@@ -216,6 +222,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const message = data.message || "Gửi lại email xác thực thất bại";
+    setError(message);
+    throw new Error(message);
+  };
+
+  const forgotPassword = async (payload: ForgotPasswordRequest): Promise<PasswordResetResponse> => {
+    setError(null);
+
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/password/forgot`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      return data as PasswordResetResponse;
+    }
+
+    const message = data.message || "Yêu cầu đặt lại mật khẩu thất bại";
+    setError(message);
+    throw new Error(message);
+  };
+
+  const resetPassword = async (payload: ResetPasswordRequest): Promise<PasswordResetResponse> => {
+    setError(null);
+
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/password/reset`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      return data as PasswordResetResponse;
+    }
+
+    const message = data.message || "Đặt lại mật khẩu thất bại";
     setError(message);
     throw new Error(message);
   };
@@ -316,6 +366,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         resendVerification,
         verifyEmail,
+        forgotPassword,
+        resetPassword,
         logout,
         loginWithToken,
         fetchWithAuth,

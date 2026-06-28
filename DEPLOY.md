@@ -1,121 +1,55 @@
-# PlanWise Deployment Guide
+# PlanWise Docker CI/CD
 
-## Prerequisites
+Mỗi lần push lên nhánh `main`, GitHub Actions sẽ:
 
-- Docker & Docker Compose
-- Git
-- Server with SSH access (for production)
+1. Build frontend và backend.
+2. Build thử cả hai Docker image.
+3. SSH vào production server và checkout đúng commit vừa push.
+4. Rebuild rồi khởi động stack bằng `docker-compose.prod.yml`.
+5. Chờ PostgreSQL, backend và frontend healthy.
+6. Tự động quay lại commit trước nếu deploy thất bại.
 
-## Local Development
+Pull request vào `main` chỉ chạy CI, không deploy.
 
-### 1. Setup Environment
+## 1. Chuẩn bị server một lần
 
-```bash
-# Copy environment template
-cp .env.example be/.env
-
-# Edit be/.env with your configuration
-```
-
-### 2. Start Services
+Yêu cầu: Linux, Git, Docker Engine và Docker Compose v2.
 
 ```bash
-# Build and start all services
-docker compose up -d --build
-
-# View logs
-docker compose logs -f
-
-# View specific service logs
-docker compose logs -f backend
-docker compose logs -f frontend
-```
-
-### 3. Stop Services
-
-```bash
-docker compose down
-
-# Stop and remove volumes (fresh start)
-docker compose down -v
-```
-
-## Production Deployment via GitHub Actions
-
-### Repository Variables (Settings > Variables > Actions)
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `DEPLOY_HOST` | Server hostname/IP | `203.0.113.45` |
-| `DEPLOY_PATH` | Path to repo on server | `/opt/planwise` |
-| `DEPLOY_USER` | SSH username | `deploy` |
-
-### Repository Secrets (Settings > Secrets > Actions)
-
-| Secret | Description |
-|--------|-------------|
-| `SSH_PRIVATE_KEY` | Private SSH key for deployment user |
-
-### Server Setup
-
-```bash
-# 1. Create deployment user
 sudo adduser deploy
 sudo usermod -aG docker deploy
-
-# 2. Setup SSH access
-# Copy your public key to authorized_keys
-mkdir -p /home/deploy/.ssh
-chmod 700 /home/deploy/.ssh
-touch /home/deploy/.ssh/authorized_keys
-chmod 600 /home/deploy/.ssh/authorized_keys
-
-# 3. Create deployment directory
 sudo mkdir -p /opt/planwise
 sudo chown deploy:deploy /opt/planwise
 
-# 4. Initial clone
+sudo -u deploy git clone https://github.com/Hikari2004-dev/EXE201_PlanWise.git /opt/planwise
 cd /opt/planwise
-git init
-git remote add origin <your-repo-url>
-git pull origin main
-
-# 5. Setup environment
-cp .env.example be/.env
-# Edit be/.env with production values
-
-# 6. Start services
-docker compose up -d --build
+cp .env.example .env
 ```
 
-### Deployment Flow
+Điền secret production trong `/opt/planwise/.env`. Tối thiểu phải có:
 
-1. Push to `main` branch → triggers auto-deploy
-2. Or manually trigger via `Actions` tab → `Deploy via SSH` → `Run workflow`
+```dotenv
+SPRING_DATASOURCE_USERNAME=postgres
+SPRING_DATASOURCE_PASSWORD=<strong-password>
+POSTGRES_DB=planwise
+JWT_SECRET=<random-secret>
+HTTP_PORT=80
+VITE_API_BASE_URL=
+CORS_ALLOWED_ORIGINS=https://your-domain.example
+APP_MAIL_VERIFICATION_BASE_URL=https://your-domain.example/verify-email
+VNPAY_RETURN_URL=https://your-domain.example/payment/result
+```
 
-### Useful Server Commands
+Không commit file `.env`.
+
+Khởi động lần đầu:
 
 ```bash
-# Connect to server
-ssh deploy@<server-ip>
-
-# View logs
-docker compose logs -f
-
-# Restart services
-docker compose restart
-
-# Full rebuild
-docker compose down && docker compose up -d --build
-
-# Database backup
-docker compose exec postgres pg_dump -U postgres planwise > backup.sql
-
-# Restore database
-docker compose exec -T postgres psql -U postgres planwise < backup.sql
+cd /opt/planwise
+docker compose -f docker-compose.prod.yml up -d --build --wait
 ```
 
-## Services
+## 2. Cấu hình GitHub Actions
 
 | Service | Port | Description |
 |---------|------|-------------|
@@ -124,29 +58,35 @@ docker compose exec -T postgres psql -U postgres planwise < backup.sql
 
 > **Note:** PostgreSQL must be running locally on port 5432 (or update `SPRING_DATASOURCE_URL` in `be/.env` to point to your existing database).
 
-## Troubleshooting
+Repository Variables:
 
-### Backend won't start
+| Tên | Ví dụ |
+|---|---|
+| `DEPLOY_HOST` | `203.0.113.10` |
+| `DEPLOY_PORT` | `22` |
+| `DEPLOY_USER` | `deploy` |
+| `DEPLOY_PATH` | `/opt/planwise` |
+
+Repository Secrets:
+
+| Tên | Nội dung |
+|---|---|
+| `SSH_PRIVATE_KEY` | Private key dùng riêng cho GitHub Actions |
+| `SSH_KNOWN_HOSTS` | Kết quả `ssh-keyscan -H <server>`; có thể bỏ trống để workflow tự quét |
+
+Thêm public key tương ứng vào `/home/deploy/.ssh/authorized_keys` trên server.
+
+Nên tạo GitHub Environment tên `production` và bật required reviewers nếu muốn duyệt thủ công trước khi deploy.
+
+## 3. Vận hành
+
+Push lên `main` để deploy tự động, hoặc vào Actions → `CI/CD - Docker Deploy` → `Run workflow`.
+
 ```bash
-# Check logs
-docker compose logs backend
-
-# Common issues: missing .env, DB connection failure
+cd /opt/planwise
+docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs -f backend
+docker compose -f docker-compose.prod.yml logs -f frontend
 ```
 
-### Database connection issues
-```bash
-# Verify postgres is running
-docker compose ps postgres
-
-# Check .env configuration
-cat be/.env
-```
-
-### Frontend can't connect to backend
-```bash
-# Verify backend is healthy
-curl http://localhost:8080/actuator/health
-
-# Check VITE_API_BASE_URL in docker-compose.yml
-```
+Database nằm trong named volume `planwise_postgres_data`; workflow không xóa volume khi deploy hoặc rollback.

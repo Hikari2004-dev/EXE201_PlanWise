@@ -1,5 +1,11 @@
 import { API_BASE_URL } from "../context/AuthContext";
-import type { ApiVisionItem } from "./types";
+import type {
+  ApiVisionItem,
+  CreateVisionItemRequest,
+  UpdateVisionItemRequest,
+  VisionImageUploadRequest,
+  VisionImageUploadResponse,
+} from "./types";
 
 const API = "/api/v1";
 
@@ -20,13 +26,7 @@ export const visionApi = {
     return response.json();
   },
 
-  async create(data: {
-    title: string;
-    description?: string;
-    category?: string;
-    imageUrl?: string;
-    quote?: string;
-  }): Promise<ApiVisionItem> {
+  async create(data: CreateVisionItemRequest): Promise<ApiVisionItem> {
     const response = await fetch(`${API_BASE_URL}${API}/vision`, {
       method: "POST",
       headers: getAuthHeaders(),
@@ -36,14 +36,7 @@ export const visionApi = {
     return response.json();
   },
 
-  async update(id: string, data: {
-    title?: string;
-    description?: string;
-    category?: string;
-    imageUrl?: string;
-    quote?: string;
-    sortOrder?: number;
-  }): Promise<ApiVisionItem> {
+  async update(id: string, data: UpdateVisionItemRequest): Promise<ApiVisionItem> {
     const response = await fetch(`${API_BASE_URL}${API}/vision/${id}`, {
       method: "PUT",
       headers: getAuthHeaders(),
@@ -59,6 +52,16 @@ export const visionApi = {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error("Failed to delete vision item");
+  },
+
+  async presignImageUpload(data: VisionImageUploadRequest): Promise<VisionImageUploadResponse> {
+    const response = await fetch(`${API_BASE_URL}${API}/vision/images/presign`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error("Failed to presign vision image upload");
+    return response.json();
   },
 
   async reorder(ids: string[]): Promise<void> {

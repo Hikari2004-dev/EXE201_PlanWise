@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "../context/AuthContext";
-import type { ApiHabit } from "./types";
+import type { ApiHabit, HabitListResponse } from "./types";
 
 const API = "/api/v1";
 
@@ -7,7 +7,7 @@ export const habitApi = {
   async getAll(params?: {
     frequency?: string;
     isActive?: boolean;
-  }): Promise<ApiHabit[]> {
+  }): Promise<HabitListResponse> {
     const searchParams = new URLSearchParams();
     if (params?.frequency) searchParams.set("frequency", params.frequency);
     if (params?.isActive !== undefined) searchParams.set("isActive", String(params.isActive));
@@ -16,7 +16,7 @@ export const habitApi = {
     const response = await fetch(`${API_BASE_URL}${API}/habits${query ? `?${query}` : ""}`, {
       headers: getAuthHeaders(),
     });
-    if (!response.ok) throw new Error("Failed to fetch habits");
+    if (!response.ok) throw new Error(await readApiError(response, "Failed to fetch habits"));
     return response.json();
   },
 
@@ -24,7 +24,7 @@ export const habitApi = {
     const response = await fetch(`${API_BASE_URL}${API}/habits/${id}`, {
       headers: getAuthHeaders(),
     });
-    if (!response.ok) throw new Error("Failed to fetch habit");
+    if (!response.ok) throw new Error(await readApiError(response, "Failed to fetch habit"));
     return response.json();
   },
 
@@ -33,6 +33,7 @@ export const habitApi = {
     description?: string;
     frequency?: string;
     targetCount?: number;
+    repeatDays?: string[];
     color?: string;
   }): Promise<ApiHabit> {
     const response = await fetch(`${API_BASE_URL}${API}/habits`, {
@@ -40,7 +41,7 @@ export const habitApi = {
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error("Failed to create habit");
+    if (!response.ok) throw new Error(await readApiError(response, "Failed to create habit"));
     return response.json();
   },
 
@@ -49,6 +50,7 @@ export const habitApi = {
     description?: string;
     frequency?: string;
     targetCount?: number;
+    repeatDays?: string[];
     color?: string;
     isActive?: boolean;
   }): Promise<ApiHabit> {
@@ -57,7 +59,7 @@ export const habitApi = {
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error("Failed to update habit");
+    if (!response.ok) throw new Error(await readApiError(response, "Failed to update habit"));
     return response.json();
   },
 
@@ -66,16 +68,17 @@ export const habitApi = {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
-    if (!response.ok) throw new Error("Failed to delete habit");
+    if (!response.ok) throw new Error(await readApiError(response, "Failed to delete habit"));
   },
 
-  async toggleCompletion(id: string, date: string): Promise<ApiHabit> {
-    const formattedDate = new Date(date).toISOString().split("T")[0];
+  async complete(id: string, date: string): Promise<ApiHabit> {
+    const formattedDate = date.match(/^\d{4}-\d{2}-\d{2}$/)?.[0];
+    if (!formattedDate) throw new Error("Invalid habit completion date");
     const response = await fetch(`${API_BASE_URL}${API}/habits/${id}/completions/${formattedDate}`, {
       method: "PATCH",
       headers: getAuthHeaders(),
     });
-    if (!response.ok) throw new Error("Failed to toggle habit completion");
+    if (!response.ok) throw new Error(await readApiError(response, "Failed to toggle habit completion"));
     return response.json();
   },
 
@@ -103,4 +106,27 @@ function getAuthHeaders(): HeadersInit {
     headers["Authorization"] = `Bearer ${token}`;
   }
   return headers;
+}
+
+async function readApiError(response: Response, fallbackMessage: string) {
+  const raw = await response.text().catch(() => "");
+  if (!raw) return `${fallbackMessage} (${response.status})`;
+
+  try {
+    const body = JSON.parse(raw) as { message?: unknown; errors?: unknown };
+    if (typeof body.message === "string" && body.message.trim()) {
+      return body.message;
+    }
+
+    if (body.errors && typeof body.errors === "object") {
+      const firstError = Object.values(body.errors as Record<string, string>).find(Boolean);
+      if (firstError) return firstError;
+    }
+  } catch {
+    if (raw.trim()) {
+      return raw;
+    }
+  }
+
+  return `${fallbackMessage} (${response.status})`;
 }

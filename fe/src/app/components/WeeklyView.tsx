@@ -14,7 +14,6 @@ import {
 const START_HOUR = 0;
 const END_HOUR = 24;
 const HOUR_HEIGHT = 72;
-const MODAL_HOURS = Array.from({ length: 24 }, (_, i) => i);
 const DEFAULT_START_HOUR = 8;
 const DEFAULT_END_HOUR = 18;
 const MIN_VISIBLE_HOURS = 6;
@@ -70,11 +69,14 @@ function parseUiDueDate(value?: string): Date | null {
   if (isoDate) return isoDate;
 
   const viMatch = trimmed.match(/^(\d{1,2})\s*Th(\d{1,2})$/i);
-  if (!viMatch) return null;
+  if (viMatch) {
+    const date = new Date(new Date().getFullYear(), Number(viMatch[2]) - 1, Number(viMatch[1]));
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
 
-  const date = new Date(new Date().getFullYear(), Number(viMatch[2]) - 1, Number(viMatch[1]));
-  date.setHours(0, 0, 0, 0);
-  return date;
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function formatWeekRange(weekStart: Date, language: string) {
@@ -106,7 +108,14 @@ function formatHourLabel(hour: number) {
   return `${display} ${period}`;
 }
 
-type WeeklyCalendarItem = CalendarEvent & { eventDate?: string };
+function formatTimeValue(hour: number, minute: number) {
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+type WeeklyCalendarItem = CalendarEvent & {
+  eventDate?: string;
+  kind?: "event" | "task";
+};
 
 type CalendarEventDraft = (Omit<CalendarEvent, "id"> | CalendarEvent) & { eventDate?: string };
 
@@ -140,14 +149,19 @@ function EventCard({ event, visibleStartHour, onClick }: EventCardProps) {
   const heightPx = Math.max(22, event.duration * HOUR_HEIGHT - 4);
   const showLocation = heightPx > 52;
   const showTime = heightPx > 30;
+  const isTaskItem = event.kind === "task";
 
   return (
     <div
-      draggable
+      draggable={!isTaskItem}
       onDragStart={(e) => {
+        if (isTaskItem) return;
         e.dataTransfer.setData("eventId", event.id.toString());
       }}
-      onClick={() => onClick(event)}
+      onClick={() => {
+        if (isTaskItem) return;
+        onClick(event);
+      }}
       title={`${event.title} — ${event.startHour}:${String(event.startMin).padStart(2, "0")}`}
       className={`absolute inset-x-0.5 rounded-md px-2 py-1 cursor-pointer overflow-hidden border-l-[3px] ${colors.light} ${colors.border} hover:brightness-95 active:scale-[0.99] transition-all duration-100 shadow-sm hover:shadow`}
       style={{ top: `${topPx}px`, height: `${heightPx}px`, minHeight: "22px" }}
@@ -183,12 +197,17 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
   const [categoryForm, setCategoryForm] = useState({ name: "", color: "indigo" as EventColor });
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [categoryError, setCategoryError] = useState<string | null>(null);
+  const initialStartHour = event?.startHour ?? 9;
+  const initialStartMin = event?.startMin ?? 0;
+  const initialDurationMinutes = Math.max(30, Math.round((event?.duration ?? 1) * 60));
+  const initialStartTotalMinutes = initialStartHour * 60 + initialStartMin;
+  const initialEndTotalMinutes = Math.min(23 * 60 + 59, initialStartTotalMinutes + initialDurationMinutes);
+
   const [form, setForm] = useState({
     title: event?.title || "",
     day: event?.day || "Mon",
-    startHour: event?.startHour.toString() || "9",
-    startMin: event?.startMin.toString() || "0",
-    duration: event?.duration.toString() || "1",
+    startTime: formatTimeValue(initialStartHour, initialStartMin),
+    endTime: formatTimeValue(Math.floor(initialEndTotalMinutes / 60), initialEndTotalMinutes % 60),
     location: event?.location || "",
     notes: event?.notes || "",
     color: (event?.color || "indigo") as EventColor,
@@ -205,13 +224,23 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
     const selectedDate = weekDates[dayIndex] ?? weekDates[0] ?? new Date();
     const eventDate = form.eventDate || formatIsoDate(selectedDate);
 
+    const [startHourString, startMinString] = form.startTime.split(":");
+    const [endHourString, endMinString] = form.endTime.split(":");
+    const startHour = Number(startHourString);
+    const startMin = Number(startMinString);
+    const endHour = Number(endHourString);
+    const endMin = Number(endMinString);
+    const startTotalMinutes = startHour * 60 + startMin;
+    const endTotalMinutes = endHour * 60 + endMin;
+    const durationMinutes = endTotalMinutes > startTotalMinutes ? endTotalMinutes - startTotalMinutes : 60;
+
     const eventData = {
       title: form.title,
       day: form.day,
       eventDate,
-      startHour: parseInt(form.startHour),
-      startMin: parseInt(form.startMin),
-      duration: parseFloat(form.duration),
+      startHour,
+      startMin,
+      duration: durationMinutes / 60,
       color: form.color,
       location: form.location || "Chưa có",
       notes: form.notes,
@@ -321,33 +350,26 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Giờ bắt đầu</label>
-              <select value={form.startHour} onChange={(e) => setForm({ ...form, startHour: e.target.value })} className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all cursor-pointer">
-                {MODAL_HOURS.map((h) => (
-                  <option key={h} value={h} className="dark:bg-slate-900">
-                    {h}:00
-                  </option>
-                ))}
-              </select>
+              <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Thời gian bắt đầu</label>
+              <input
+                type="time"
+                step={1800}
+                value={form.startTime}
+                onChange={(e) => setForm({ ...form, startTime: e.target.value })}
+                className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all"
+              />
             </div>
             <div>
-              <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Phút</label>
-              <select value={form.startMin} onChange={(e) => setForm({ ...form, startMin: e.target.value })} className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all cursor-pointer">
-                <option value="0" className="dark:bg-slate-900">:00</option>
-                <option value="30" className="dark:bg-slate-900">:30</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Thời lượng</label>
-              <select value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all cursor-pointer">
-                {[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4].map((d) => (
-                  <option key={d} value={d} className="dark:bg-slate-900">
-                    {d}h
-                  </option>
-                ))}
-              </select>
+              <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Thời gian kết thúc</label>
+              <input
+                type="time"
+                step={1800}
+                value={form.endTime}
+                onChange={(e) => setForm({ ...form, endTime: e.target.value })}
+                className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all"
+              />
             </div>
           </div>
           <div>
@@ -371,7 +393,7 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
             </div>
           </label>
           <div className="flex gap-2 pt-1">
-            {event && onDelete && (
+            {event && "id" in event && onDelete && (
               <button type="button" onClick={() => {
                 onDelete(event.id);
                 onClose();
@@ -509,20 +531,25 @@ function DayDetailPanel({ date, events, onClose, onEditEvent, language }: DayDet
                   const colors = COLOR_MAP[event.color as EventColor];
                   const category = categories.find((c) => c.id === event.categoryId);
                   return (
-                    <div key={event.id} className={`rounded-xl p-3 ${colors.light} border-l-4 ${colors.border} cursor-pointer hover:brightness-95 transition-all group`} onClick={() => onEditEvent(event)}>
+                    <div key={event.id} className={`rounded-xl p-3 ${colors.light} border-l-4 ${colors.border} ${event.kind === "task" ? "cursor-default" : "cursor-pointer hover:brightness-95"} transition-all group`} onClick={() => {
+                      if (event.kind === "task") return;
+                      onEditEvent(event);
+                    }}>
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
                           <p className={`text-sm font-semibold ${colors.text}`}>{event.title}</p>
                           {category && <p className={`text-xs mt-0.5 opacity-70 ${colors.text}`}>{category.name}</p>}
                         </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={(e) => {
-                            e.stopPropagation();
-                            onEditEvent(event);
-                          }} className={`p-1 rounded hover:bg-white/50 ${colors.text}`}>
-                            <Edit2 size={12} />
-                          </button>
-                        </div>
+                        {event.kind !== "task" && (
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={(e) => {
+                              e.stopPropagation();
+                              onEditEvent(event);
+                            }} className={`p-1 rounded hover:bg-white/50 ${colors.text}`}>
+                              <Edit2 size={12} />
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <div className="mt-2 space-y-1">
                         <div className={`flex items-center gap-1.5 text-xs opacity-70 ${colors.text}`}>
@@ -621,27 +648,40 @@ export function WeeklyView() {
     const items: WeeklyCalendarItem[] = [];
 
     tasks
-      .filter((task) => !task.completed)
+      .filter((task) => !task.completed && task.showOnCalendar !== false)
       .forEach((task) => {
-        const dueDate = parseIsoDate(task.dueDate) ?? parseUiDueDate(task.dueDate);
-        if (!dueDate) return;
+        const scheduledAt = task.scheduledAt ? new Date(task.scheduledAt) : null;
+        const dueDate = parseUiDueDate(task.dueDate);
+        const baseDate = scheduledAt && !Number.isNaN(scheduledAt.getTime())
+          ? scheduledAt
+          : dueDate && !Number.isNaN(dueDate.getTime())
+          ? dueDate
+          : null;
 
-        const dayCode = DAYS[(dueDate.getDay() + 6) % 7];
-        const durationInHours = Math.max(0.5, (task.estimatedTime || 60) / 60);
-        const eventDate = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`;
+        if (!baseDate) return;
+
+        const dayCode = DAYS[(baseDate.getDay() + 6) % 7];
+        const durationInHours = scheduledAt ? Math.max(0.5, (task.estimatedTime || 60) / 60) : 0.5;
+        const eventDate = `${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, "0")}-${String(baseDate.getDate()).padStart(2, "0")}`;
+        const isDeadlineOnly = !scheduledAt && !!dueDate;
 
         items.push({
           id: `task-${task.id}`,
           title: task.title,
           day: dayCode,
-          startHour: 18,
-          startMin: 0,
+          startHour: baseDate.getHours(),
+          startMin: baseDate.getMinutes(),
           duration: durationInHours,
           color: task.categoryColor || task.color || "amber",
-          location: language === "vi" ? "Công việc" : "Task",
-          notes: task.description || (language === "vi" ? "Tự động hiển thị từ công việc" : "Auto-added from task"),
+          location: isDeadlineOnly
+            ? (language === "vi" ? "Hạn chót" : "Deadline")
+            : (language === "vi" ? "Công việc đã lên lịch" : "Scheduled task"),
+          notes: task.description || (isDeadlineOnly
+            ? (language === "vi" ? "Hiển thị từ deadline task" : "Shown from task deadline")
+            : (language === "vi" ? "Hiển thị từ thời gian task" : "Shown from task schedule")),
           categoryId: task.categoryId || "",
           eventDate,
+          kind: "task",
         });
       });
 
@@ -892,6 +932,9 @@ export function WeeklyView() {
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={(e) => {
                         const eventId = e.dataTransfer.getData("eventId");
+                        if (eventId?.startsWith("task-")) {
+                          return;
+                        }
                         if (eventId) {
                           const rect = e.currentTarget.getBoundingClientRect();
                           const y = e.clientY - rect.top;
@@ -997,6 +1040,9 @@ export function WeeklyView() {
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={(e) => {
                         const eventId = e.dataTransfer.getData("eventId");
+                        if (eventId?.startsWith("task-")) {
+                          return;
+                        }
                         if (eventId) {
                           e.stopPropagation();
                           updateEvent(eventId, { day: dayCode });

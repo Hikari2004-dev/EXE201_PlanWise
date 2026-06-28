@@ -187,9 +187,11 @@ CREATE TABLE tasks (
     id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     category_id         UUID REFERENCES categories(id) ON DELETE SET NULL,
+    goal_id             UUID REFERENCES goals(id) ON DELETE SET NULL,
     title               VARCHAR(255) NOT NULL,
     description         TEXT,
-    due_date            DATE,                              -- Hạn chót (đổi từ string sang DATE)
+    due_date            TIMESTAMPTZ,                       -- Hạn chót kèm thời gian
+    scheduled_at        TIMESTAMPTZ,                       -- Thời gian diễn ra nếu có
     priority            task_priority NOT NULL DEFAULT 'Trung bình',
     color               event_color NOT NULL DEFAULT 'indigo',
     completed           BOOLEAN NOT NULL DEFAULT FALSE,
@@ -197,6 +199,7 @@ CREATE TABLE tasks (
     eisenhower_matrix   eisenhower_quadrant,               -- Ma trận Eisenhower
     estimated_time      SMALLINT,                          -- Ước tính thời gian (phút)
     actual_time         SMALLINT,                          -- Thời gian thực tế (phút, tính từ focus sessions)
+    show_on_calendar    BOOLEAN NOT NULL DEFAULT TRUE,
     sort_order          INT NOT NULL DEFAULT 0,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -204,13 +207,16 @@ CREATE TABLE tasks (
 
 CREATE INDEX idx_tasks_user_id ON tasks(user_id);
 CREATE INDEX idx_tasks_category_id ON tasks(category_id);
+CREATE INDEX idx_tasks_goal_id ON tasks(goal_id);
 CREATE INDEX idx_tasks_due_date ON tasks(due_date);
 CREATE INDEX idx_tasks_user_completed ON tasks(user_id, completed);
 CREATE INDEX idx_tasks_priority ON tasks(user_id, priority) WHERE completed = FALSE;
 
 COMMENT ON TABLE tasks IS 'Công việc cần làm của người dùng với hỗ trợ Ma trận Eisenhower';
+COMMENT ON COLUMN tasks.scheduled_at IS 'Thời gian diễn ra của task nếu người dùng lên lịch cụ thể';
 COMMENT ON COLUMN tasks.estimated_time IS 'Thời gian ước tính hoàn thành (phút)';
 COMMENT ON COLUMN tasks.actual_time IS 'Thời gian thực tế đã bỏ ra (phút), tổng hợp từ focus_sessions';
+COMMENT ON COLUMN tasks.show_on_calendar IS 'Có hiển thị task trên calendar hay không';
 
 -- =============================================================================
 -- TABLE: task_contexts
@@ -228,12 +234,27 @@ CREATE INDEX idx_task_contexts_task_id ON task_contexts(task_id);
 COMMENT ON TABLE task_contexts IS 'Ngữ cảnh thực hiện task (Tại máy tính, Di chuyển, Tập trung sâu,...)';
 
 -- =============================================================================
+-- TABLE: task_checklist_items
+-- Checklist đơn giản của Task
+-- =============================================================================
+CREATE TABLE task_checklist_items (
+    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    task_id     UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    item        VARCHAR(255) NOT NULL
+);
+
+CREATE INDEX idx_task_checklist_items_task_id ON task_checklist_items(task_id);
+
+COMMENT ON TABLE task_checklist_items IS 'Các mục checklist dạng text của task';
+
+-- =============================================================================
 -- TABLE: goals
 -- Mục tiêu dài hạn (FE: Goal interface - SMART/OKR)
 -- =============================================================================
 CREATE TABLE goals (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    category_id     UUID REFERENCES categories(id) ON DELETE SET NULL,
     title           VARCHAR(255) NOT NULL,
     description     TEXT,
     category        goal_category NOT NULL DEFAULT 'career',
@@ -250,9 +271,22 @@ CREATE TABLE goals (
 );
 
 CREATE INDEX idx_goals_user_id ON goals(user_id);
+CREATE INDEX idx_goals_category_id ON goals(category_id);
 CREATE INDEX idx_goals_user_period ON goals(user_id, period);
 
 COMMENT ON TABLE goals IS 'Mục tiêu dài hạn theo mô hình SMART hoặc OKR, phân chia theo tuần/tháng/năm';
+
+UPDATE goals g
+SET category_id = c.id
+FROM categories c
+WHERE g.category_id IS NULL
+  AND g.user_id = c.user_id
+  AND (
+    (g.category = 'career' AND lower(c.name) IN ('công việc', 'career')) OR
+    (g.category = 'learning' AND lower(c.name) IN ('học tập', 'learning')) OR
+    (g.category = 'health' AND lower(c.name) IN ('sức khỏe', 'health')) OR
+    (g.category = 'finance' AND lower(c.name) IN ('tài chính', 'finance'))
+  );
 
 -- =============================================================================
 -- TABLE: milestones
@@ -335,10 +369,44 @@ CREATE TABLE habit_completions (
     UNIQUE (habit_id, completed_date)
 );
 
+-- Hibernate maps Habit.completedDates as an ElementCollection and therefore
+-- inserts only habit_id and completed_date. Derive user_id from the owning habit
+-- so the denormalized column remains valid for indexes and row-level security.
+CREATE OR REPLACE FUNCTION populate_habit_completion_user_id()
+RETURNS TRIGGER AS '
+BEGIN
+    IF NEW.user_id IS NULL THEN
+        SELECT user_id INTO NEW.user_id
+        FROM habits
+        WHERE id = NEW.habit_id;
+    END IF;
+
+    RETURN NEW;
+END;
+' LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_habit_completion_user_id
+    BEFORE INSERT OR UPDATE OF habit_id ON habit_completions
+    FOR EACH ROW
+    EXECUTE FUNCTION populate_habit_completion_user_id();
+
 CREATE INDEX idx_habit_completions_habit_id ON habit_completions(habit_id);
 CREATE INDEX idx_habit_completions_user_date ON habit_completions(user_id, completed_date);
 
 COMMENT ON TABLE habit_completions IS 'Lịch sử các ngày đã hoàn thành thói quen';
+
+-- =============================================================================
+-- TABLE: habit_repeat_days
+-- Các ngày lặp của thói quen (FE: Habit.repeatDays: string[])
+-- =============================================================================
+CREATE TABLE habit_repeat_days (
+    habit_id        UUID NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+    day_code        VARCHAR(10) NOT NULL CHECK (day_code IN ('MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN')),
+    PRIMARY KEY (habit_id, day_code)
+);
+
+COMMENT ON TABLE habit_repeat_days IS 'Các ngày trong tuần mà thói quen lặp lại';
+COMMENT ON COLUMN habit_repeat_days.day_code IS 'Chỉ dùng cho habit có frequency = weekly';
 
 -- =============================================================================
 -- TABLE: daily_focus
@@ -658,8 +726,8 @@ SELECT
     user_id,
     COUNT(*) FILTER (WHERE completed = FALSE)           AS pending_count,
     COUNT(*) FILTER (WHERE completed = TRUE)            AS completed_count,
-    COUNT(*) FILTER (WHERE priority = 'Cao' AND completed = FALSE) AS high_priority_count,
-    COUNT(*) FILTER (WHERE due_date < CURRENT_DATE AND completed = FALSE) AS overdue_count
+    COUNT(*) FILTER (WHERE priority::text IN ('HIGH', 'Cao') AND completed = FALSE) AS high_priority_count,
+    COUNT(*) FILTER (WHERE due_date < CURRENT_TIMESTAMP AND completed = FALSE) AS overdue_count
 FROM tasks
 GROUP BY user_id;
 

@@ -15,6 +15,8 @@ import { PaymentResultPage } from "./components/PaymentResultPage";
 import HomePage from "./components/Homepage";
 import { LoginPage } from "./components/LoginPage";
 import { VerifyEmailPage } from "./components/VerifyEmailPage";
+import { ForgotPasswordPage } from "./components/ForgotPasswordPage";
+import { ResetPasswordPage } from "./components/ResetPasswordPage";
 
 export const router = createBrowserRouter([
   {
@@ -32,6 +34,14 @@ export const router = createBrowserRouter([
   {
     path: "/verify-email",
     Component: VerifyEmailPage,
+  },
+  {
+    path: "/forgot-password",
+    Component: ForgotPasswordPage,
+  },
+  {
+    path: "/reset-password",
+    Component: ResetPasswordPage,
   },
   {
     path: "/auth/callback",

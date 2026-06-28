@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router";
 import {
   TrendingUp, Clock, ArrowRight, Flame, MapPin, History, XCircle,
@@ -8,29 +9,72 @@ import { NotificationCenter } from "./NotificationCenter";
 import { useData } from "../context/DataContext";
 import { COLOR_MAP, getTimeString, type EventColor } from "../data/mockData";
 
+function parseScheduledAt(value?: string) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function isSameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function toLocalDateString(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getTaskStatus(task: { status?: string; completed: boolean; dueDate?: string }) {
+  if (task.status) return task.status;
+  if (task.completed) return "COMPLETED";
+  const dueDate = parseTaskDueDate(task.dueDate);
+  const now = new Date();
+  if (dueDate && dueDate < now) return "MISSED";
+  return "IN_PROGRESS";
+}
+
+function formatScheduledTaskTime(value?: string) {
+  const parsed = parseScheduledAt(value);
+  if (!parsed) return "";
+  return parsed.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+}
+
 function parseTaskDueDate(value?: string) {
   if (!value) return null;
-  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return null;
-  const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  parsed.setHours(0, 0, 0, 0);
-  return parsed;
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) {
+    const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    parsed.setHours(23, 59, 59, 999);
+    return parsed;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function formatTaskDueDateLabel(value?: string) {
   const parsed = parseTaskDueDate(value);
   if (!parsed) return value || "";
-  return `${parsed.getDate()} Th${parsed.getMonth() + 1}`;
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(parsed).replace(",", "");
 }
 
 const WEEKDAY_TO_EVENT_DAY: Record<number, string> = {
-  0: "CN",
-  1: "Thứ 2",
-  2: "Thứ 3",
-  3: "Thứ 4",
-  4: "Thứ 5",
-  5: "Thứ 6",
-  6: "Thứ 7",
+  0: "Sun",
+  1: "Mon",
+  2: "Tue",
+  3: "Wed",
+  4: "Thu",
+  5: "Fri",
+  6: "Sat",
 };
 
 function CurrentTimeIndicator() {
@@ -49,29 +93,122 @@ function CurrentTimeIndicator() {
 }
 
 export function DashboardView() {
-  const { events, tasks, categories, language } = useData();
+  const { events, tasks, habits, categories, completeHabitDate, language } = useData();
+  const [togglingHabitIds, setTogglingHabitIds] = useState<string[]>([]);
   const now = new Date();
   const todayDay = WEEKDAY_TO_EVENT_DAY[now.getDay()] || "";
 
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayDate = toLocalDateString(today);
+  const todayCode = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][today.getDay()];
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+  const startOfWeekDate = toLocalDateString(startOfWeek);
+  const monthPrefix = todayDate.slice(0, 7);
+
+  const habitReminders = habits
+    .filter((habit) => {
+      const completedToday = habit.completedDates.includes(todayDate);
+
+      if (habit.repeatDays.length > 0) {
+        return habit.repeatDays.includes(todayCode) && !completedToday;
+      }
+      if (habit.frequency === "daily") return !completedToday;
+      if (habit.frequency === "weekly") {
+        return !habit.completedDates.some(date => date >= startOfWeekDate && date <= todayDate);
+      }
+      return !habit.completedDates.some(date => date.startsWith(monthPrefix));
+    })
+    .sort((a, b) => b.currentStreak - a.currentStreak || a.title.localeCompare(b.title))
+    .slice(0, 5);
+
+  const completeHabit = async (habitId: string) => {
+    if (togglingHabitIds.includes(habitId)) return;
+    setTogglingHabitIds(ids => [...ids, habitId]);
+    try {
+      await completeHabitDate(habitId, todayDate);
+    } catch (error) {
+      console.error("Failed to complete habit from dashboard:", error);
+    } finally {
+      setTogglingHabitIds(ids => ids.filter(id => id !== habitId));
+    }
+  };
   const todayEvents = events.filter(e => e.day === todayDay).sort(
     (a, b) => a.startHour - b.startHour || a.startMin - b.startMin
   );
+  const todayScheduledTasks = tasks
+    .filter((task) => !task.completed && task.showOnCalendar !== false)
+    .filter((task) => {
+      const scheduledAt = parseScheduledAt(task.scheduledAt);
+      if (scheduledAt && isSameDay(scheduledAt, today)) return true;
 
-  const upcomingTasks   = tasks.filter(t => !t.completed).slice(0, 5);
-  const completedCount  = tasks.filter(t => t.completed).length;
-  const totalEvents     = events.length;
-  const highPriority    = tasks.filter(t => !t.completed && t.priority === "Cao").length;
+      const dueDate = parseTaskDueDate(task.dueDate);
+      return !scheduledAt && !!dueDate && isSameDay(dueDate, today);
+    })
+    .sort((a, b) => {
+      const aScheduled = parseScheduledAt(a.scheduledAt)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const bScheduled = parseScheduledAt(b.scheduledAt)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      if (aScheduled !== bScheduled) return aScheduled - bScheduled;
+      const aDue = parseTaskDueDate(a.dueDate)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const bDue = parseTaskDueDate(b.dueDate)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      return aDue - bDue;
+    });
+
+  const upcomingTasks = tasks
+    .filter((task) => getTaskStatus(task) !== "COMPLETED")
+    .sort((a, b) => {
+      const aScheduled = parseScheduledAt(a.scheduledAt)?.getTime() || Number.MAX_SAFE_INTEGER;
+      const bScheduled = parseScheduledAt(b.scheduledAt)?.getTime() || Number.MAX_SAFE_INTEGER;
+      if (aScheduled !== bScheduled) return aScheduled - bScheduled;
+      const aDue = parseTaskDueDate(a.dueDate)?.getTime() || Number.MAX_SAFE_INTEGER;
+      const bDue = parseTaskDueDate(b.dueDate)?.getTime() || Number.MAX_SAFE_INTEGER;
+      return aDue - bDue;
+    })
+    .slice(0, 5);
+  const todayTimeline = [
+    ...todayEvents.map((event) => ({
+      kind: "event" as const,
+      id: event.id,
+      title: event.title,
+      startHour: event.startHour,
+      startMin: event.startMin,
+      duration: event.duration,
+      location: event.location,
+      color: event.color,
+      categoryId: event.categoryId,
+    })),
+    ...todayScheduledTasks.map((task) => {
+      const scheduledAt = parseScheduledAt(task.scheduledAt);
+      const dueDate = parseTaskDueDate(task.dueDate);
+      const hasScheduledTime = !!scheduledAt;
+      const sourceDate = scheduledAt || dueDate!;
+      return {
+        kind: "task" as const,
+        id: task.id,
+        title: task.title,
+        startHour: sourceDate.getHours(),
+        startMin: sourceDate.getMinutes(),
+        duration: hasScheduledTime ? Math.max(0.5, (task.estimatedTime || 60) / 60) : 0.5,
+        location: hasScheduledTime
+          ? (language === "vi" ? "Task đã lên lịch" : "Scheduled task")
+          : (language === "vi" ? "Hạn chót" : "Deadline"),
+        color: task.categoryColor || task.color || "indigo",
+        categoryId: task.categoryId,
+      };
+    }),
+  ].sort((a, b) => a.startHour - b.startHour || a.startMin - b.startMin);
+  const completedCount  = tasks.filter(t => getTaskStatus(t) === "COMPLETED").length;
+  const totalEvents     = events.length + todayScheduledTasks.length;
+  const highPriority    = tasks.filter(t => getTaskStatus(t) !== "COMPLETED" && t.priority === "Cao").length;
   const completionRate  = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
 
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const sevenAgo = new Date(today); sevenAgo.setDate(today.getDate() - 7);
   const delayedTasks = tasks.filter(t => {
     const dueDate = parseTaskDueDate(t.dueDate);
-    return !t.completed && !!dueDate && dueDate < today;
+    return !t.completed && !!dueDate && dueDate < now;
   }).slice(0, 3);
   const abandonedTasks = tasks.filter(t => {
     const dueDate = parseTaskDueDate(t.dueDate);
-    return !t.completed && !!dueDate && dueDate < sevenAgo;
+    return !t.completed && !!dueDate && dueDate < new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   }).slice(0, 3);
 
   const categoryStats = categories.map(cat => {
@@ -100,25 +237,18 @@ export function DashboardView() {
     year: "numeric",
   });
 
+  const missingTaskCount = tasks.filter((task) => getTaskStatus(task) === "MISSED").length;
+
   // KPI card configs with real color
   const kpiCards = [
     {
-      label:   language === "vi" ? "Sự kiện tuần" : "Events",
-      value:   totalEvents,
-      sub:     `${categories.length} ${language === "vi" ? "danh mục" : "categories"}`,
-      icon:    CalendarDays,
-      from:    "from-violet-500", to: "to-indigo-600",
-      shadow:  "shadow-indigo-200",
-      badge:   "bg-indigo-50 text-indigo-600",
-    },
-    {
-      label:   language === "vi" ? "Hoàn thành" : "Completed",
-      value:   `${completedCount}/${tasks.length}`,
-      sub:     `${completionRate}% ${language === "vi" ? "hoàn tất" : "done"}`,
-      icon:    CheckCircle2,
-      from:    "from-emerald-500", to: "to-teal-600",
-      shadow:  "shadow-emerald-200",
-      badge:   "bg-emerald-50 text-emerald-600",
+      label:   language === "vi" ? "Hôm nay" : "Today",
+      value:   todayEvents.length + todayScheduledTasks.length,
+      sub:     language === "vi" ? "lịch + task đã lên giờ" : "events + scheduled tasks",
+      icon:    Zap,
+      from:    "from-amber-500", to: "to-orange-500",
+      shadow:  "shadow-amber-200",
+      badge:   "bg-amber-50 text-amber-600",
     },
     {
       label:   language === "vi" ? "Ưu tiên cao" : "High Priority",
@@ -130,13 +260,22 @@ export function DashboardView() {
       badge:   "bg-rose-50 text-rose-600",
     },
     {
-      label:   language === "vi" ? "Hôm nay" : "Today",
-      value:   todayEvents.length,
-      sub:     language === "vi" ? "sự kiện lịch" : "scheduled events",
-      icon:    Zap,
-      from:    "from-amber-500", to: "to-orange-500",
-      shadow:  "shadow-amber-200",
-      badge:   "bg-amber-50 text-amber-600",
+      label:   language === "vi" ? "Sự kiện tuần" : "Events",
+      value:   totalEvents,
+      sub:     `${categories.length} ${language === "vi" ? "danh mục" : "categories"}`,
+      icon:    CalendarDays,
+      from:    "from-violet-500", to: "to-indigo-600",
+      shadow:  "shadow-indigo-200",
+      badge:   "bg-indigo-50 text-indigo-600",
+    },
+    {
+      label:   "Missing Task",
+      value:   missingTaskCount,
+      sub:     language === "vi" ? "task bị trễ hạn" : "overdue tasks",
+      icon:    XCircle,
+      from:    "from-slate-500", to: "to-slate-700",
+      shadow:  "shadow-slate-200",
+      badge:   "bg-slate-50 text-slate-600",
     },
   ];
 
@@ -232,25 +371,25 @@ export function DashboardView() {
               </div>
 
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 bg-slate-50/50 dark:bg-slate-950/60">
-                {todayEvents.length === 0 ? (
+                {todayTimeline.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-2 dark:text-slate-500">
                     <CalendarDays size={32} className="opacity-30" />
                     <p className="text-sm font-medium">{language === "vi" ? "Lịch trống hôm nay" : "No events today"}</p>
                   </div>
-                ) : todayEvents.map(event => {
-                  const timeStr = getTimeString(event.startHour, event.startMin, event.duration);
+                ) : todayTimeline.map(item => {
+                  const timeStr = getTimeString(item.startHour, item.startMin, item.duration);
                   const now = new Date();
                   const nd = now.getHours() + now.getMinutes() / 60;
-                  const sd = event.startHour + event.startMin / 60;
-                  const ed = sd + event.duration;
+                  const sd = item.startHour + item.startMin / 60;
+                  const ed = sd + item.duration;
                   const isNow = nd >= sd && nd < ed;
                   const isPast = nd >= ed;
-                  const colors = COLOR_MAP[event.color as EventColor];
-                  const catName = categories.find(c => c.id === event.categoryId)?.name || "";
+                  const colors = COLOR_MAP[item.color as EventColor];
+                  const catName = categories.find(c => c.id === item.categoryId)?.name || "";
 
                   return (
                     <div
-                      key={event.id}
+                      key={`${item.kind}-${item.id}`}
                       className={`group flex items-center gap-4 p-3.5 rounded-xl border transition-all duration-200 ${
                         isNow
                           ? "bg-indigo-50 border-indigo-200 shadow-sm shadow-indigo-100 dark:bg-indigo-500/12 dark:border-indigo-400/30 dark:shadow-none"
@@ -259,44 +398,45 @@ export function DashboardView() {
                           : "bg-white border-slate-200 hover:border-indigo-200 hover:shadow-sm dark:bg-slate-900 dark:border-slate-800 dark:hover:border-indigo-400/30"
                       }`}
                     >
-                      {/* Time */}
                       <div className="w-16 flex-shrink-0 text-right">
                         <p className={`text-[13px] font-bold ${isNow ? "text-indigo-700 dark:text-indigo-200" : "text-slate-700 dark:text-slate-200"}`}>
-                          {event.startHour > 12 ? event.startHour - 12 : event.startHour}:{String(event.startMin).padStart(2, "0")}
+                          {item.startHour > 12 ? item.startHour - 12 : item.startHour}:{String(item.startMin).padStart(2, "0")}
                         </p>
                         <p className={`text-[10px] font-semibold uppercase ${isNow ? "text-indigo-400 dark:text-indigo-300" : "text-slate-400 dark:text-slate-500"}`}>
-                          {event.startHour >= 12 ? "PM" : "AM"}
+                          {item.startHour >= 12 ? "PM" : "AM"}
                         </p>
                       </div>
 
-                      {/* Color bar */}
                       <div className={`w-1 h-10 rounded-full flex-shrink-0 ${isNow ? "bg-indigo-500" : colors.bg}`} />
 
-                      {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className={`text-sm font-semibold truncate ${isNow ? "text-indigo-900 dark:text-indigo-100" : "text-slate-800 dark:text-slate-100"}`}>
-                            {event.title}
+                            {item.title}
                           </p>
+                          {item.kind === "task" && (
+                            <span className="flex-shrink-0 text-[9px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full uppercase tracking-wide">
+                              {language === "vi" ? "Task" : "Task"}
+                            </span>
+                          )}
                           {isNow && (
                             <span className="flex-shrink-0 text-[9px] font-bold bg-indigo-500 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">
                               Live
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 mt-1">
+                        <div className="flex items-center gap-3 mt-1 flex-wrap">
                           <span className="text-[11px] text-slate-500 flex items-center gap-1 dark:text-slate-300">
                             <Clock size={9} /> {timeStr}
                           </span>
-                          {event.location && (
+                          {item.location && (
                             <span className="text-[11px] text-slate-500 flex items-center gap-1 dark:text-slate-300">
-                              <MapPin size={9} /> {event.location}
+                              <MapPin size={9} /> {item.location}
                             </span>
                           )}
                         </div>
                       </div>
 
-                      {/* Category chip */}
                       {catName && (
                         <span className={`hidden sm:inline-flex text-[10px] font-semibold px-2.5 py-1 rounded-full ${colors.badge} flex-shrink-0`}>
                           {catName}
@@ -402,6 +542,68 @@ export function DashboardView() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Habit streak reminders */}
+            <div className="bg-white rounded-2xl border border-orange-200 shadow-sm overflow-hidden dark:bg-slate-900 dark:border-orange-500/25">
+              <div className="px-5 py-4 border-b border-orange-100 flex items-center justify-between dark:border-orange-500/20">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 bg-orange-100 rounded-lg flex items-center justify-center dark:bg-orange-500/15">
+                    <Flame size={14} className="text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-[15px] font-bold text-slate-900 dark:text-slate-50">
+                      {language === "vi" ? "Giữ Chuỗi Thói Quen" : "Keep Your Streak"}
+                    </h3>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-400">
+                      {language === "vi" ? "Hoàn thành hôm nay để không đứt chuỗi" : "Complete today to protect your streak"}
+                    </p>
+                  </div>
+                </div>
+                <Link to="/habits" className="text-xs font-semibold text-orange-700 hover:text-orange-900 bg-orange-50 px-2.5 py-1 rounded-full hover:bg-orange-100 transition-colors dark:bg-orange-500/15 dark:text-orange-200 dark:hover:bg-orange-500/25">
+                  {language === "vi" ? "Tất cả" : "All"}
+                </Link>
+              </div>
+
+              <div className="divide-y divide-orange-50 dark:divide-slate-800">
+                {habitReminders.length === 0 ? (
+                  <div className="py-6 px-4 text-center">
+                    <CheckCircle2 size={24} className="mx-auto text-emerald-500 mb-2" />
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-300">
+                      {language === "vi" ? "Các chuỗi hôm nay đều an toàn!" : "Today's streaks are safe!"}
+                    </p>
+                  </div>
+                ) : habitReminders.map(habit => {
+                  const isToggling = togglingHabitIds.includes(habit.id);
+                  return (
+                    <button
+                      key={habit.id}
+                      type="button"
+                      disabled={isToggling}
+                      onClick={() => completeHabit(habit.id)}
+                      className="group w-full px-4 py-3.5 flex items-center gap-3 text-left hover:bg-orange-50/60 transition-colors disabled:opacity-60 disabled:cursor-wait dark:hover:bg-orange-500/5"
+                    >
+                      <span className="w-5 h-5 rounded-full border-2 border-orange-300 group-hover:border-orange-500 group-hover:bg-orange-500 flex items-center justify-center flex-shrink-0 transition-colors dark:border-orange-500/60">
+                        <CheckCircle2 size={13} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-[13px] font-semibold text-slate-800 truncate group-hover:text-orange-800 dark:text-slate-100 dark:group-hover:text-orange-200">
+                          {habit.title}
+                        </span>
+                        <span className="mt-1 flex items-center gap-1 text-[11px] font-medium text-orange-600 dark:text-orange-300">
+                          <Flame size={11} />
+                          {habit.currentStreak > 0
+                            ? `${language === "vi" ? "Chuỗi" : "Streak"} ${habit.currentStreak} ${language === "vi" ? "ngày" : "days"}`
+                            : (language === "vi" ? "Bắt đầu chuỗi hôm nay" : "Start a streak today")}
+                        </span>
+                      </span>
+                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-400">
+                        {language === "vi" ? "Đánh dấu" : "Complete"}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
