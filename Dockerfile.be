@@ -1,36 +1,24 @@
-# Backend container - Spring Boot with Java 21
-FROM eclipse-temurin:21-jdk-alpine AS builder
+FROM maven:3.9.11-eclipse-temurin-21-alpine AS builder
 
 WORKDIR /app
 
-# Copy Maven wrapper and pom.xml
-COPY be/pom.xml be/pom.xml
-COPY be/.mvn .mvn
-COPY be/mvnw mvnw
+COPY be/pom.xml ./pom.xml
+RUN mvn -B -q dependency:go-offline
 
-# Download dependencies (layer caching)
-RUN ./mvnw dependency:go-offline -B
-
-# Copy source code
 COPY be/src ./src
+RUN mvn -B -q -DskipTests package
 
-# Build JAR
-RUN ./mvnw package -DskipTests -q
-
-# Runtime stage
 FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
-# Add non-root user for security
 RUN addgroup -S planwise && adduser -S planwise -G planwise
+COPY --from=builder --chown=planwise:planwise /app/target/*.jar /app/app.jar
+
 USER planwise
-
-# Copy JAR from builder
-COPY --from=builder /app/target/*.jar app.jar
-
-# Expose port
 EXPOSE 8080
 
-# Run application (no actuator - using basic TCP check for health)
-ENTRYPOINT ["java", "-jar", "-Xms256m", "-Xmx512m", "app.jar"]
+HEALTHCHECK --interval=15s --timeout=5s --start-period=40s --retries=5 \
+  CMD nc -z 127.0.0.1 8080 || exit 1
+
+ENTRYPOINT ["java", "-Xms256m", "-Xmx512m", "-jar", "/app/app.jar"]
