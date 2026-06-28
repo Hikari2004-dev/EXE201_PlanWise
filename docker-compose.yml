@@ -19,13 +19,12 @@ services:
       context: .
       dockerfile: Dockerfile.fe
       args:
-        VITE_API_BASE_URL: http://localhost:8080
+        VITE_API_BASE_URL: ""
     container_name: planwise-frontend
     restart: unless-stopped
     ports:
-      - "5173:5173"
+      - "5173:80"
     environment:
-      VITE_API_BASE_URL: http://192.168.1.218:8080
       APP_FRONTEND_URL: ${APP_FRONTEND_URL:-http://planwise.q2k.click}
     depends_on:
       - backend

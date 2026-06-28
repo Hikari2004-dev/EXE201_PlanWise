@@ -31,8 +31,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
-  || (import.meta.env.DEV ? "http://localhost:8080" : "");
+// Use same-origin requests by default. Vite proxies /api during development and
+// Nginx proxies /api in Docker, so browsers never call their own localhost.
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null);
