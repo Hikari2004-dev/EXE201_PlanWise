@@ -45,6 +45,8 @@ public enum ErrorCode {
     CATEGORY_NOT_FOUND        (HttpStatus.NOT_FOUND,           "Không tìm thấy danh mục"),
     CANNOT_DELETE_DEFAULT_CATEGORY(HttpStatus.BAD_REQUEST,      "Không thể xóa danh mục mặc định"),
     TASK_NOT_FOUND            (HttpStatus.NOT_FOUND,            "Không tìm thấy công việc"),
+    AI_DRAFT_NOT_FOUND        (HttpStatus.NOT_FOUND,            "Không tìm thấy bản nháp AI"),
+    AI_DRAFT_INVALID          (HttpStatus.BAD_REQUEST,          "Bản nháp AI không hợp lệ"),
     EVENT_NOT_FOUND           (HttpStatus.NOT_FOUND,           "Không tìm thấy sự kiện"),
     FOCUS_SESSION_NOT_FOUND   (HttpStatus.NOT_FOUND,            "Không tìm thấy phiên tập trung"),
     QUICK_NOTE_NOT_FOUND      (HttpStatus.NOT_FOUND,           "Không tìm thấy ghi chú nhanh"),

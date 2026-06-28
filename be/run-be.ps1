@@ -27,5 +27,12 @@ if (Test-Path $envFile) {
 }
 
 # 2. Khởi chạy Maven Spring Boot Run
+if (-not $env:JAVA_TOOL_OPTIONS) {
+    $env:JAVA_TOOL_OPTIONS = "-Duser.timezone=UTC"
+}
+if (-not $env:TZ) {
+    $env:TZ = "UTC"
+}
+
 Write-Host "Starting Spring Boot application..." -ForegroundColor Green
 .\mvnw.cmd spring-boot:run
