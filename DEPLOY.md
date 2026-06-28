@@ -89,4 +89,4 @@ docker compose -f docker-compose.prod.yml logs -f backend
 docker compose -f docker-compose.prod.yml logs -f frontend
 ```
 
-Database nằm trong named volume `planwise_postgres_data`; workflow không xóa volume khi deploy hoặc rollback.
+Production Compose dùng PostgreSQL bên ngoài theo `SPRING_DATASOURCE_URL` trong `.env`; workflow không chỉnh sửa hoặc xóa database khi deploy/rollback. File `docker-compose.yml` vẫn dành cho môi trường local cần chạy PostgreSQL bằng Docker.

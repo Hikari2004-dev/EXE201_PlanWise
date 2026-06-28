@@ -108,6 +108,7 @@ jobs:
 
           cd "$DEPLOY_PATH"
           test -f .env || { echo "Missing $DEPLOY_PATH/.env"; exit 1; }
+          export ENV_FILE=.env
 
           previous_sha=$(git rev-parse HEAD 2>/dev/null || true)
 
