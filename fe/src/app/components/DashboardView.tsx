@@ -269,7 +269,7 @@ export function DashboardView() {
       badge:   "bg-indigo-50 text-indigo-600",
     },
     {
-      label:   "Missing Task",
+      label:   "Task bị trễ hạn",
       value:   missingTaskCount,
       sub:     language === "vi" ? "task bị trễ hạn" : "overdue tasks",
       icon:    XCircle,
