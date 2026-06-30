@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.UUID;
 
 @Service
@@ -58,18 +59,17 @@ public class GoalAIServiceImpl implements GoalAIService {
     private GoalRoadmapDraft normalizeRoadmap(GoalRoadmapDraft roadmap, GenerateGoalDraftRequest request) {
         return new GoalRoadmapDraft(
                 roadmap.title() == null || roadmap.title().isBlank() ? request.title() : roadmap.title(),
-                roadmap.summary(),
                 roadmap.description() == null ? request.description() : roadmap.description(),
                 roadmap.categoryId() == null ? request.categoryId() : roadmap.categoryId(),
                 roadmap.period() == null ? request.period() : roadmap.period(),
-                roadmap.targetDate() == null ? resolveTargetDate(request) : roadmap.targetDate(),
+                roadmap.targetDate() == null ? request.deadline() : roadmap.targetDate(),
                 roadmap.priority() == null ? request.priority() : roadmap.priority(),
                 roadmap.milestones()
         );
     }
 
-    private LocalDate resolveTargetDate(GenerateGoalDraftRequest request) {
-        return request.targetDate() != null ? request.targetDate() : request.deadline();
+    private LocalDate getCurrentDate() {
+        return LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
     }
 
     private String injectVariables(String template, GenerateGoalDraftRequest request) {
@@ -80,10 +80,10 @@ public class GoalAIServiceImpl implements GoalAIService {
                 .replace("{{categoryName}}", nullToEmpty(request.categoryName()))
                 .replace("{{deadline}}", request.deadline() == null ? "" : request.deadline().toString())
                 .replace("{{period}}", request.period().name())
-                .replace("{{targetDate}}", request.targetDate() == null ? "" : request.targetDate().toString())
                 .replace("{{priority}}", nullToEmpty(request.priority()))
                 .replace("{{availableHoursPerWeek}}", request.availableHoursPerWeek() == null ? "" : request.availableHoursPerWeek().toString())
-                .replace("{{constraints}}", request.constraints() == null ? "" : String.join("; ", request.constraints()));
+                .replace("{{constraints}}", request.constraints() == null ? "" : String.join("; ", request.constraints()))
+                .replace("{{currentDate}}", getCurrentDate().toString());
     }
 
     private String nullToEmpty(String value) {

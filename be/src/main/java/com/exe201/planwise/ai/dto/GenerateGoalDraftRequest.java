@@ -21,12 +21,11 @@ public record GenerateGoalDraftRequest(
 
         String categoryName,
 
+        @NotNull(message = "Deadline không được để trống")
         LocalDate deadline,
 
         @NotNull(message = "Kỳ hạn không được để trống")
         GoalPeriod period,
-
-        LocalDate targetDate,
 
         String priority,
 

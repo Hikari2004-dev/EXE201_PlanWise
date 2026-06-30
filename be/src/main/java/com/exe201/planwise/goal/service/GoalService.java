@@ -93,7 +93,7 @@ public class GoalService {
         Goal goal = Goal.builder()
                 .user(user)
                 .title(roadmap.title())
-                .description(resolveGoalDescription(roadmap))
+                .description(roadmap.description())
                 .category(category)
                 .goalType(com.exe201.planwise.goal.enums.GoalType.SMART)
                 .period(roadmap.period())
@@ -322,13 +322,6 @@ public class GoalService {
                 throw new AppException(ErrorCode.GOAL_LIMIT_EXCEEDED);
             }
         }
-    }
-
-    private String resolveGoalDescription(GoalRoadmapDraft roadmap) {
-        if (roadmap.description() != null && !roadmap.description().isBlank()) {
-            return roadmap.description();
-        }
-        return roadmap.summary();
     }
 
     private OffsetDateTime toDueDate(LocalDate dueDate) {

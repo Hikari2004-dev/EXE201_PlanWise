@@ -15,8 +15,6 @@ public record GoalRoadmapDraft(
         @Size(max = 255, message = "Tiêu đề không được vượt quá 255 ký tự")
         String title,
 
-        String summary,
-
         String description,
 
         @NotNull(message = "Danh mục không được để trống")

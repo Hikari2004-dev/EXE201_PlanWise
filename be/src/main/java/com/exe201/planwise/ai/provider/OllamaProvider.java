@@ -35,7 +35,17 @@ public class OllamaProvider implements AIProvider {
                             "content", prompt
                     )),
                     "stream", false,
-                    "format", "json"
+                    "format", "json",
+                    "keep_alive", "15m",
+                    "options", Map.of(
+                        "temperature", 0.2,
+                        "top_p", 0.9,
+                        "top_k", 40,
+                        "repeat_penalty", 1.15,
+                        "num_predict", 1200,
+                        "num_ctx", 8192,
+                        "seed", 42
+                    )
             ));
 
             HttpRequest request = HttpRequest.newBuilder()
