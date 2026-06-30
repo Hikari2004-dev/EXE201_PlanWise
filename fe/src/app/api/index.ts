@@ -6,7 +6,7 @@ export { goalApi } from "./goal";
 export { habitApi } from "./habit";
 export { focusApi } from "./focus";
 export { reflectionApi } from "./reflection";
-export { visionApi } from "./vision";
+export { aiGoalPlannerApi } from "./aiGoalPlanner";
 export { notificationApi } from "./notification";
 export { settingsApi } from "./settings";
 

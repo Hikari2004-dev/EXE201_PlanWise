@@ -25,73 +25,6 @@
         }
     ],
     "paths": {
-        "/api/v1/vision/{itemId}": {
-            "put": {
-                "tags": [
-                    "vision-controller"
-                ],
-                "operationId": "updateVisionItem",
-                "parameters": [
-                    {
-                        "name": "itemId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
-                        },
-                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
-                    }
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/UpdateVisionItemRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/VisionItemDto"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "vision-controller"
-                ],
-                "operationId": "deleteVisionItem",
-                "parameters": [
-                    {
-                        "name": "itemId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
-                        },
-                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                }
-            }
-        },
         "/api/v1/tasks/{taskId}": {
             "get": {
                 "tags": [
@@ -842,57 +775,6 @@
                 "responses": {
                     "200": {
                         "description": "OK"
-                    }
-                }
-            }
-        },
-        "/api/v1/vision": {
-            "get": {
-                "tags": [
-                    "vision-controller"
-                ],
-                "operationId": "getVisionItems",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/VisionItemDto"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "tags": [
-                    "vision-controller"
-                ],
-                "operationId": "createVisionItem",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CreateVisionItemRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/VisionItemDto"
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -2545,73 +2427,6 @@
     },
     "components": {
         "schemas": {
-            "UpdateVisionItemRequest": {
-                "type": "object",
-                "properties": {
-                    "title": {
-                        "type": "string",
-                        "maxLength": 255,
-                        "minLength": 0
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "category": {
-                        "type": "string",
-                        "example": "career"
-                    },
-                    "imageUrl": {
-                        "type": "string"
-                    },
-                    "quote": {
-                        "type": "string"
-                    },
-                    "sortOrder": {
-                        "type": "integer",
-                        "format": "int32"
-                    }
-                }
-            },
-            "VisionItemDto": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
-                    },
-                    "title": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "category": {
-                        "type": "string",
-                        "example": "career"
-                    },
-                    "imageUrl": {
-                        "type": "string"
-                    },
-                    "quote": {
-                        "type": "string"
-                    },
-                    "sortOrder": {
-                        "type": "integer",
-                        "format": "int32"
-                    },
-                    "createdAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "example": "2026-06-05T08:00:00.000Z"
-                    },
-                    "updatedAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "example": "2026-06-05T08:00:00.000Z"
-                    }
-                }
-            },
             "UpdateTaskRequest": {
                 "type": "object",
                 "properties": {
@@ -3557,32 +3372,6 @@
                         "example": "2026-06-05T08:00:00.000Z"
                     }
                 }
-            },
-            "CreateVisionItemRequest": {
-                "type": "object",
-                "properties": {
-                    "title": {
-                        "type": "string",
-                        "maxLength": 255,
-                        "minLength": 0
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "category": {
-                        "type": "string",
-                        "example": "career"
-                    },
-                    "imageUrl": {
-                        "type": "string"
-                    },
-                    "quote": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "title"
-                ]
             },
             "CreateTaskRequest": {
                 "type": "object",

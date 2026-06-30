@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS task_checklist_items (
 
 CREATE INDEX IF NOT EXISTS idx_task_checklist_items_task_id ON task_checklist_items(task_id);
 
-CREATE TYPE ai_goal_draft_status AS ENUM ('CREATED', 'APPROVED', 'REJECTED', 'EXPIRED');
+--CREATE TYPE ai_goal_draft_status AS ENUM ('CREATED', 'APPROVED', 'REJECTED', 'EXPIRED');
 
 CREATE TABLE IF NOT EXISTS ai_goal_drafts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

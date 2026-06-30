@@ -265,7 +265,7 @@ export function PricingPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { text: t.featureGoal, desc: language === "vi" ? "Không lo giới hạn số lượng mục tiêu, thoải mái lập kế hoạch dài hạn." : "No limits on goal setting, design your ultimate vision." },
+              { text: t.featureGoal, desc: language === "vi" ? "Không lo giới hạn số lượng mục tiêu, thoải mái lập kế hoạch dài hạn." : "No limits on goal setting, design long-term plans freely." },
               { text: t.featureHabit, desc: language === "vi" ? "Tạo thói quen buổi sáng, tối và công việc mà không bị giới hạn." : "Track custom habits for routine building without constraint." },
               { text: t.featureAnalytics, desc: language === "vi" ? "Mở khóa toàn bộ biểu đồ xu hướng, tỉ lệ hoàn thành thói quen nâng cao." : "Unlock standard graphs, calendar heatmap, and habit success rates." },
               { text: t.featureAI, desc: language === "vi" ? "Hỏi đáp không giới hạn với AI Mentor về cách tối ưu hóa thời gian biểu." : "Chat with AI coach for personal advice on scheduling and productivity." },

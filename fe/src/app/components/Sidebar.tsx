@@ -124,7 +124,7 @@ export function Sidebar({
 
     {
       path: "/dashboard/goals",
-      label: language === "vi" ? "Tầm nhìn & Mục tiêu" : "Vision & Goals",
+      label: language === "vi" ? "Mục tiêu & AI Planner" : "Goals & AI Planner",
       icon: Target,
     },
 

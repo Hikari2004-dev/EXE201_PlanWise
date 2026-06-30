@@ -51,7 +51,6 @@ public enum ErrorCode {
     FOCUS_SESSION_NOT_FOUND   (HttpStatus.NOT_FOUND,            "Không tìm thấy phiên tập trung"),
     QUICK_NOTE_NOT_FOUND      (HttpStatus.NOT_FOUND,           "Không tìm thấy ghi chú nhanh"),
     REFLECTION_NOT_FOUND       (HttpStatus.NOT_FOUND,           "Không tìm thấy nhật ký"),
-    VISION_ITEM_NOT_FOUND     (HttpStatus.NOT_FOUND,            "Không tìm thấy vision item"),
     NOTIFICATION_NOT_FOUND    (HttpStatus.NOT_FOUND,           "Không tìm thấy thông báo");
 
     private final HttpStatus httpStatus;

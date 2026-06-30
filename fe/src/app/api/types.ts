@@ -74,40 +74,57 @@ export type {
   EventColor,
 } from "../data/mockData";
 
-// For backward compatibility - these match backend API responses
-export interface UpdateVisionItemRequest {
-  title?: string;
-  description?: string;
-  categoryId?: string;
-  imageUrl?: string;
-  quote?: string;
-  sortOrder?: number;
-}
+export type GoalDraftStatus = "CREATED" | "APPROVED" | "REJECTED" | "EXPIRED";
 
-export interface ApiVisionItem {
-  id: string;
+export interface GenerateGoalDraftRequest {
   title: string;
   description?: string;
-  categoryId?: string;
+  categoryId: string;
   categoryName?: string;
-  categoryColor?: string;
-  imageUrl?: string;
-  quote?: string;
-  sortOrder: number;
+  deadline?: string;
+  period: "week" | "month" | "year";
+  targetDate?: string;
+  priority?: "HIGH" | "MEDIUM" | "LOW";
+  constraints?: string[];
+  availableHoursPerWeek?: number;
+}
+
+export interface GoalTaskDraft {
+  title: string;
+  description?: string;
+  dueDate?: string;
+  priority?: "HIGH" | "MEDIUM" | "LOW";
+  estimatedHours?: number;
+}
+
+export interface GoalMilestoneDraft {
+  title: string;
+  description?: string;
+  targetDate?: string;
+  tasks?: GoalTaskDraft[];
+}
+
+export interface GoalRoadmapDraft {
+  title: string;
+  summary?: string;
+  description?: string;
+  categoryId: string;
+  period: "week" | "month" | "year";
+  targetDate?: string;
+  priority?: "HIGH" | "MEDIUM" | "LOW";
+  milestones?: GoalMilestoneDraft[];
+}
+
+export interface GoalDraftResponse {
+  id: string;
+  status: GoalDraftStatus;
+  roadmap: GoalRoadmapDraft;
   createdAt: string;
-  updatedAt: string;
 }
 
-export interface VisionImageUploadRequest {
-  filename: string;
-  contentType: string;
-  sizeBytes: number;
-}
-
-export interface VisionImageUploadResponse {
-  uploadUrl: string;
-  publicUrl: string;
-  objectKey: string;
+export interface CreateGoalFromDraftRequest {
+  draftId: string;
+  roadmap?: GoalRoadmapDraft;
 }
 
 export interface UpdateTaskRequest {
@@ -361,25 +378,6 @@ export interface ApiCategory {
   isDefault: boolean;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface CreateVisionItemRequest {
-  title: string;
-  description?: string;
-  categoryId: string;
-  imageUrl?: string;
-  quote?: string;
-}
-
-export interface VisionItem {
-  id: string;
-  title: string;
-  description: string;
-  imageUrl?: string;
-  quote?: string;
-  categoryId: string;
-  categoryName: string;
-  categoryColor?: string;
 }
 
 export interface CreateTaskRequest {

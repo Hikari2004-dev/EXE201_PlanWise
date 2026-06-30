@@ -14,7 +14,7 @@ Input:
 - availableHoursPerWeek: {{availableHoursPerWeek}}
 - constraints: {{constraints}}
 
-JSON schema:
+Return JSON schema:
 {
   "title": "string",
   "summary": "string",

@@ -7,7 +7,6 @@ import {
   habitApi,
   focusApi,
   reflectionApi,
-  visionApi,
   notificationApi,
   settingsApi,
   type ApiCategory,
@@ -19,7 +18,6 @@ import {
   type ApiFocusSession,
   type ApiQuickNote,
   type ApiDailyReflection,
-  type ApiVisionItem,
   type ApiNotification,
   type ApiUserSettings,
 } from "../api";
@@ -245,17 +243,6 @@ interface DailyReflection {
   mood: string;
 }
 
-interface VisionItem {
-  id: string;
-  title: string;
-  description: string;
-  imageUrl?: string;
-  quote?: string;
-  categoryId: string;
-  categoryName: string;
-  categoryColor?: string;
-}
-
 interface Category {
   id: string;
   name: string;
@@ -308,7 +295,6 @@ interface DataContextType {
   habits: Habit[];
   dailyFocus: DailyFocus | null;
   reflections: DailyReflection[];
-  visionItems: VisionItem[];
   notifications: Notification[];
   settings: UserSettings | null;
   
@@ -358,11 +344,6 @@ interface DataContextType {
   // Reflection operations
   saveReflection: (date: string, reflection: Partial<DailyReflection>) => Promise<void>;
   
-  // Vision operations
-  addVisionItem: (item: Omit<VisionItem, "id">) => Promise<void>;
-  updateVisionItem: (id: string, item: Partial<VisionItem>) => Promise<void>;
-  deleteVisionItem: (id: string) => Promise<void>;
-  
   // Notification operations
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
@@ -386,7 +367,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [dailyFocus, setDailyFocus] = useState<DailyFocus | null>(null);
   const [reflections, setReflections] = useState<DailyReflection[]>([]);
-  const [visionItems, setVisionItems] = useState<VisionItem[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [language, setLanguage] = useState<"vi" | "en">("vi");
@@ -415,7 +395,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         tasksData,
         goalsData,
         habitsData,
-        visionData,
         notificationsData,
         settingsData,
       ] = await Promise.allSettled([
@@ -424,7 +403,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         taskApi.getAll(),
         goalApi.getAll(),
         habitApi.getAll(),
-        visionApi.getAll(),
         notificationApi.getAll({ limit: 50 }),
         settingsApi.get(),
       ]);
@@ -486,20 +464,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
           color: h.color,
           completedDates: h.completedDates || [],
           completedToday: h.completedDates ? h.completedDates.includes(new Date().toISOString().split('T')[0]) : false,
-        })));
-      }
-
-      // Process vision items
-      if (visionData.status === "fulfilled") {
-        setVisionItems(visionData.value.map(v => ({
-          id: v.id,
-          title: v.title,
-          description: v.description || "",
-          imageUrl: v.imageUrl,
-          quote: v.quote,
-          categoryId: v.categoryId || "",
-          categoryName: v.categoryName || "",
-          categoryColor: v.categoryColor,
         })));
       }
 
@@ -930,52 +894,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // Vision operations
-  const addVisionItem = async (item: Omit<VisionItem, "id">) => {
-    const created = await visionApi.create({
-      title: item.title,
-      description: item.description || undefined,
-      categoryId: item.categoryId,
-      imageUrl: item.imageUrl,
-      quote: item.quote,
-    });
-    setVisionItems(prev => [...prev, {
-      id: created.id,
-      title: created.title,
-      description: created.description || "",
-      imageUrl: created.imageUrl,
-      quote: created.quote,
-      categoryId: created.categoryId || item.categoryId,
-      categoryName: created.categoryName || item.categoryName,
-      categoryColor: created.categoryColor || item.categoryColor,
-    }]);
-  };
-
-  const updateVisionItem = async (id: string, updates: Partial<VisionItem>) => {
-    const updated = await visionApi.update(id, {
-      title: updates.title,
-      description: updates.description,
-      categoryId: updates.categoryId,
-      imageUrl: updates.imageUrl,
-      quote: updates.quote,
-    });
-    setVisionItems(prev => prev.map(v => v.id === id ? {
-      id: updated.id,
-      title: updated.title,
-      description: updated.description || "",
-      imageUrl: updated.imageUrl,
-      quote: updated.quote,
-      categoryId: updated.categoryId || v.categoryId,
-      categoryName: updated.categoryName || v.categoryName,
-      categoryColor: updated.categoryColor || v.categoryColor,
-    } : v));
-  };
-
-  const deleteVisionItem = async (id: string) => {
-    await visionApi.delete(id);
-    setVisionItems(prev => prev.filter(v => v.id !== id));
-  };
-
   // Notification operations
   const markNotificationRead = async (id: string) => {
     await notificationApi.update(id, { read: true });
@@ -1018,7 +936,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         habits,
         dailyFocus,
         reflections,
-        visionItems,
         notifications,
         settings,
         loading,
@@ -1049,9 +966,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         addFocusSession,
         endFocusSession,
         saveReflection,
-        addVisionItem,
-        updateVisionItem,
-        deleteVisionItem,
         markNotificationRead,
         markAllNotificationsRead,
         dismissNotification,

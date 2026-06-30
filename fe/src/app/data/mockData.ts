@@ -69,15 +69,6 @@ export interface Milestone {
   description: string;
 }
 
-export interface VisionItem {
-  id: string;
-  title: string;
-  description: string;
-  imageUrl?: string;
-  quote?: string;
-  category: string;
-}
-
 // Tầng 2: Kế hoạch
 export interface Habit {
   id: string;
@@ -282,11 +273,6 @@ export const GOALS: Goal[] = [
       { id: "mock-ms-6", title: "Tiết kiệm 100 triệu", targetDate: "2027-12-31", completed: false, description: "Hoàn thành mục tiêu" }
     ]
   }
-];
-
-export const VISION_ITEMS: VisionItem[] = [
-  { id: "mock-vision-1", title: "Thành công trong sự nghiệp", description: "Trở thành Senior Developer", quote: "Success is not final, failure is not fatal", category: "career" },
-  { id: "mock-vision-2", title: "Sức khỏe tốt", description: "Duy trì thể hình lý tưởng", quote: "Health is wealth", category: "health" },
 ];
 
 export const HABITS: Habit[] = [
