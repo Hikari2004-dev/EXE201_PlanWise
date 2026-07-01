@@ -1,6 +1,6 @@
 # AI Goal Planner - Tóm Tắt Các File Mới/Thay Đổi
 
-**Cập nhật lần cuối**: 2026-06-29
+**Cập nhật lần cuối**: 2026-07-02
 
 ## 📋 Tổng Quan
 
@@ -23,7 +23,7 @@ be/
 │       │   └── GoalAIServiceImpl.java         # Thực hiện
 │       ├── provider/
 │       │   ├── AIProvider.java               # Interface provider
-│       │   └── OllamaProvider.java           # Thực hiện Ollama
+│       │   └── ClaudeProvider.java           # Gọi Claude
 │       ├── dto/
 │       │   ├── GenerateGoalDraftRequest.java
 │       │   ├── CreateGoalFromDraftRequest.java
@@ -100,10 +100,10 @@ be/
   - `weeklyReview()` - Tạo weekly review (tương lai)
 - **Lợi ích**: Cho phép thay đổi LLM provider mà không ảnh hưởng đến business logic
 
-#### `OllamaProvider.java`
-- **Mục đích**: Thực hiện AIProvider cho Ollama LLM
+#### `ClaudeProvider.java`
+- **Mục đích**: Thực hiện AIProvider cho Claude
 - **Chức năng**:
-  - Gọi Ollama API
+  - Gọi Claude API
   - Gửi prompt và context
   - Nhận JSON response từ AI
 
@@ -272,7 +272,7 @@ be/
 3. GoalAIServiceImpl xử lý:
    - Load prompt từ PromptLoader
    - Inject user context vào prompt
-   - Gọi AIProvider (ví dụ: OllamaProvider)
+   - Gọi AIProvider (ví dụ: ClaudeProvider)
     ↓
 4. AIProvider:
    - Gửi prompt + context tới LLM

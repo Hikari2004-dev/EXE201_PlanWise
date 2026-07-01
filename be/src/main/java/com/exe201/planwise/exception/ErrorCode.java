@@ -47,6 +47,7 @@ public enum ErrorCode {
     TASK_NOT_FOUND            (HttpStatus.NOT_FOUND,            "Không tìm thấy công việc"),
     AI_DRAFT_NOT_FOUND        (HttpStatus.NOT_FOUND,            "Không tìm thấy bản nháp AI"),
     AI_DRAFT_INVALID          (HttpStatus.BAD_REQUEST,          "Bản nháp AI không hợp lệ"),
+    AI_SERVICE_ERROR          (HttpStatus.SERVICE_UNAVAILABLE, "Lỗi khi gọi dịch vụ AI"),
     EVENT_NOT_FOUND           (HttpStatus.NOT_FOUND,           "Không tìm thấy sự kiện"),
     FOCUS_SESSION_NOT_FOUND   (HttpStatus.NOT_FOUND,            "Không tìm thấy phiên tập trung"),
     QUICK_NOTE_NOT_FOUND      (HttpStatus.NOT_FOUND,           "Không tìm thấy ghi chú nhanh"),
