@@ -12,6 +12,7 @@ import { AuthCallback } from "./components/AuthCallback";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { PricingPage } from "./components/PricingPage";
 import { PaymentResultPage } from "./components/PaymentResultPage";
+import { AdminDashboard } from "./components/AdminDashboard";
 import HomePage from "./components/Homepage";
 import { LoginPage } from "./components/LoginPage";
 import { VerifyEmailPage } from "./components/VerifyEmailPage";
@@ -59,7 +60,11 @@ export const router = createBrowserRouter([
       { path: "habits", Component: HabitsView },
       { path: "analytics", Component: AnalyticsView },
       { path: "pricing", Component: PricingPage },
-      { path: "payment/result", Component: PaymentResultPage },
+      { path: "admin", Component: AdminDashboard },
     ],
+  },
+  {
+    path: "/payment/result",
+    Component: PaymentResultPage,
   },
 ]);

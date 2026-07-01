@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../context/AuthContext";
-import { useData } from "../context/DataContext";
 import { CheckCircle2, XCircle, Loader2, ArrowRight, Sparkles, HelpCircle, Code } from "lucide-react";
 
 export function PaymentResultPage() {
   const { fetchWithAuth, refreshProfile } = useAuth();
-  const { language } = useData();
   const navigate = useNavigate();
+
+  const language = (localStorage.getItem("language") as "vi" | "en") || "vi";
 
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
@@ -60,7 +60,11 @@ export function PaymentResultPage() {
           const data = await response.json();
           if (data.status === "SUCCESS") {
             setSuccess(true);
-            await refreshProfile(); // Refresh AuthContext so that limits unlock immediately!
+            await refreshProfile();
+            // Reload page to ensure fresh auth state for dashboard
+            setTimeout(() => {
+              window.location.href = "/dashboard";
+            }, 1500);
           } else {
             throw new Error(data.message || "Payment verification failed");
           }
@@ -82,7 +86,7 @@ export function PaymentResultPage() {
     };
 
     verifyTransaction();
-  }, [language]);
+  }, []);
 
   // Dev-only helper to mock verify the payment
   const handleDevMock = async () => {
@@ -96,7 +100,10 @@ export function PaymentResultPage() {
 
       if (response.ok) {
         setSuccess(true);
-        await refreshProfile(); // Reload user state
+        await refreshProfile();
+        setTimeout(() => {
+          window.location.href = "/dashboard";
+        }, 1500);
       } else {
         const data = await response.json().catch(() => ({}));
         throw new Error(data.message || "Failed to trigger mock IPN");
@@ -175,7 +182,10 @@ export function PaymentResultPage() {
             </div>
 
             <button
-              onClick={() => navigate("/")}
+              onClick={async () => {
+                await refreshProfile();
+                window.location.href = "/dashboard";
+              }}
               className="w-full py-3.5 px-4 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-indigo-500/20 transition-all"
             >
               <span>{language === "vi" ? "Vào Bảng Điều Khiển" : "Go to Dashboard"}</span>
