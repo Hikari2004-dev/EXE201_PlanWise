@@ -15,7 +15,16 @@ export const aiGoalPlannerApi = {
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error("Failed to generate AI goal draft");
+    if (!response.ok) {
+      switch (response.status) {
+        case 403:
+          throw new Error("Goal limit reached. Upgrade to premium to create more goals.");
+        case 503:
+          throw new Error("AI service unavailable. Please try again later.");
+        default:
+          throw new Error("Failed to generate AI goal draft");
+      }
+    }
     return response.json();
   },
 
@@ -25,7 +34,12 @@ export const aiGoalPlannerApi = {
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error("Failed to create goal from AI draft");
+    if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error("Goal limit reached. Upgrade to premium to create more goals.");
+      }
+      throw new Error("Failed to create goal from AI draft");
+    }
     return response.json();
   },
 };

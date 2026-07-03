@@ -14,6 +14,7 @@ import com.exe201.planwise.exception.AppException;
 import com.exe201.planwise.exception.ErrorCode;
 import com.exe201.planwise.user.entity.User;
 import com.exe201.planwise.user.repository.UserRepository;
+import com.exe201.planwise.goal.service.GoalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,12 +33,15 @@ public class GoalAIServiceImpl implements GoalAIService {
     private final GoalDraftValidator goalDraftValidator;
     private final GoalDraftRepository goalDraftRepository;
     private final UserRepository userRepository;
+    private final GoalService goalService;
 
     @Override
     @Transactional
     public GoalDraftResponse generateGoalDraft(UUID userId, GenerateGoalDraftRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        goalService.enforceGoalLimit(user, userId);
 
         goalDraftRepository.findByUserIdAndStatus(userId, GoalDraftStatus.CREATED)
                 .forEach(draft -> draft.setStatus(GoalDraftStatus.REJECTED));

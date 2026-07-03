@@ -315,7 +315,7 @@ public class GoalService {
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
     }
 
-    private void enforceGoalLimit(User user, UUID userId) {
+    public void enforceGoalLimit(User user, UUID userId) {
         if (!user.isPremium()) {
             long currentCount = goalRepository.countByUserId(userId);
             if (currentCount >= FREE_GOAL_LIMIT) {

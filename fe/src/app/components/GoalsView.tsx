@@ -3,7 +3,6 @@ import { aiGoalPlannerApi } from "../api";
 import type { GoalDraftResponse, GoalMilestoneDraft, GoalRoadmapDraft, GoalTaskDraft } from "../api";
 import {
   Plus,
-  Target,
   Calendar,
   Sparkles,
   CheckCircle2,
@@ -133,7 +132,24 @@ export function GoalsView() {
       setAiRoadmap(result.roadmap);
     } catch (error) {
       console.error("Failed to generate AI goal draft", error);
-      setAiError(language === "vi" ? "Không thể tạo bản nháp AI. Vui lòng thử lại." : "Could not generate the AI draft. Please try again.");
+      
+      let message = language === "vi"? "Không thể tạo bản nháp AI. Vui lòng thử lại." : "Could not generate the AI draft. Please try again.";
+      
+      if (error instanceof Error) {
+        switch (error.message) {
+          case "Goal limit reached. Upgrade to premium to create more goals.":
+            message = language === "vi" ? "Bạn đã đạt giới hạn số lượng mục tiêu. Vui lòng nâng cấp Premium để tạo thêm mục tiêu." : error.message;
+            break;
+
+          case "AI service unavailable. Please try again later.": 
+            message = language === "vi" ? "Dịch vụ AI hiện không khả dụng. Vui lòng thử lại sau." : error.message;
+            break;
+
+          default:
+            message = language === "vi" ? "Không thể tạo bản nháp AI. Vui lòng thử lại." : error.message;
+        }
+      }
+      setAiError(message);
     } finally {
       setAiGenerating(false);
     }
@@ -151,7 +167,14 @@ export function GoalsView() {
       await refreshData();
     } catch (error) {
       console.error("Failed to create goal from AI draft", error);
-      setAiError(language === "vi" ? "Không thể tạo mục tiêu từ bản nháp." : "Could not create the goal from this draft.");
+
+      if (error instanceof Error) {
+        if (error.message === "Goal limit reached. Upgrade to premium to create more goals.") {
+          setAiError(language === "vi" ? "Bạn đã đạt giới hạn số lượng mục tiêu. Vui lòng nâng cấp Premium để tạo thêm mục tiêu." : error.message);
+        } else {
+          setAiError(language === "vi" ? "Không thể tạo mục tiêu từ bản nháp." : error.message);
+        }
+      }
     } finally {
       setAiApproving(false);
     }
@@ -564,6 +587,22 @@ export function GoalsView() {
                     {aiApproving ? (language === "vi" ? "Đang tạo..." : "Creating...") : (language === "vi" ? "Duyệt và tạo goal" : "Approve and create goal")}
                   </button>
                 </div>
+              </div>
+            ) : aiGenerating ? (
+              <div className="flex min-h-[22rem] flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-indigo-200 bg-indigo-50/40 px-4 text-center dark:border-indigo-500/20 dark:bg-indigo-500/5">
+                <div className="relative flex h-14 w-14 items-center justify-center">
+                  <span className="absolute h-14 w-14 animate-ping rounded-full bg-indigo-400/40" />
+                  <span className="absolute h-14 w-14 rounded-full border-2 border-indigo-500/30 border-t-indigo-500 animate-spin" />
+                  <Sparkles size={22} className="relative text-indigo-500" />
+                </div>
+                <p className="text-sm font-medium text-indigo-600 dark:text-indigo-300">
+                  {language === "vi" ? "AI đang xây dựng lộ trình cho bạn..." : "AI is building your roadmap..."}
+                </p>
+                <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">
+                  {language === "vi"
+                    ? "Quá trình này có thể mất vài giây, vui lòng chờ trong giây lát."
+                    : "This may take a few seconds, please hold on."}
+                </p>
               </div>
             ) : (
               <div className="flex min-h-[22rem] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
