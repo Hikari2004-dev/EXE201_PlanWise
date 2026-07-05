@@ -79,12 +79,14 @@ app:
     verification-base-url: ${APP_MAIL_VERIFICATION_BASE_URL:http://localhost:5173/verify-email}
     verification-token-expiration-minutes: ${APP_MAIL_VERIFICATION_TOKEN_EXPIRATION_MINUTES:60}
 
-  vnpay:
-    tmn-code: Y9XZ6FFK
-    hash-secret: 55QNGO35AW14FX8P0UKXP4LQ5VHTCYZ4
-    pay-url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-    return-url: ${VNPAY_RETURN_URL:http://localhost:5173/payment/result}
-    ipn-url: http://localhost:8080/api/v1/subscriptions/vnpay-ipn
+  payos:
+    client-id: ${PAYOS_CLIENT_ID:}
+    api-key: ${PAYOS_API_KEY:}
+    checksum-key: ${PAYOS_CHECKSUM_KEY:}
+    return-url: ${PAYOS_RETURN_URL:http://localhost:5173/payment/result}
+    cancel-url: ${PAYOS_CANCEL_URL:http://localhost:5173/payment/result}
+    webhook-url: ${PAYOS_WEBHOOK_URL:http://localhost:8080/api/v1/subscriptions/payos-webhook}
+    log-level: ${PAYOS_LOG_LEVEL:info}
 
   r2:
     enabled: ${R2_ENABLED:false}

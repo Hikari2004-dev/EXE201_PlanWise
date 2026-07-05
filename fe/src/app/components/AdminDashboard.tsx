@@ -171,7 +171,28 @@ export function AdminDashboard() {
     );
   }
 
-  const totalRevenue = stats?.totalRevenue || 0;
+  if (!stats) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 p-8">
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+          <BarChart3 size={32} className="text-muted-foreground" />
+        </div>
+        <h3 className="text-lg font-semibold text-foreground mb-2">Chưa có dữ liệu thống kê</h3>
+        <p className="text-muted-foreground text-center mb-6 max-w-md">
+          Dữ liệu admin hiện chưa sẵn sàng. Vui lòng thử tải lại.
+        </p>
+        <button
+          onClick={fetchStats}
+          className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl transition-colors"
+        >
+          <RefreshCw size={18} />
+          Tải lại
+        </button>
+      </div>
+    );
+  }
+
+  const totalRevenue = stats.totalRevenue || 0;
   const monthlyRev = stats?.monthlyRevenue || 0;
 
   return (

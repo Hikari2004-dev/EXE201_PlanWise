@@ -75,8 +75,8 @@ export function PricingPage() {
 
       setError(
         language === "vi"
-          ? `Lỗi thanh toán: ${err.message || "Không thể kết nối đến VNPay"}`
-          : `Payment error: ${err.message || "Failed to connect to VNPay"}`
+          ? `Lỗi thanh toán: ${err.message || "Không thể kết nối đến PayOS"}`
+          : `Payment error: ${err.message || "Failed to connect to PayOS"}`
       );
 
       setPurchaseLoading(null);

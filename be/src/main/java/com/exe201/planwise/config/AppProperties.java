@@ -18,7 +18,7 @@ public class AppProperties {
     private final Cors cors = new Cors();
     private final Mail mail = new Mail();
     private final Momo momo = new Momo();
-    private final Vnpay vnpay = new Vnpay();
+    private final Payos payos = new Payos();
     private final R2 r2 = new R2();
 
     @Getter
@@ -47,12 +47,14 @@ public class AppProperties {
 
     @Getter
     @Setter
-    public static class Vnpay {
-        private String tmnCode;
-        private String hashSecret;
-        private String payUrl;
+    public static class Payos {
+        private String clientId;
+        private String apiKey;
+        private String checksumKey;
         private String returnUrl;
-        private String ipnUrl;
+        private String cancelUrl;
+        private String webhookUrl;
+        private String logLevel;
     }
 
     @Getter
