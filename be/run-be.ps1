@@ -26,13 +26,7 @@ if (Test-Path $envFile) {
     Write-Warning "File .env not found in $PSScriptRoot! App will run with system environment variables or default properties."
 }
 
-# 2. Khởi chạy Maven Spring Boot Run
-if (-not $env:JAVA_TOOL_OPTIONS) {
-    $env:JAVA_TOOL_OPTIONS = "-Duser.timezone=UTC"
-}
-if (-not $env:TZ) {
-    $env:TZ = "UTC"
-}
+# 2. Khởi chạy Maven Spring Boot R
 
 Write-Host "Starting Spring Boot application..." -ForegroundColor Green
 .\mvnw.cmd spring-boot:run

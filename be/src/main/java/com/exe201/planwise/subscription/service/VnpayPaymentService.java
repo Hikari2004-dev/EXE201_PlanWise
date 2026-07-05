@@ -72,12 +72,14 @@ public class VnpayPaymentService {
 
         params.put("vnp_IpAddr", "14.225.206.161");
 
-        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("GMT+7"));
+        TimeZone vnpayTimeZone = TimeZone.getTimeZone("Etc/GMT-7");
+        Calendar calendar = Calendar.getInstance(vnpayTimeZone);
         SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
+        formatter.setTimeZone(vnpayTimeZone);
 
         params.put("vnp_CreateDate", formatter.format(calendar.getTime()));
 
-        Calendar expire = Calendar.getInstance(TimeZone.getTimeZone("GMT+7"));
+        Calendar expire = Calendar.getInstance(vnpayTimeZone);
         expire.add(Calendar.MINUTE, 15);
 
         params.put("vnp_ExpireDate", formatter.format(expire.getTime()));
