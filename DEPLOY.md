@@ -50,6 +50,8 @@ Vào repo GitHub → **Settings → Secrets and variables → Actions → New re
 | `SERVER_USER` | User SSH (vd: `root`, `deploy`) |
 | `SERVER_SSH_KEY` | Private key SSH (nội dung file `~/.ssh/id_rsa`) |
 
+> SSH port đã được hardcode là **2217** trong workflow.
+
 ### Secrets cho ứng dụng (copy từ file `be/.env`)
 
 | Secret | Giá trị mẫu |
