@@ -3,10 +3,9 @@ package com.exe201.planwise.subscription.controller;
 import com.exe201.planwise.security.UserPrincipal;
 import com.exe201.planwise.subscription.dto.MomoIPNRequest;
 import com.exe201.planwise.subscription.service.MomoPaymentService;
-import com.exe201.planwise.subscription.service.VnpayPaymentService;
+import com.exe201.planwise.subscription.service.PayosPaymentService;
 import com.exe201.planwise.user.entity.PaymentTransaction;
 import com.exe201.planwise.user.entity.SubscriptionPlan;
-import com.exe201.planwise.user.repository.PaymentTransactionRepository;
 import com.exe201.planwise.user.repository.SubscriptionPlanRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,8 +25,7 @@ public class SubscriptionController {
 
     private final SubscriptionPlanRepository subscriptionPlanRepository;
     private final MomoPaymentService momoPaymentService;
-    private final VnpayPaymentService vnpayPaymentService;
-    private final PaymentTransactionRepository paymentTransactionRepository;
+    private final PayosPaymentService payosPaymentService;
 
     @GetMapping("/plans")
     public ResponseEntity<List<SubscriptionPlan>> getPlans() {
@@ -48,35 +46,16 @@ public class SubscriptionController {
 
         UUID planId = UUID.fromString(planIdStr);
 
-        Map<String, String> payment = vnpayPaymentService.createPayment(principal.getId(), planId);
+        Map<String, String> payment = payosPaymentService.createPayment(principal.getId(), planId);
 
         return ResponseEntity.ok(payment);
     }
 
-    /**
-     * VNPay return URL endpoint - xác thực callback từ VNPay khi user được redirect về.
-     * Frontend gọi endpoint này với tất cả query params từ VNPay.
-     */
-    @GetMapping("/vnpay-return")
-    public ResponseEntity<Map<String, String>> vnpayReturn(@RequestParam Map<String, String> vnpParams) {
-        log.info("Received VNPay return callback with params: {}", vnpParams.keySet());
-        Map<String, String> result = vnpayPaymentService.verifyVnpayReturn(vnpParams);
-        return ResponseEntity.ok(result);
-    }
-
-    /**
-     * VNPay IPN (server-to-server) endpoint - VNPay gọi trực tiếp.
-     */
-    @GetMapping("/vnpay-ipn")
-    public ResponseEntity<Map<String, String>> vnpayIpn(@RequestParam Map<String, String> vnpParams) {
-        log.info("Received VNPay IPN webhook with params: {}", vnpParams.keySet());
-        try {
-            vnpayPaymentService.verifyVnpayReturn(vnpParams);
-            return ResponseEntity.ok(Map.of("RspCode", "00", "Message", "Confirm Success"));
-        } catch (Exception e) {
-            log.error("Error processing VNPay IPN", e);
-            return ResponseEntity.ok(Map.of("RspCode", "99", "Message", e.getMessage()));
-        }
+    @PostMapping("/payos-webhook")
+    public ResponseEntity<Map<String, String>> payosWebhook(@RequestBody Object body) {
+        log.info("Received PayOS webhook payload");
+        payosPaymentService.processWebhook(body);
+        return ResponseEntity.ok(Map.of("status", "SUCCESS"));
     }
 
     @PostMapping("/momo-ipn")
@@ -99,20 +78,19 @@ public class SubscriptionController {
 
     @GetMapping("/transactions/{orderId}/status")
     public ResponseEntity<Map<String, String>> getTransactionStatus(@PathVariable String orderId) {
-        PaymentTransaction transaction = paymentTransactionRepository.findByOrderId(orderId)
-                .orElse(null);
-        if (transaction == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(Map.of("status", transaction.getStatus()));
+        PaymentTransaction transaction = payosPaymentService.getTransactionStatus(orderId);
+        return ResponseEntity.ok(Map.of(
+                "status", transaction.getStatus(),
+                "orderId", transaction.getOrderId(),
+                "amount", transaction.getAmount().toPlainString()));
     }
 
     @PostMapping("/mock-ipn")
     public ResponseEntity<Map<String, String>> mockIpn(@RequestParam String orderId) {
-        log.info("Triggering mock IPN payment verification for order: {}", orderId);
-        vnpayPaymentService.mockVnpayIpn(orderId);
+        log.info("Triggering mock PayOS payment confirmation for order: {}", orderId);
+        payosPaymentService.mockConfirmPayment(orderId);
         return ResponseEntity.ok(Map.of(
                 "status", "SUCCESS",
-                "message", "Đã kích hoạt giả lập gói hội viên thành công!"));
+                "message", "Đã xác nhận giả lập thanh toán thành công!"));
     }
 }

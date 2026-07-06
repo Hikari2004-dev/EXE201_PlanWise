@@ -1,7 +1,17 @@
 package com.exe201.planwise.goal.service;
 
+import com.exe201.planwise.ai.dto.CreateGoalFromDraftRequest;
+import com.exe201.planwise.ai.dto.GoalMilestoneDraft;
+import com.exe201.planwise.ai.dto.GoalRoadmapDraft;
+import com.exe201.planwise.ai.dto.GoalTaskDraft;
+import com.exe201.planwise.ai.entity.GoalDraft;
+import com.exe201.planwise.ai.entity.GoalDraftStatus;
+import com.exe201.planwise.ai.parser.GoalDraftParser;
+import com.exe201.planwise.ai.repository.GoalDraftRepository;
+import com.exe201.planwise.ai.validator.GoalDraftValidator;
 import com.exe201.planwise.category.entity.Category;
 import com.exe201.planwise.category.repository.CategoryRepository;
+import com.exe201.planwise.common.enums.EventColor;
 import com.exe201.planwise.exception.AppException;
 import com.exe201.planwise.exception.ErrorCode;
 import com.exe201.planwise.goal.dto.*;
@@ -10,6 +20,8 @@ import com.exe201.planwise.goal.entity.Milestone;
 import com.exe201.planwise.goal.enums.GoalPeriod;
 import com.exe201.planwise.goal.repository.GoalRepository;
 import com.exe201.planwise.goal.repository.MilestoneRepository;
+import com.exe201.planwise.task.entity.Task;
+import com.exe201.planwise.task.repository.TaskRepository;
 import com.exe201.planwise.user.entity.User;
 import com.exe201.planwise.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,8 +29,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -30,8 +45,12 @@ public class GoalService {
 
     private final GoalRepository goalRepository;
     private final MilestoneRepository milestoneRepository;
+    private final TaskRepository taskRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final GoalDraftRepository goalDraftRepository;
+    private final GoalDraftParser goalDraftParser;
+    private final GoalDraftValidator goalDraftValidator;
 
     @Transactional(readOnly = true)
     public GoalListResponse getGoals(UUID userId) {
@@ -54,15 +73,78 @@ public class GoalService {
     }
 
     @Transactional
-    public GoalDto createGoal(UUID userId, CreateGoalRequest request) {
+    public GoalDto createGoalFromDraft(UUID userId, CreateGoalFromDraftRequest request) {
         User user = findUser(userId);
+        enforceGoalLimit(user, userId);
 
-        if (!user.isPremium()) {
-            long currentCount = goalRepository.countByUserId(userId);
-            if (currentCount >= FREE_GOAL_LIMIT) {
-                throw new AppException(ErrorCode.GOAL_LIMIT_EXCEEDED);
+        GoalDraft draft = goalDraftRepository.findById(request.draftId())
+                .orElseThrow(() -> new AppException(ErrorCode.AI_DRAFT_NOT_FOUND));
+
+        if (!draft.getUser().getId().equals(userId) || draft.getStatus() != GoalDraftStatus.CREATED) {
+            throw new AppException(ErrorCode.AI_DRAFT_INVALID, "Bản nháp AI không thể được sử dụng");
+        }
+
+        GoalRoadmapDraft roadmap = request.roadmap() != null
+                ? request.roadmap()
+                : goalDraftParser.fromJson(draft.getGeneratedJson());
+        goalDraftValidator.validate(roadmap);
+
+        Category category = findCategory(roadmap.categoryId(), userId);
+        Goal goal = Goal.builder()
+                .user(user)
+                .title(roadmap.title())
+                .description(roadmap.description())
+                .category(category)
+                .goalType(com.exe201.planwise.goal.enums.GoalType.SMART)
+                .period(roadmap.period())
+                .targetDate(roadmap.targetDate())
+                .color("indigo")
+                .build();
+
+        goal = goalRepository.save(goal);
+
+        int milestoneOrder = 0;
+        for (GoalMilestoneDraft milestoneDraft : roadmap.milestones()) {
+            Milestone milestone = Milestone.builder()
+                    .goal(goal)
+                    .title(milestoneDraft.title())
+                    .description(milestoneDraft.description())
+                    .targetDate(milestoneDraft.targetDate())
+                    .sortOrder((short) milestoneOrder++)
+                    .build();
+            milestone = milestoneRepository.save(milestone);
+            goal.getMilestones().add(milestone);
+
+            int taskOrder = 0;
+            for (GoalTaskDraft taskDraft : milestoneDraft.tasks()) {
+                taskRepository.save(Task.builder()
+                        .user(user)
+                        .category(category)
+                        .goal(goal)
+                        .milestone(milestone)
+                        .title(taskDraft.title())
+                        .description(taskDraft.description())
+                        .dueDate(toDueDate(taskDraft.dueDate()))
+                        .priority(parseDraftPriority(taskDraft.priority()))
+                        .color(EventColor.indigo)
+                        .estimatedTime(taskDraft.estimatedHours())
+                        .sortOrder(taskOrder++)
+                        .showOnCalendar(true)
+                        .build());
             }
         }
+
+        draft.setStatus(GoalDraftStatus.APPROVED);
+        draft.setGeneratedJson(goalDraftParser.toJson(roadmap));
+        log.info("Created goal {} from AI draft {} for user {}", goal.getId(), draft.getId(), userId);
+
+        return GoalDto.from(goal);
+    }
+
+    @Transactional
+    public GoalDto createGoal(UUID userId, CreateGoalRequest request) {
+        User user = findUser(userId);
+        enforceGoalLimit(user, userId);
 
         Goal goal = Goal.builder()
                 .user(user)
@@ -231,6 +313,30 @@ public class GoalService {
         return categoryRepository.findById(categoryId)
                 .filter(category -> category.getUser().getId().equals(userId))
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
+    }
+
+    public void enforceGoalLimit(User user, UUID userId) {
+        if (!user.isPremium()) {
+            long currentCount = goalRepository.countByUserId(userId);
+            if (currentCount >= FREE_GOAL_LIMIT) {
+                throw new AppException(ErrorCode.GOAL_LIMIT_EXCEEDED);
+            }
+        }
+    }
+
+    private OffsetDateTime toDueDate(LocalDate dueDate) {
+        return dueDate == null ? null : dueDate.atTime(23, 59).atOffset(ZoneOffset.UTC);
+    }
+
+    private Task.TaskPriority parseDraftPriority(String priority) {
+        if (priority == null || priority.isBlank()) {
+            return Task.TaskPriority.MEDIUM;
+        }
+        return switch (priority.trim().toUpperCase(Locale.ROOT).replace('-', '_')) {
+            case "HIGH", "CAO" -> Task.TaskPriority.HIGH;
+            case "LOW", "THAP", "THẤP" -> Task.TaskPriority.LOW;
+            default -> Task.TaskPriority.MEDIUM;
+        };
     }
 
     private Goal findGoalAndValidateOwnership(UUID goalId, UUID userId) {

@@ -26,6 +26,7 @@ if (Test-Path $envFile) {
     Write-Warning "File .env not found in $PSScriptRoot! App will run with system environment variables or default properties."
 }
 
-# 2. Khởi chạy Maven Spring Boot Run
+# 2. Khởi chạy Maven Spring Boot R
+
 Write-Host "Starting Spring Boot application..." -ForegroundColor Green
 .\mvnw.cmd spring-boot:run

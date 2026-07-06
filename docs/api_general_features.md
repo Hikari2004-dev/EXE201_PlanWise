@@ -15,9 +15,8 @@ All endpoints (except `/api/v1/auth/*`) require JWT authentication via Bearer to
 4. [Daily Focus API](#4-daily-focus-api)
 5. [Quick Notes API](#5-quick-notes-api)
 6. [Daily Reflections API](#6-daily-reflections-api)
-7. [Vision Items API](#7-vision-items-api)
-8. [Notifications API](#8-notifications-api)
-9. [User Settings API](#9-user-settings-api)
+7. [Notifications API](#7-notifications-api)
+8. [User Settings API](#8-user-settings-api)
 
 ---
 
@@ -260,51 +259,7 @@ Update an existing reflection.
 
 ---
 
-## 7. Vision Items API
-
-### GET /api/v1/vision
-Get all vision board items.
-
-**Response:**
-```json
-[
-  {
-    "id": "uuid",
-    "title": "Thành công trong sự nghiệp",
-    "description": "Trở thành Senior Developer",
-    "category": "career",
-    "imageUrl": "https://...",
-    "quote": "Success is not final, failure is not fatal",
-    "sortOrder": 0,
-    "createdAt": "2026-03-01T10:00:00Z",
-    "updatedAt": "2026-03-01T10:00:00Z"
-  }
-]
-```
-
-### POST /api/v1/vision
-Create a new vision item.
-
-**Request Body:**
-```json
-{
-  "title": "Thành công trong sự nghiệp",
-  "description": "Trở thành Senior Developer",
-  "category": "career",
-  "imageUrl": "https://...",
-  "quote": "Success is not final, failure is not fatal"
-}
-```
-
-### PUT /api/v1/vision/{itemId}
-Update a vision item.
-
-### DELETE /api/v1/vision/{itemId}
-Delete a vision item.
-
----
-
-## 8. Notifications API
+## 7. Notifications API
 
 ### GET /api/v1/notifications
 Get all notifications for the user.
@@ -344,7 +299,7 @@ Dismiss all notifications.
 
 ---
 
-## 9. User Settings API
+## 8. User Settings API
 
 ### GET /api/v1/settings
 Get user settings.

@@ -1,14 +1,9 @@
 import { useMemo, useState } from "react";
-import { visionApi } from "../api";
-import { COLOR_MAP } from "../data/mockData";
+import { aiGoalPlannerApi } from "../api";
+import type { GoalDraftResponse, GoalMilestoneDraft, GoalRoadmapDraft, GoalTaskDraft } from "../api";
 import {
   Plus,
-  Target,
   Calendar,
-  Briefcase,
-  HeartPulse,
-  Wallet,
-  BookOpen,
   Sparkles,
   CheckCircle2,
   CircleDashed,
@@ -21,20 +16,26 @@ import { useNavigate } from "react-router";
 
 type GoalPeriod = "week" | "month" | "year";
 
-type VisionDraft = {
+type AIGoalDraft = {
   title: string;
   description: string;
   categoryId: string;
-  imageUrl: string;
-  quote: string;
+  deadline?: string;
+  period: GoalPeriod;
+  priority: "HIGH" | "MEDIUM" | "LOW";
+  constraints: string;
+  availableHoursPerWeek: string;
 };
 
-const EMPTY_VISION_DRAFT: VisionDraft = {
+const EMPTY_AI_DRAFT: AIGoalDraft = {
   title: "",
   description: "",
   categoryId: "",
-  imageUrl: "",
-  quote: "",
+  deadline: "",
+  period: "month",
+  priority: "MEDIUM",
+  constraints: "",
+  availableHoursPerWeek: "",
 };
 
 const PERIODS: Record<GoalPeriod, { labelVi: string; labelEn: string; subVi: string; subEn: string; accent: string; pill: string; input: string }> = {
@@ -68,7 +69,7 @@ const PERIODS: Record<GoalPeriod, { labelVi: string; labelEn: string; subVi: str
 };
 
 export function GoalsView() {
-  const { categories, goals, tasks, visionItems, addGoal, updateGoal, addMilestone, updateMilestone, deleteMilestone, addVisionItem, updateVisionItem, deleteVisionItem, language } = useData();
+  const { categories, goals, tasks, addGoal, updateGoal, addMilestone, updateMilestone, deleteMilestone, language, refreshData } = useData();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -80,17 +81,12 @@ export function GoalsView() {
   });
   const [milestoneDrafts, setMilestoneDrafts] = useState<Record<string, { title: string; description: string; targetDate: string }>>({});
   const [milestoneEdits, setMilestoneEdits] = useState<Record<string, { title: string; description: string; targetDate: string }>>({});
-  const [visionDraft, setVisionDraft] = useState<VisionDraft>(EMPTY_VISION_DRAFT);
-  const [editingVisionId, setEditingVisionId] = useState<string | null>(null);
-  const [visionUploading, setVisionUploading] = useState(false);
-
-  const VISION_ICON_MAP = {
-    career: { icon: Briefcase, color: "text-blue-500", bg: "bg-blue-50" },
-    health: { icon: HeartPulse, color: "text-emerald-500", bg: "bg-emerald-50" },
-    finance: { icon: Wallet, color: "text-amber-500", bg: "bg-amber-50" },
-    learning: { icon: BookOpen, color: "text-purple-500", bg: "bg-purple-50" },
-    default: { icon: Target, color: "text-slate-500", bg: "bg-slate-50" },
-  } as const;
+  const [aiDraft, setAiDraft] = useState<AIGoalDraft>(EMPTY_AI_DRAFT);
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiApproving, setAiApproving] = useState(false);
+  const [aiDraftResult, setAiDraftResult] = useState<GoalDraftResponse | null>(null);
+  const [aiRoadmap, setAiRoadmap] = useState<GoalRoadmapDraft | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const groupedGoals = useMemo(
     () => ({
@@ -106,35 +102,163 @@ export function GoalsView() {
 
   const totalGoals = goals.length;
 
-  const resolveVisionCategory = (categoryId: string) => categories.find((category) => category.id === categoryId);
+  const splitConstraints = (value: string) =>
+    value
+      .split(/\r?\n|;/)
+      .map((item) => item.trim())
+      .filter(Boolean);
 
-  const handleVisionImageSelect = async (file: File | null) => {
-    if (!file) return;
+  const handleGenerateAIGoal = async () => {
+    const { title, description, categoryId, period, deadline, priority, constraints } = aiDraft;
+    if (!title.trim() || !categoryId) return;
 
-    setVisionUploading(true);
+    setAiGenerating(true);
+    setAiError(null);
     try {
-      const { uploadUrl, publicUrl } = await visionApi.presignImageUpload({
-        filename: file.name,
-        contentType: file.type || "application/octet-stream",
-        sizeBytes: file.size,
+      const category = categories.find((item) => item.id === categoryId);
+      const result = await aiGoalPlannerApi.generate({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        categoryId,
+        categoryName: category?.name,
+        deadline: deadline || undefined,
+        period,
+        targetDate: deadline || undefined,
+        priority,
+        constraints: splitConstraints(constraints),
+        availableHoursPerWeek: aiDraft.availableHoursPerWeek ? Number(aiDraft.availableHoursPerWeek) : undefined,
       });
+      setAiDraftResult(result);
+      setAiRoadmap(result.roadmap);
+    } catch (error) {
+      console.error("Failed to generate AI goal draft", error);
+      
+      let message = language === "vi"? "Không thể tạo bản nháp AI. Vui lòng thử lại." : "Could not generate the AI draft. Please try again.";
+      
+      if (error instanceof Error) {
+        switch (error.message) {
+          case "Goal limit reached. Upgrade to premium to create more goals.":
+            message = language === "vi" ? "Bạn đã đạt giới hạn số lượng mục tiêu. Vui lòng nâng cấp Premium để tạo thêm mục tiêu." : error.message;
+            break;
 
-      const response = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": file.type || "application/octet-stream",
-        },
-        body: file,
-      });
+          case "AI service unavailable. Please try again later.": 
+            message = language === "vi" ? "Dịch vụ AI hiện không khả dụng. Vui lòng thử lại sau." : error.message;
+            break;
 
-      if (!response.ok) {
-        throw new Error("Failed to upload vision image");
+          default:
+            message = language === "vi" ? "Không thể tạo bản nháp AI. Vui lòng thử lại." : error.message;
+        }
       }
-
-      setVisionDraft((prev) => ({ ...prev, imageUrl: publicUrl }));
+      setAiError(message);
     } finally {
-      setVisionUploading(false);
+      setAiGenerating(false);
     }
+  };
+
+  const handleCreateFromAIDraft = async () => {
+    if (!aiDraftResult || !aiRoadmap) return;
+    setAiApproving(true);
+    setAiError(null);
+    try {
+      await aiGoalPlannerApi.createGoalFromDraft({ draftId: aiDraftResult.id, roadmap: aiRoadmap });
+      setAiDraft(EMPTY_AI_DRAFT);
+      setAiDraftResult(null);
+      setAiRoadmap(null);
+      await refreshData();
+    } catch (error) {
+      console.error("Failed to create goal from AI draft", error);
+
+      if (error instanceof Error) {
+        if (error.message === "Goal limit reached. Upgrade to premium to create more goals.") {
+          setAiError(language === "vi" ? "Bạn đã đạt giới hạn số lượng mục tiêu. Vui lòng nâng cấp Premium để tạo thêm mục tiêu." : error.message);
+        } else {
+          setAiError(language === "vi" ? "Không thể tạo mục tiêu từ bản nháp." : error.message);
+        }
+      }
+    } finally {
+      setAiApproving(false);
+    }
+  };
+
+  const updateRoadmap = (updates: Partial<GoalRoadmapDraft>) => {
+    setAiRoadmap((prev) => prev ? { ...prev, ...updates } : prev);
+  };
+
+  const updateDraftMilestone = (index: number, updates: Partial<GoalMilestoneDraft>) => {
+    setAiRoadmap((prev) => {
+      if (!prev) return prev;
+      const milestones = [...(prev.milestones || [])];
+      milestones[index] = { ...milestones[index], ...updates };
+      return { ...prev, milestones };
+    });
+  };
+
+  const addDraftMilestone = () => {
+    setAiRoadmap((prev) => {
+      if (!prev) return prev;
+      const milestones = [
+        ...(prev.milestones || []),
+        {
+          title: language === "vi" ? "Cột mốc mới" : "New milestone",
+          description: "",
+          targetDate: prev.targetDate,
+          tasks: [],
+        },
+      ];
+      return { ...prev, milestones };
+    });
+  };
+
+  const removeDraftMilestone = (index: number) => {
+    setAiRoadmap((prev) => {
+      if (!prev) return prev;
+      return { ...prev, milestones: (prev.milestones || []).filter((_, itemIndex) => itemIndex !== index) };
+    });
+  };
+
+  const updateDraftTask = (milestoneIndex: number, taskIndex: number, updates: Partial<GoalTaskDraft>) => {
+    setAiRoadmap((prev) => {
+      if (!prev) return prev;
+      const milestones = [...(prev.milestones || [])];
+      const milestone = milestones[milestoneIndex];
+      const tasks = [...(milestone.tasks || [])];
+      tasks[taskIndex] = { ...tasks[taskIndex], ...updates };
+      milestones[milestoneIndex] = { ...milestone, tasks };
+      return { ...prev, milestones };
+    });
+  };
+
+  const addDraftTask = (milestoneIndex: number) => {
+    setAiRoadmap((prev) => {
+      if (!prev) return prev;
+      const milestones = [...(prev.milestones || [])];
+      const milestone = milestones[milestoneIndex];
+      const tasks = [
+        ...(milestone.tasks || []),
+        {
+          title: language === "vi" ? "Công việc mới" : "New task",
+          description: "",
+          dueDate: milestone.targetDate || prev.targetDate,
+          priority: "MEDIUM" as const,
+          estimatedHours: 1,
+        },
+      ];
+      milestones[milestoneIndex] = { ...milestone, tasks };
+      return { ...prev, milestones };
+    });
+  };
+
+  const removeDraftTask = (milestoneIndex: number, taskIndex: number) => {
+    setAiRoadmap((prev) => {
+      if (!prev) return prev;
+      const milestones = [...(prev.milestones || [])];
+      const milestone = milestones[milestoneIndex];
+      milestones[milestoneIndex] = {
+        ...milestone,
+        tasks: (milestone.tasks || []).filter((_, itemIndex) => itemIndex !== taskIndex),
+      };
+      return { ...prev, milestones };
+    });
   };
 
   const handleAddGoal = async (period: GoalPeriod) => {
@@ -206,54 +330,6 @@ export function GoalsView() {
     cancelEditMilestone(milestoneId);
   };
 
-  const beginEditVisionItem = (item: { id: string; title: string; description?: string; categoryId?: string; imageUrl?: string; quote?: string }) => {
-    setEditingVisionId(item.id);
-    setVisionDraft({
-      title: item.title,
-      description: item.description || "",
-      categoryId: item.categoryId || defaultCategoryId,
-      imageUrl: item.imageUrl || "",
-      quote: item.quote || "",
-    });
-  };
-
-  const cancelEditVisionItem = () => {
-    setEditingVisionId(null);
-    setVisionDraft(EMPTY_VISION_DRAFT);
-  };
-
-  const saveVisionItem = async () => {
-    const title = visionDraft.title.trim();
-    const categoryId = visionDraft.categoryId || defaultCategoryId;
-    const category = resolveVisionCategory(categoryId);
-    if (!title || !categoryId || !category) return;
-
-    if (editingVisionId) {
-      await updateVisionItem(editingVisionId, {
-        title,
-        description: visionDraft.description.trim() || undefined,
-        categoryId,
-        categoryName: category.name,
-        categoryColor: category.color,
-        imageUrl: visionDraft.imageUrl.trim() || undefined,
-        quote: visionDraft.quote.trim() || undefined,
-      });
-      cancelEditVisionItem();
-      return;
-    }
-
-    await addVisionItem({
-      title,
-      description: visionDraft.description.trim(),
-      categoryId,
-      categoryName: category.name,
-      categoryColor: category.color,
-      imageUrl: visionDraft.imageUrl.trim() || undefined,
-      quote: visionDraft.quote.trim() || undefined,
-    });
-    setVisionDraft(EMPTY_VISION_DRAFT);
-  };
-
   const renderTaskRow = (task: TaskItem, compact = false) => {
     const statusLabel = task.completed ? (language === "vi" ? "Hoàn thành" : "Done") : (language === "vi" ? "Đang làm" : "In progress");
 
@@ -270,6 +346,272 @@ export function GoalsView() {
           <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${task.completed ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-blue-200 bg-blue-50 text-blue-700"}`}>
             {statusLabel}
           </span>
+        </div>
+      </div>
+    );
+  };
+
+  const renderAIPlanner = () => {
+    const selectedCategory = categories.find((category) => category.id === (aiDraft.categoryId || defaultCategoryId));
+
+    return (
+      <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-600 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200">
+                <Sparkles size={16} />
+              </div>
+              <h2 className="text-lg font-semibold tracking-tight text-zinc-950 dark:text-slate-100">
+                {language === "vi" ? "AI Goal Planner" : "AI Goal Planner"}
+              </h2>
+            </div>
+          </div>
+          {aiDraftResult ? (
+            <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200">
+              {language === "vi" ? "Bản nháp sẵn sàng" : "Draft ready"}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)]">
+          <div className="space-y-3 rounded-xl border border-dashed border-zinc-300 bg-zinc-50/70 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+            <input
+              type="text"
+              value={aiDraft.title}
+              onChange={(event) => setAiDraft((prev) => ({ ...prev, title: event.target.value }))}
+              placeholder={language === "vi" ? "Mục tiêu bạn muốn đạt được" : "Goal you want to achieve"}
+              className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            />
+            <textarea
+              value={aiDraft.description}
+              onChange={(event) => setAiDraft((prev) => ({ ...prev, description: event.target.value }))}
+              rows={3}
+              placeholder={language === "vi" ? "Bối cảnh hoặc mô tả mục tiêu" : "Context or goal description"}
+              className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            />
+            <div className="grid gap-2 sm:grid-cols-2">
+              <select
+                value={aiDraft.categoryId || defaultCategoryId}
+                onChange={(event) => setAiDraft((prev) => ({ ...prev, categoryId: event.target.value }))}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                disabled={!categories.length}
+              >
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={aiDraft.period}
+                onChange={(event) => setAiDraft((prev) => ({ ...prev, period: event.target.value as GoalPeriod }))}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              >
+                {(Object.keys(PERIODS) as GoalPeriod[]).map((period) => (
+                  <option key={period} value={period}>
+                    {language === "vi" ? PERIODS[period].labelVi : PERIODS[period].labelEn}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="date"
+                value={aiDraft.deadline}
+                onChange={(event) => setAiDraft((prev) => ({ ...prev, deadline: event.target.value }))}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              />
+              <select
+                value={aiDraft.priority}
+                onChange={(event) => setAiDraft((prev) => ({ ...prev, priority: event.target.value as AIGoalDraft["priority"] }))}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              >
+                <option value="HIGH">{language === "vi" ? "Ưu tiên cao" : "High priority"}</option>
+                <option value="MEDIUM">{language === "vi" ? "Ưu tiên vừa" : "Medium priority"}</option>
+                <option value="LOW">{language === "vi" ? "Ưu tiên thấp" : "Low priority"}</option>
+              </select>
+            </div>
+            <input
+              type="number"
+              min="1"
+              value={aiDraft.availableHoursPerWeek}
+              onChange={(event) => setAiDraft((prev) => ({ ...prev, availableHoursPerWeek: event.target.value }))}
+              placeholder={language === "vi" ? "Số giờ mỗi tuần có thể dành cho mục tiêu" : "Available hours per week"}
+              className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            />
+            <textarea
+              value={aiDraft.constraints}
+              onChange={(event) => setAiDraft((prev) => ({ ...prev, constraints: event.target.value }))}
+              rows={3}
+              placeholder={language === "vi" ? "Các lưu ý để AI phân tích tốt hơn (mỗi dòng một ý) \nVí dụ: thời gian rảnh, tình trạng hiện tại,... " : "Constraints, one per line (e.g., available time, current situation, etc.)"}
+              className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            />
+            {aiError ? <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">{aiError}</div> : null}
+            <button
+              type="button"
+              onClick={() => void handleGenerateAIGoal()}
+              disabled={aiGenerating || !aiDraft.title.trim() || !(aiDraft.categoryId || defaultCategoryId)}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Sparkles size={15} />
+              {aiGenerating
+                ? (language === "vi" ? "Đang tạo..." : "Generating...")
+                : aiDraftResult
+                ? (language === "vi" ? "Tạo lại lộ trình" : "Regenerate roadmap")
+                : (language === "vi" ? "Tạo lộ trình bằng AI" : "Generate AI roadmap")}
+            </button>
+          </div>
+
+          <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/30">
+            {aiRoadmap ? (
+              <div className="space-y-4">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <input
+                    type="text"
+                    value={aiRoadmap.title}
+                    onChange={(event) => updateRoadmap({ title: event.target.value })}
+                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  />
+                  <input
+                    type="date"
+                    value={aiRoadmap.targetDate || ""}
+                    onChange={(event) => updateRoadmap({ targetDate: event.target.value })}
+                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  />
+                  <textarea
+                    value={aiRoadmap.summary || aiRoadmap.description || ""}
+                    onChange={(event) => updateRoadmap({ summary: event.target.value, description: event.target.value })}
+                    rows={2}
+                    className="sm:col-span-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  {(aiRoadmap.milestones || []).map((milestone, milestoneIndex) => (
+                    <div key={`${milestone.title}-${milestoneIndex}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/70">
+                      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_10rem_auto]">
+                        <input
+                          type="text"
+                          value={milestone.title}
+                          onChange={(event) => updateDraftMilestone(milestoneIndex, { title: event.target.value })}
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                        />
+                        <input
+                          type="date"
+                          value={milestone.targetDate || ""}
+                          onChange={(event) => updateDraftMilestone(milestoneIndex, { targetDate: event.target.value })}
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeDraftMilestone(milestoneIndex)}
+                          className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200"
+                        >
+                          {language === "vi" ? "Xóa" : "Delete"}
+                        </button>
+                      </div>
+                      <textarea
+                        value={milestone.description || ""}
+                        onChange={(event) => updateDraftMilestone(milestoneIndex, { description: event.target.value })}
+                        rows={2}
+                        className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                      />
+                      <div className="mt-3 space-y-2">
+                        {(milestone.tasks || []).map((task, taskIndex) => (
+                          <div key={`${task.title}-${taskIndex}`} className="grid gap-2 rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950 sm:grid-cols-[minmax(0,1fr)_8rem_7rem_4rem_auto]">
+                            <input
+                              type="text"
+                              value={task.title}
+                              onChange={(event) => updateDraftTask(milestoneIndex, taskIndex, { title: event.target.value })}
+                              className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                            />
+                            <input
+                              type="date"
+                              value={task.dueDate || ""}
+                              onChange={(event) => updateDraftTask(milestoneIndex, taskIndex, { dueDate: event.target.value })}
+                              className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                            />
+                            <select
+                              value={task.priority || "MEDIUM"}
+                              onChange={(event) => updateDraftTask(milestoneIndex, taskIndex, { priority: event.target.value as GoalTaskDraft["priority"] })}
+                              className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                            >
+                              <option value="HIGH">HIGH</option>
+                              <option value="MEDIUM">MEDIUM</option>
+                              <option value="LOW">LOW</option>
+                            </select>
+                            <input
+                              type="number"
+                              min="1"
+                              value={task.estimatedHours || ""}
+                              onChange={(event) => updateDraftTask(milestoneIndex, taskIndex, { estimatedHours: Number(event.target.value) || undefined })}
+                              className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeDraftTask(milestoneIndex, taskIndex)}
+                              className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200"
+                            >
+                              {language === "vi" ? "Xóa" : "Delete"}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => addDraftTask(milestoneIndex)}
+                        className="mt-2 inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
+                      >
+                        <Plus size={13} />
+                        {language === "vi" ? "Thêm task" : "Add task"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={addDraftMilestone}
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
+                  >
+                    <Plus size={14} />
+                    {language === "vi" ? "Thêm milestone" : "Add milestone"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleCreateFromAIDraft()}
+                    disabled={aiApproving}
+                    className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <CheckCircle2 size={14} />
+                    {aiApproving ? (language === "vi" ? "Đang tạo..." : "Creating...") : (language === "vi" ? "Duyệt và tạo goal" : "Approve and create goal")}
+                  </button>
+                </div>
+              </div>
+            ) : aiGenerating ? (
+              <div className="flex min-h-[22rem] flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-indigo-200 bg-indigo-50/40 px-4 text-center dark:border-indigo-500/20 dark:bg-indigo-500/5">
+                <div className="relative flex h-14 w-14 items-center justify-center">
+                  <span className="absolute h-14 w-14 animate-ping rounded-full bg-indigo-400/40" />
+                  <span className="absolute h-14 w-14 rounded-full border-2 border-indigo-500/30 border-t-indigo-500 animate-spin" />
+                  <Sparkles size={22} className="relative text-indigo-500" />
+                </div>
+                <p className="text-sm font-medium text-indigo-600 dark:text-indigo-300">
+                  {language === "vi" ? "AI đang xây dựng lộ trình cho bạn..." : "AI is building your roadmap..."}
+                </p>
+                <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">
+                  {language === "vi"
+                    ? "Quá trình này có thể mất vài giây, vui lòng chờ trong giây lát."
+                    : "This may take a few seconds, please hold on."}
+                </p>
+              </div>
+            ) : (
+              <div className="flex min-h-[22rem] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+                {language === "vi"
+                  ? "Bản nháp AI sẽ xuất hiện ở đây để bạn chỉnh sửa trước khi tạo mục tiêu."
+                  : "The AI draft will appear here so you can edit it before creating the goal."}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -546,158 +888,22 @@ export function GoalsView() {
       <div className="sticky top-0 z-10 flex flex-shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 pb-5 pt-6 dark:border-slate-800 dark:bg-slate-950 sm:px-8 sm:pb-6 sm:pt-8">
         <div>
           <h1 className="text-[1.3rem] font-extrabold tracking-tight text-slate-900 dark:text-slate-50 sm:text-[1.6rem]">
-            {language === "vi" ? "Bảng tầm nhìn và mục tiêu" : "Vision Board & Goals"}
+            {language === "vi" ? "Mục tiêu & AI Planner" : "Goals & AI Planner"}
           </h1>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
-            {language === "vi" ? "La bàn định hướng và phân rã mục tiêu dài hạn" : "Compass for long-term goal breakdown"}
+            {language === "vi" ? "Tạo mục tiêu thông minh bằng AI, sau đó phân rã thành hành động cụ thể" : "Create smart goals with AI, then break them down into specific actions"}
           </p>
         </div>
       </div>
 
       <div className="mx-auto w-full max-w-[1440px] flex-1 space-y-8 px-4 pb-12 pt-4 sm:space-y-10 sm:px-8">
-        <HintBubble id="goals_intro" title={language === "vi" ? "Tầm nhìn & Mục tiêu" : "Vision & Goals"} color="violet" persistent={false}>
+        <HintBubble id="goals_intro" title={language === "vi" ? "Mục tiêu & AI Planner" : "Goals & AI Planner"} color="violet" persistent={false}>
           {language === "vi"
-            ? "Mục này giúp bạn nối tầm nhìn dài hạn với hành động cụ thể. Hãy bắt đầu từ điều bạn muốn đạt được, rồi chia nhỏ thành mục tiêu năm, tháng và tuần để dễ theo dõi hơn."
-            : "Start with a big vision, then break it down into yearly, monthly, and weekly goals to step-by-step realize your dreams."}
+            ? "Nhập mô tả mục tiêu của bạn, và AI sẽ tự động tạo ra một lộ trình chi tiết với các cột mốc, nhiệm vụ và thời gian ước tính. Sau đó bạn có thể duyệt lại, chỉnh sửa hoặc phê duyệt để tạo goal thực."
+            : "Describe your goal, and AI will automatically generate a detailed roadmap with milestones, tasks, and time estimates. Then review, edit, or approve to create a real goal."}
         </HintBubble>
 
-        <div>
-          <div className="mb-4 flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <Target className="h-4 w-4 text-zinc-600 dark:text-slate-350" />
-            </div>
-            <h2 className="text-lg font-semibold tracking-tight text-zinc-950 dark:text-slate-100">
-              {language === "vi" ? "Bảng Tầm Nhìn" : "Vision Board"}
-            </h2>
-          </div>
-          <div className="mb-4 rounded-xl border border-dashed border-zinc-300 bg-zinc-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/50">
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-slate-400">
-              {editingVisionId ? (language === "vi" ? "Sửa vision item" : "Edit vision item") : (language === "vi" ? "Thêm vision item" : "Add vision item")}
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <input
-                type="text"
-                value={visionDraft.title}
-                onChange={(e) => setVisionDraft((prev) => ({ ...prev, title: e.target.value }))}
-                placeholder={language === "vi" ? "Tiêu đề vision" : "Vision title"}
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
-              />
-              <select
-                value={visionDraft.categoryId || defaultCategoryId}
-                onChange={(e) => setVisionDraft((prev) => ({ ...prev, categoryId: e.target.value }))}
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 transition-all focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                disabled={!categories.length}
-              >
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-              <textarea
-                value={visionDraft.description}
-                onChange={(e) => setVisionDraft((prev) => ({ ...prev, description: e.target.value }))}
-                rows={2}
-                placeholder={language === "vi" ? "Mô tả ngắn" : "Short description"}
-                className="sm:col-span-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
-              />
-              <div className="space-y-2">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => void handleVisionImageSelect(e.target.files?.[0] || null)}
-                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 transition-all file:mr-3 file:rounded-md file:border-0 file:bg-violet-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-violet-700 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:file:bg-violet-500/10 dark:file:text-violet-200"
-                  disabled={visionUploading}
-                />
-                <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-                  {visionUploading
-                    ? (language === "vi" ? "Đang tải ảnh lên R2..." : "Uploading image to R2...")
-                    : visionDraft.imageUrl
-                    ? visionDraft.imageUrl
-                    : (language === "vi" ? "Chưa có ảnh nào được chọn" : "No image selected")}
-                </div>
-              </div>
-              <input
-                type="text"
-                value={visionDraft.quote}
-                onChange={(e) => setVisionDraft((prev) => ({ ...prev, quote: e.target.value }))}
-                placeholder={language === "vi" ? "Câu trích dẫn" : "Quote"}
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
-              />
-            </div>
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={() => void saveVisionItem()}
-                className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
-              >
-                <Plus size={14} />
-                {editingVisionId ? (language === "vi" ? "Lưu" : "Save") : (language === "vi" ? "Thêm" : "Add")}
-              </button>
-              {editingVisionId ? (
-                <button
-                  type="button"
-                  onClick={cancelEditVisionItem}
-                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                >
-                  {language === "vi" ? "Hủy" : "Cancel"}
-                </button>
-              ) : null}
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {visionItems.length ? visionItems.map((item) => {
-              const iconKey = item.categoryName.trim().toLowerCase() as keyof typeof VISION_ICON_MAP;
-              const iconConfig = VISION_ICON_MAP[iconKey] || VISION_ICON_MAP.default;
-              const Icon = iconConfig.icon;
-              const colorConfig = COLOR_MAP[item.categoryColor || "indigo"] || COLOR_MAP.indigo;
-              return (
-                <div key={item.id} className="flex flex-col rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className={`mb-3 mt-1 flex h-10 w-10 items-center justify-center rounded-lg ${iconConfig.bg} dark:bg-slate-850 border ${iconConfig.color.replace("text-", "border-").replace("500", "200")} dark:border-slate-800`}>
-                      <Icon className={`h-5 w-5 ${iconConfig.color}`} />
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => beginEditVisionItem(item)}
-                        className="rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                      >
-                        {language === "vi" ? "Sửa" : "Edit"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void deleteVisionItem(item.id)}
-                        className="rounded-full border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-semibold text-rose-700 transition hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200"
-                      >
-                        {language === "vi" ? "Xóa" : "Delete"}
-                      </button>
-                    </div>
-                  </div>
-                  {item.imageUrl ? (
-                    <img
-                      src={item.imageUrl}
-                      alt={item.title}
-                      className="mb-3 h-32 w-full rounded-lg object-cover"
-                    />
-                  ) : null}
-                  <div className="mb-2 flex items-center gap-2">
-                    <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${colorConfig.badge}`}>
-                      {item.categoryName || (language === "vi" ? "Chưa chọn danh mục" : "No category")}
-                    </span>
-                  </div>
-                  <h3 className="mb-1 text-sm font-semibold text-zinc-950 dark:text-slate-100">{item.title}</h3>
-                  <p className="min-h-[40px] text-xs leading-relaxed text-zinc-500 dark:text-slate-400">{item.description || (language === "vi" ? "Chưa có mô tả" : "No description yet")}</p>
-                  {item.quote ? <p className="mt-3 line-clamp-3 text-[11px] italic leading-relaxed text-zinc-400 dark:text-slate-500">“{item.quote}”</p> : null}
-                </div>
-              );
-            }) : (
-              <div className="col-span-full rounded-xl border border-dashed border-zinc-200 bg-white p-5 text-sm text-zinc-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-                {language === "vi" ? "Chưa có vision item nào" : "No vision items yet"}
-              </div>
-            )}
-          </div>
-        </div>
+        {renderAIPlanner()}
 
         <div className="pb-8">
           <div className="mb-4 flex items-center gap-2">

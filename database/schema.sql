@@ -68,6 +68,10 @@ CREATE TYPE user_role AS ENUM (
     'user', 'admin'
 );
 
+CREATE TYPE ai_goal_draft_status AS ENUM (
+    'CREATED', 'APPROVED', 'REJECTED', 'EXPIRED'
+    );
+
 -- =============================================================================
 -- TABLE: users
 -- Người dùng của ứng dụng PlanWise
@@ -508,6 +512,22 @@ CREATE TABLE daily_reflections (
 CREATE INDEX idx_daily_reflections_user_date ON daily_reflections(user_id, reflection_date DESC);
 
 COMMENT ON TABLE daily_reflections IS 'Nhật ký phản tư cuối ngày: việc đã làm, trở ngại, cải thiện, năng lượng và tâm trạng';
+
+-- =============================================================================
+-- TABLE: ai_goal_drafts
+-- Gợi ý mục tiêu nháp từ Coach AI (FE: GoalsView() - GoalsView.tsx)
+-- =============================================================================
+CREATE TABLE ai_goal_drafts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    generated_json JSONB NOT NULL,
+    status ai_goal_draft_status NOT NULL DEFAULT 'CREATED',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_ai_goal_drafts_user_status ON ai_goal_drafts(user_id, status);
+
+COMMENT ON TABLE ai_goal_drafts IS 'Các gợi ý mục tiêu nháp được Coach AI tạo ra cho người dùng, lưu trữ JSON để FE hiển thị';
 
 -- =============================================================================
 -- TABLE: ai_chat_messages

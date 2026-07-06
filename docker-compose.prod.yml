@@ -14,11 +14,21 @@ services:
     restart: unless-stopped
     init: true
     env_file:
-      - ${ENV_FILE:-be/.env}
+      - .env
     environment:
-      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      SERVER_PORT: 8000
     expose:
-      - "8080"
+      - "8000"
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 384M
     logging: *default-logging
 
   frontend:
@@ -32,5 +42,9 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "${HTTP_PORT:-5173}:5173"
+      - "${HTTP_PORT:-3000}:80"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
     logging: *default-logging

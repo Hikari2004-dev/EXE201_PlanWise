@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../context/AuthContext";
-import { useData } from "../context/DataContext";
-import { CheckCircle2, XCircle, Loader2, ArrowRight, Sparkles, HelpCircle, Code } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, ArrowRight, Sparkles, Code } from "lucide-react";
 
 export function PaymentResultPage() {
   const { fetchWithAuth, refreshProfile } = useAuth();
-  const { language } = useData();
   const navigate = useNavigate();
+
+  const language = (localStorage.getItem("language") as "vi" | "en") || "vi";
 
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
@@ -16,58 +16,93 @@ export function PaymentResultPage() {
   const [amount, setAmount] = useState<number>(0);
   const [mockLoading, setMockLoading] = useState(false);
 
-  // Extract VNPay query parameters and call backend verify
   useEffect(() => {
+    let cancelled = false;
+
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
     const verifyTransaction = async () => {
       const searchParams = new URLSearchParams(window.location.search);
+      const returnedOrderId =
+        searchParams.get("orderCode") ||
+        searchParams.get("orderId") ||
+        searchParams.get("id") ||
+        "";
+      const returnedStatus = (searchParams.get("status") || "").toUpperCase();
+      const isCancelled = ["CANCELLED", "CANCELED", "FAILED"].includes(returnedStatus);
 
-      // VNPay callback parameters
-      const vnpResponseCode = searchParams.get("vnp_ResponseCode") || "";
-      const vnpTxnRef = searchParams.get("vnp_TxnRef") || ""; // orderId
-      const vnpAmount = Number(searchParams.get("vnp_Amount") || 0) / 100; // VNPay sends amount * 100
-      const vnpBankCode = searchParams.get("vnp_BankCode") || "";
-      const vnpBankTranNo = searchParams.get("vnp_BankTranNo") || "";
-      const vnpCardType = searchParams.get("vnp_CardType") || "";
-      const vnpOrderInfo = searchParams.get("vnp_OrderInfo") || "";
-      const vnpPayDate = searchParams.get("vnp_PayDate") || "";
-      const vnpTransactionNo = searchParams.get("vnp_TransactionNo") || "";
-      const vnpTransactionStatus = searchParams.get("vnp_TransactionStatus") || "";
-      const vnpSecureHash = searchParams.get("vnp_SecureHash") || "";
+      setOrderId(returnedOrderId);
 
-      setOrderId(vnpTxnRef);
-      setAmount(vnpAmount);
-
-      // VNPay: "00" means success
-      if (vnpResponseCode !== "00") {
+      if (!returnedOrderId) {
         setSuccess(false);
         setErrorMsg(
           language === "vi"
-            ? `Thanh toán thất bại (Mã lỗi: ${vnpResponseCode})`
-            : `Payment failed (Error code: ${vnpResponseCode})`
+            ? "Thiếu mã đơn hàng từ PayOS."
+            : "Missing order id returned from PayOS."
+        );
+        setLoading(false);
+        return;
+      }
+
+      if (isCancelled) {
+        setSuccess(false);
+        setErrorMsg(
+          language === "vi"
+            ? "Thanh toán đã bị hủy hoặc thất bại."
+            : "Payment was cancelled or failed."
         );
         setLoading(false);
         return;
       }
 
       try {
-        // Send all VNPay params to backend for verification
-        const queryString = window.location.search;
-        const response = await fetchWithAuth(`/api/v1/subscriptions/vnpay-return${queryString}`, {
-          method: "GET",
-        });
+        for (let attempt = 0; attempt < 6; attempt += 1) {
+          const response = await fetchWithAuth(`/api/v1/subscriptions/transactions/${returnedOrderId}/status`);
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.status === "SUCCESS") {
-            setSuccess(true);
-            await refreshProfile(); // Refresh AuthContext so that limits unlock immediately!
-          } else {
+          if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
             throw new Error(data.message || "Payment verification failed");
           }
-        } else {
-          const data = await response.json().catch(() => ({}));
-          throw new Error(data.message || "Payment verification failed on backend");
+
+          const data = await response.json();
+          if (cancelled) return;
+
+          if (typeof data.amount === "string") {
+            setAmount(Number(data.amount));
+          }
+
+          if (data.status === "SUCCESS") {
+            setSuccess(true);
+            await refreshProfile();
+            setTimeout(() => {
+              window.location.href = "/dashboard";
+            }, 1500);
+            setLoading(false);
+            return;
+          }
+
+          if (data.status === "FAILED") {
+            setSuccess(false);
+            setErrorMsg(
+              language === "vi"
+                ? "Thanh toán không thành công."
+                : "Payment was not successful."
+            );
+            setLoading(false);
+            return;
+          }
+
+          if (attempt < 5) {
+            await sleep(2000);
+          }
         }
+
+        setSuccess(false);
+        setErrorMsg(
+          language === "vi"
+            ? "Thanh toán đang chờ PayOS xác nhận. Nếu bạn đang test ở Localhost, hãy dùng nút DEV Mock ở dưới."
+            : "Payment is still waiting for PayOS confirmation. If you are testing on localhost, use the DEV Mock button below."
+        );
       } catch (err: any) {
         console.error("Verification error:", err);
         setSuccess(false);
@@ -77,12 +112,18 @@ export function PaymentResultPage() {
             : `Could not verify transaction: ${err.message || "Verification error"}. If testing on Localhost, click the DEV Mock button below.`
         );
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     verifyTransaction();
-  }, [language]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchWithAuth, language, refreshProfile]);
 
   // Dev-only helper to mock verify the payment
   const handleDevMock = async () => {
@@ -96,7 +137,10 @@ export function PaymentResultPage() {
 
       if (response.ok) {
         setSuccess(true);
-        await refreshProfile(); // Reload user state
+        await refreshProfile();
+        setTimeout(() => {
+          window.location.href = "/dashboard";
+        }, 1500);
       } else {
         const data = await response.json().catch(() => ({}));
         throw new Error(data.message || "Failed to trigger mock IPN");
@@ -121,7 +165,7 @@ export function PaymentResultPage() {
   };
 
   return (
-    <div className="flex-1 flex items-center justify-center bg-slate-950 text-slate-100 p-6">
+    <div className="min-h-screen w-full flex items-center justify-center bg-slate-950 p-6 text-slate-100">
       <div className="max-w-md w-full rounded-3xl bg-slate-900/40 border border-white/[0.05] p-8 text-center backdrop-blur-xl space-y-6 shadow-2xl relative overflow-hidden">
         
         {/* Glow effect */}
@@ -136,8 +180,8 @@ export function PaymentResultPage() {
             </h2>
             <p className="text-slate-400 text-xs font-medium max-w-xs mx-auto">
               {language === "vi"
-                ? "Chúng tôi đang xác thực thông tin thanh toán từ VNPay. Vui lòng giữ nguyên trang web."
-                : "We are verifying payment status with VNPay. Please do not close this window."}
+                ? "Chúng tôi đang xác thực thông tin thanh toán từ PayOS. Vui lòng giữ nguyên trang web."
+                : "We are verifying payment status with PayOS. Please do not close this window."}
             </p>
           </div>
         ) : success ? (
@@ -175,7 +219,10 @@ export function PaymentResultPage() {
             </div>
 
             <button
-              onClick={() => navigate("/")}
+              onClick={async () => {
+                await refreshProfile();
+                window.location.href = "/dashboard";
+              }}
               className="w-full py-3.5 px-4 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-indigo-500/20 transition-all"
             >
               <span>{language === "vi" ? "Vào Bảng Điều Khiển" : "Go to Dashboard"}</span>
@@ -206,8 +253,8 @@ export function PaymentResultPage() {
                 </div>
                 <p className="text-[10px] text-slate-500 max-w-xs mx-auto">
                   {language === "vi"
-                    ? "Tại môi trường localhost, do VNPay không thể gọi trực tiếp webhook IPN đến máy tính của bạn, bạn có thể click nút dưới đây để kích hoạt giả lập thành công."
-                    : "On localhost, because VNPay cannot call your local IPN webhook, you can use the button below to simulate a successful payment notification."}
+                    ? "Tại môi trường localhost, do PayOS không thể gọi trực tiếp webhook đến máy tính của bạn, bạn có thể click nút dưới đây để kích hoạt giả lập thành công."
+                    : "On localhost, because PayOS cannot call your local webhook, you can use the button below to simulate a successful payment notification."}
                 </p>
                 <button
                   onClick={handleDevMock}

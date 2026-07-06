@@ -54,7 +54,9 @@ export function Layout() {
           onClose={() => setSidebarOpen(false)}
         />
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <Outlet />
+          <div className="flex-1 overflow-y-auto">
+            <Outlet />
+          </div>
         </div>
         <Chatbot />
       </div>

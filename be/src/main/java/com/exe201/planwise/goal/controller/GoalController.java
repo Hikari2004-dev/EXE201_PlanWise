@@ -1,5 +1,6 @@
 package com.exe201.planwise.goal.controller;
 
+import com.exe201.planwise.ai.dto.CreateGoalFromDraftRequest;
 import com.exe201.planwise.goal.dto.*;
 import com.exe201.planwise.goal.enums.GoalPeriod;
 import com.exe201.planwise.goal.service.GoalService;
@@ -64,6 +65,14 @@ public class GoalController {
             @Valid @RequestBody CreateGoalRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(goalService.createGoal(principal.getId(), request));
+    }
+
+    @PostMapping("/create-from-draft")
+    public ResponseEntity<GoalDto> createGoalFromDraft(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody CreateGoalFromDraftRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(goalService.createGoalFromDraft(principal.getId(), request));
     }
 
     /**
