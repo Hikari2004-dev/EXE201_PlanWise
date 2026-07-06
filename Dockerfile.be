@@ -6,10 +6,6 @@ WORKDIR /app
 COPY be/pom.xml .
 RUN mvn -B dependency:go-offline -DoutputFile=/dev/null
 
-# Download dependencies (layer caching)
-RUN chmod +x ./mvnw && ./mvnw dependency:go-offline -B
-
-# Copy source code
 COPY be/src ./src
 RUN mvn -B -DskipTests package -q \
     && mv target/*.jar target/app.jar
@@ -17,8 +13,7 @@ RUN mvn -B -DskipTests package -q \
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────
 FROM eclipse-temurin:21-jre-alpine
 
-RUN apk add --no-cache curl \
-    && addgroup -S planwise && adduser -S planwise -G planwise
+RUN addgroup -S planwise && adduser -S planwise -G planwise
 
 WORKDIR /app
 
@@ -28,8 +23,8 @@ USER planwise
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
-  CMD curl -sf http://localhost:8000/actuator/health || exit 1
+HEALTHCHECK --interval=10s --timeout=3s --start-period=90s --retries=10 \
+  CMD nc -z 127.0.0.1 8000 || exit 1
 
 ENTRYPOINT ["java", \
   "-XX:+UseContainerSupport", \
