@@ -24,7 +24,7 @@ services:
     expose:
       - "8000"
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "${API_PORT:-8888}:8000"
     deploy:
       resources:
         limits:
