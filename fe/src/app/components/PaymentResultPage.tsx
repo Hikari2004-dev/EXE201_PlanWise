@@ -244,8 +244,8 @@ export function PaymentResultPage() {
               </p>
             </div>
 
-            {/* DEV Mock Helper */}
-            {orderId && (
+            {/* DEV Mock Helper — only on localhost */}
+            {orderId && ["localhost", "127.0.0.1"].includes(window.location.hostname) && (
               <div className="pt-4 border-t border-white/[0.05] space-y-3">
                 <div className="flex items-center justify-center gap-1.5 text-amber-400 font-semibold text-xs bg-amber-400/10 py-1.5 px-3 rounded-lg w-fit mx-auto border border-amber-400/20">
                   <Code size={14} />
@@ -275,7 +275,7 @@ export function PaymentResultPage() {
 
             <div className="flex gap-3">
               <button
-                onClick={() => navigate("/pricing")}
+                onClick={() => navigate("/dashboard/pricing")}
                 className="flex-1 py-3 px-4 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-bold transition-all cursor-pointer border border-white/[0.05]"
               >
                 {language === "vi" ? "Chọn gói khác" : "Choose package"}
