@@ -18,6 +18,7 @@ import { HintBubble } from "./HintBubble";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router";
 import { COLOR_MAP, type EventColor, type Task } from "../data/mockData";
+import { PlannerAssistantButton } from "./planner-assistant";
 import { TaskModal } from "./TaskModal";
 
 type GoalPeriod = "week" | "month" | "year";
@@ -1428,6 +1429,7 @@ export function GoalsView() {
             {language === "vi" ? "Tạo mục tiêu thông minh bằng AI, sau đó phân rã thành hành động cụ thể" : "Create smart goals with AI, then break them down into specific actions"}
           </p>
         </div>
+        <PlannerAssistantButton />
       </div>
 
       <div className="mx-auto w-full max-w-[1440px] flex-1 space-y-8 px-4 pb-12 pt-4 sm:space-y-10 sm:px-8">

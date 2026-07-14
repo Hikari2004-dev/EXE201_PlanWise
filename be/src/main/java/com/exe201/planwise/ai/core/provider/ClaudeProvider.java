@@ -29,7 +29,7 @@ public class ClaudeProvider implements AIProvider {
     @Value("${app.ai.claude.model}")
     private String model;
 
-    @Value("${app.ai.claude.max-tokens:1200}")
+    @Value("${app.ai.claude.max-tokens:100000}")
     private int maxTokens;
 
     private final HttpClient httpClient = HttpClient.newHttpClient();
