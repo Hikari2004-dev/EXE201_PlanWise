@@ -8,13 +8,13 @@ export default function HomePage() {
     <div className="min-h-screen bg-[#020617] text-white overflow-hidden relative">
       {/* Background Blur */}
       <div className="absolute inset-0">
-        <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-indigo-600/20 blur-[180px]" />
-        <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-violet-600/20 blur-[180px]" />
+        <div className="absolute left-0 top-0 h-[320px] w-[320px] bg-indigo-600/20 blur-[140px] sm:h-[600px] sm:w-[600px] sm:blur-[180px]" />
+        <div className="absolute bottom-0 right-0 h-[320px] w-[320px] bg-violet-600/20 blur-[140px] sm:h-[600px] sm:w-[600px] sm:blur-[180px]" />
       </div>
 
       {/* Navbar */}
-      <header className="relative z-10 flex items-center justify-between px-10 py-6 border-b border-white/10">
-        <h1 className="text-3xl font-black">
+      <header className="relative z-10 flex items-center justify-between border-b border-white/10 px-4 py-5 sm:px-8 lg:px-10">
+        <h1 className="text-2xl font-black sm:text-3xl">
           Plan<span className="text-indigo-500">Wise</span>
         </h1>
 
@@ -27,13 +27,13 @@ export default function HomePage() {
       </header>
 
       {/* Hero */}
-      <section className="relative z-10 flex flex-col items-center text-center px-6 pt-24">
+      <section className="relative z-10 flex flex-col items-center px-4 pt-16 text-center sm:px-6 sm:pt-24">
         <div className="max-w-5xl">
           <span className="px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-sm">
             🚀 Smart Productivity Platform
           </span>
 
-          <h1 className="mt-8 text-6xl md:text-7xl font-black leading-tight">
+          <h1 className="mt-8 text-4xl font-black leading-tight sm:text-5xl md:text-7xl">
             Quản lý thời gian
             <br />
             <span className="text-indigo-500">
@@ -41,7 +41,7 @@ export default function HomePage() {
             </span>
           </h1>
 
-          <p className="mt-6 text-xl text-slate-400 max-w-3xl mx-auto">
+          <p className="mx-auto mt-6 max-w-3xl text-base text-slate-400 sm:text-xl">
             Theo dõi công việc, quản lý mục tiêu, xây dựng thói quen
             và tối ưu năng suất cá nhân trên một nền tảng duy nhất.
           </p>
@@ -49,14 +49,14 @@ export default function HomePage() {
           <div className="mt-10 flex flex-wrap gap-4 justify-center">
             <button
               onClick={() => navigate("/login")}
-              className="px-8 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 font-bold flex items-center gap-2"
+              className="flex items-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3 font-bold hover:bg-indigo-700 sm:px-8 sm:py-4"
             >
               Bắt đầu ngay
               <ArrowRight size={18} />
             </button>
 
             <button
-              className="px-8 py-4 rounded-2xl border border-white/20 hover:bg-white/5 font-bold"
+              className="rounded-2xl border border-white/20 px-6 py-3 font-bold hover:bg-white/5 sm:px-8 sm:py-4"
             >
               Tìm hiểu thêm
             </button>
@@ -67,7 +67,7 @@ export default function HomePage() {
       {/* Statistics */}
       <section className="relative z-10 mt-24 px-6">
         <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-6">
-          <div className="bg-white/5 border border-white/10 rounded-3xl p-8 text-center">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-center sm:p-8">
             <h2 className="text-4xl font-black text-indigo-400">
               10K+
             </h2>
@@ -76,7 +76,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-3xl p-8 text-center">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-center sm:p-8">
             <h2 className="text-4xl font-black text-violet-400">
               2K+
             </h2>
@@ -85,7 +85,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-3xl p-8 text-center">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-center sm:p-8">
             <h2 className="text-4xl font-black text-emerald-400">
               95%
             </h2>
@@ -99,12 +99,12 @@ export default function HomePage() {
       {/* Features */}
       <section className="relative z-10 py-24 px-6">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-center text-4xl font-black mb-14">
+          <h2 className="mb-10 text-center text-3xl font-black sm:mb-14 sm:text-4xl">
             Tính năng nổi bật
           </h2>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white/5 border border-white/10 rounded-3xl p-8 hover:border-indigo-500/40 transition">
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-6 transition hover:border-indigo-500/40 sm:p-8">
               <Calendar
                 className="text-indigo-400 mb-4"
                 size={40}
@@ -120,7 +120,7 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-3xl p-8 hover:border-violet-500/40 transition">
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-6 transition hover:border-violet-500/40 sm:p-8">
               <Target
                 className="text-violet-400 mb-4"
                 size={40}
@@ -136,7 +136,7 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-3xl p-8 hover:border-emerald-500/40 transition">
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-6 transition hover:border-emerald-500/40 sm:p-8">
               <BarChart3
                 className="text-emerald-400 mb-4"
                 size={40}

@@ -17,11 +17,14 @@ import { useData } from "../context/DataContext";
 import { HintBubble } from "./HintBubble";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router";
-import type { Task } from "../data/mockData";
+import { COLOR_MAP, type EventColor, type Task } from "../data/mockData";
+import { TaskModal } from "./TaskModal";
 
 type GoalPeriod = "week" | "month" | "year";
 
 type TaskPriority = "Cao" | "Trung bình" | "Thấp";
+
+const EVENT_COLORS: EventColor[] = ["indigo", "blue", "emerald", "amber", "rose", "purple", "teal", "orange"];
 
 type AIGoalDraft = {
   title: string;
@@ -93,6 +96,11 @@ const PERIOD_BADGES: Record<GoalPeriod, string> = {
   year: "border-violet-200 bg-violet-50 text-violet-700",
 };
 
+function normalizeEventColor(color?: string): EventColor {
+  const normalized = (color || "indigo").toLowerCase();
+  return EVENT_COLORS.includes(normalized as EventColor) ? (normalized as EventColor) : "indigo";
+}
+
 function getValidDate(value?: string) {
   if (!value) return null;
   const date = new Date(value);
@@ -163,6 +171,7 @@ function GoalTaskCard({
   onExpandChange,
   onToggle,
   onDelete,
+  onEdit,
   onUpdate,
   language,
 }: {
@@ -171,36 +180,17 @@ function GoalTaskCard({
   onExpandChange: (expanded: boolean) => void;
   onToggle: (task: Task) => void;
   onDelete: (task: Task) => void;
+  onEdit: (task: Task) => void;
   onUpdate: (id: string, updates: Partial<Task>) => Promise<void> | void;
   language: "vi" | "en";
 }) {
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [draftTitle, setDraftTitle] = useState(task.title);
   const [draftChecklist, setDraftChecklist] = useState<string[]>(task.checklist || []);
   const [checkedChecklistItems, setCheckedChecklistItems] = useState<Set<number>>(new Set());
-
-  useEffect(() => {
-    setDraftTitle(task.title);
-  }, [task.id, task.title]);
 
   useEffect(() => {
     setDraftChecklist(task.checklist || []);
     setCheckedChecklistItems(new Set());
   }, [task.id, task.checklist]);
-
-  const commitTitle = async () => {
-    const nextTitle = draftTitle.trim();
-    if (!nextTitle) {
-      setDraftTitle(task.title);
-      setIsRenaming(false);
-      return;
-    }
-
-    if (nextTitle !== task.title) {
-      await onUpdate(task.id, { title: nextTitle });
-    }
-    setIsRenaming(false);
-  };
 
   const commitChecklist = async (items = draftChecklist) => {
     const normalized = items.map((item) => item.trim()).filter(Boolean);
@@ -252,39 +242,16 @@ function GoalTaskCard({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            {isRenaming ? (
-              <input
-                value={draftTitle}
-                onChange={(event) => setDraftTitle(event.target.value)}
-                onBlur={() => {
-                  void commitTitle();
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    void commitTitle();
-                  }
-                  if (event.key === "Escape") {
-                    setDraftTitle(task.title);
-                    setIsRenaming(false);
-                  }
-                }}
-                onClick={(event) => event.stopPropagation()}
-                className="min-h-7 w-full rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm font-semibold text-zinc-900 outline-none transition focus:border-zinc-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
-                autoFocus
-              />
-            ) : (
-              <h4
-                onDoubleClick={(event) => {
-                  event.stopPropagation();
-                  setIsRenaming(true);
-                }}
-                className={`line-clamp-2 text-sm font-semibold leading-snug text-zinc-900 dark:text-slate-100 ${task.completed ? "line-through text-zinc-500 dark:text-slate-500" : ""}`}
-                title={language === "vi" ? "Nhấp đúp để đổi tên" : "Double-click to rename"}
-              >
-                {task.title}
-              </h4>
-            )}
+            <h4
+              onDoubleClick={(event) => {
+                event.stopPropagation();
+                onEdit(task);
+              }}
+              className={`line-clamp-2 text-sm font-semibold leading-snug text-zinc-900 dark:text-slate-100 ${task.completed ? "line-through text-zinc-500 dark:text-slate-500" : ""}`}
+              title={language === "vi" ? "Nhấp đúp để chỉnh sửa" : "Double-click to edit"}
+            >
+              {task.title}
+            </h4>
 
             <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
               {!task.completed && (
@@ -292,10 +259,10 @@ function GoalTaskCard({
                   type="button"
                   onClick={(event) => {
                     event.stopPropagation();
-                    setIsRenaming(true);
+                    onEdit(task);
                   }}
                   className="rounded p-1 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-slate-800 dark:hover:text-white"
-                  title={language === "vi" ? "Sửa tiêu đề" : "Edit title"}
+                  title={language === "vi" ? "Chỉnh sửa task" : "Edit task"}
                 >
                   <Edit2 size={13} />
                 </button>
@@ -327,13 +294,13 @@ function GoalTaskCard({
 
           <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
             <div className="overflow-hidden">
-              <div className="mt-3 space-y-3 border-t border-zinc-100 pt-3 dark:border-slate-800">
+              <div className="mt-3 space-y-3 border-t border-zinc-100 pt-2 dark:border-slate-800">
                 <div>
                   <div className="mb-1 text-[10px] font-bold uppercase text-zinc-400 dark:text-slate-500">
                     {language === "vi" ? "Mô tả" : "Description"}
                   </div>
                   <p className="text-xs leading-relaxed text-zinc-600 dark:text-slate-300">
-                    {task.description || (language === "vi" ? "Chưa có mô tả." : "No description yet.")}
+                    {task.description}
                   </p>
                 </div>
 
@@ -411,9 +378,6 @@ function GoalTaskCard({
                           </button>
                         </div>
                       ))}
-                      <div className="pt-1 text-[10px] font-semibold text-zinc-400 dark:text-slate-500">
-                        {checkedChecklistItems.size} / {draftChecklist.length} {language === "vi" ? "hoàn thành trực quan" : "visually checked"}
-                      </div>
                     </div>
                   ) : (
                     <p className="rounded-md border border-dashed border-zinc-200 px-3 py-2 text-xs text-zinc-400 dark:border-slate-800 dark:text-slate-500">
@@ -429,33 +393,6 @@ function GoalTaskCard({
                   <p className="text-xs text-zinc-500 dark:text-slate-400">
                     {task.contexts?.length ? task.contexts.join(", ") : (language === "vi" ? "Chưa có ghi chú." : "No notes yet.")}
                   </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onToggle(task);
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
-                  >
-                    <Check size={12} />
-                    {task.completed
-                      ? (language === "vi" ? "Mở lại" : "Reopen")
-                      : (language === "vi" ? "Hoàn thành" : "Complete")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onDelete(task);
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200"
-                  >
-                    <Trash2 size={12} />
-                    {language === "vi" ? "Xóa" : "Delete"}
-                  </button>
                 </div>
               </div>
             </div>
@@ -496,7 +433,8 @@ export function GoalsView() {
   const [openGoalMenuId, setOpenGoalMenuId] = useState<string | null>(null);
   const [milestoneDrafts, setMilestoneDrafts] = useState<Record<string, { title: string; description: string; targetDate: string }>>({});
   const [milestoneEdits, setMilestoneEdits] = useState<Record<string, { title: string; description: string; targetDate: string }>>({});
-  const [taskDrafts, setTaskDrafts] = useState<Record<string, { title: string; priority: TaskPriority; dueDate: string }>>({});
+  const [taskModalInitialValues, setTaskModalInitialValues] = useState<Partial<Omit<Task, "id">> | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [aiDraft, setAiDraft] = useState<AIGoalDraft>(EMPTY_AI_DRAFT);
   const [aiGenerating, setAiGenerating] = useState(false);
@@ -778,18 +716,18 @@ export function GoalsView() {
     if (expandedTaskId === task.id) {
       setExpandedTaskId(null);
     }
+    if (editingTask?.id === task.id) {
+      setEditingTask(null);
+    }
   };
 
-  const handleAddTaskToMilestone = async (goal: GoalItem, milestone: GoalItem["milestones"][number]) => {
-    const draft = taskDrafts[milestone.id] || { title: "", priority: "Trung bình" as TaskPriority, dueDate: milestone.targetDate || goal.targetDate || "" };
-    const title = draft.title.trim();
-    if (!title) return;
-
-    await addTask({
-      title,
+  const openAddTaskModal = (goal: GoalItem, milestone: GoalItem["milestones"][number]) => {
+    setEditingTask(null);
+    setTaskModalInitialValues({
+      title: "",
       description: "",
-      dueDate: draft.dueDate || milestone.targetDate || goal.targetDate || "",
-      priority: draft.priority,
+      dueDate: milestone.targetDate || goal.targetDate || "",
+      priority: "Trung bình",
       status: "IN_PROGRESS",
       completed: false,
       color: goal.color || "indigo",
@@ -801,11 +739,19 @@ export function GoalsView() {
       contexts: [],
       sortOrder: 0,
     });
+  };
 
-    setTaskDrafts((prev) => ({
-      ...prev,
-      [milestone.id]: { title: "", priority: draft.priority, dueDate: draft.dueDate },
-    }));
+  const openEditTaskModal = (task: Task) => {
+    setTaskModalInitialValues(null);
+    setEditingTask(task);
+  };
+
+  const handleSaveTask = async (taskData: Omit<Task, "id"> | Task) => {
+    if ("id" in taskData) {
+      await updateTask(taskData.id, taskData);
+    } else {
+      await addTask(taskData);
+    }
   };
 
   const renderAIPlanner = () => {
@@ -1080,7 +1026,8 @@ export function GoalsView() {
     const progress = goalTasks.length ? Math.round((completedTasks / goalTasks.length) * 100) : 0;
     const category = categories.find((item) => item.id === goal.categoryId);
     const categoryLabel = goal.categoryName || category?.name || (language === "vi" ? "Không danh mục" : "No category");
-    const goalColor = goal.color || "indigo";
+    const categoryColor = normalizeEventColor(category?.color || goal.color);
+    const categoryColors = COLOR_MAP[categoryColor];
     const goalPriority: TaskPriority = goalTasks.some((task) => task.priority === "Cao")
       ? "Cao"
       : goalTasks.some((task) => task.priority === "Trung bình")
@@ -1090,7 +1037,7 @@ export function GoalsView() {
 
     return (
       <section key={goal.id} className="flex h-full w-[calc(100vw-2rem)] max-w-[420px] flex-none snap-start flex-col rounded-xl border border-zinc-200 bg-zinc-100/70 dark:border-slate-800 dark:bg-slate-900/60 sm:w-[400px]">
-        <div className="rounded-t-xl border-b border-zinc-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+        <div className="rounded-t-xl border-b border-zinc-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950">
           {editingGoal ? (
             <div className="space-y-3">
               <input
@@ -1164,9 +1111,6 @@ export function GoalsView() {
                       <Edit2 size={15} />
                     </button>
                   </div>
-                  <div className="mt-2 inline-flex rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-[10px] font-bold text-zinc-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                    {categoryLabel}
-                  </div>
                 </div>
                 <div className="relative">
                   <button
@@ -1195,11 +1139,11 @@ export function GoalsView() {
                 </div>
               </div>
 
-              <p className="mt-3 text-xs leading-relaxed text-zinc-600 dark:text-slate-300">
-                {goal.description || (language === "vi" ? "Goal chưa có mô tả." : "No goal description yet.")}
+              <p className="text-xs leading-relaxed text-zinc-600 dark:text-slate-300">
+                {goal.description}
               </p>
 
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-2 flex flex-wrap gap-2">
                 <span className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[10px] font-bold ${PRIORITY_COLORS[goalPriority]}`}>
                   <span className={`h-1.5 w-1.5 rounded-full ${PRIORITY_DOT[goalPriority]}`} />
                   {getPriorityLabel(goalPriority, language)}
@@ -1207,13 +1151,16 @@ export function GoalsView() {
                 <span className={`inline-flex rounded-md border px-2 py-1 text-[10px] font-bold ${PERIOD_BADGES[goal.period]}`}>
                   {getPeriodLabel(goal.period, language)}
                 </span>
+                <span className={`inline-flex rounded-md border px-2 py-1 text-[10px] font-bold ${categoryColors.badge} ${categoryColors.text}`} >
+                  {categoryLabel}
+                </span>
                 <span className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-[10px] font-bold text-zinc-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                   <Calendar size={10} />
                   {formatBoardDate(goal.targetDate, language)}
                 </span>
               </div>
 
-              <div className="mt-4">
+              <div className="mt-2">
                 <div className="mb-2 flex items-center justify-between text-[11px] font-semibold text-zinc-500 dark:text-slate-400">
                   <span>{completedTasks} / {goalTasks.length} {language === "vi" ? "task" : "tasks"}</span>
                   <span>{progress}%</span>
@@ -1233,7 +1180,6 @@ export function GoalsView() {
             const milestoneProgress = milestoneTasks.length ? Math.round((milestoneCompletedTasks / milestoneTasks.length) * 100) : 0;
             const status = getMilestoneStatus(milestoneTasks.length, milestoneCompletedTasks, language);
             const editing = milestoneEdits[milestone.id];
-            const taskDraft = taskDrafts[milestone.id] || { title: "", priority: "Trung bình" as TaskPriority, dueDate: milestone.targetDate || goal.targetDate || "" };
 
             return (
               <div key={milestone.id} className="rounded-lg border border-zinc-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950/60">
@@ -1332,6 +1278,7 @@ export function GoalsView() {
                       onExpandChange={(expanded) => setExpandedTaskId(expanded ? task.id : null)}
                       onToggle={(item) => void toggleTaskComplete(item)}
                       onDelete={(item) => void handleDeleteTask(item)}
+                      onEdit={openEditTaskModal}
                       onUpdate={updateTask}
                     />
                   )) : (
@@ -1341,48 +1288,14 @@ export function GoalsView() {
                   )}
 
                   <div className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50 p-2 dark:border-slate-800 dark:bg-slate-900/50">
-                    <div className="mb-2 text-[10px] font-bold uppercase text-zinc-400 dark:text-slate-500">
+                    <button
+                      type="button"
+                      onClick={() => openAddTaskModal(goal, milestone)}
+                      className="flex w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
+                    >
+                      <Plus size={13} />
                       {language === "vi" ? "Thêm task" : "Add task"}
-                    </div>
-                    <div className="grid gap-2">
-                      <input
-                        type="text"
-                        value={taskDraft.title}
-                        onChange={(event) => setTaskDrafts((prev) => ({ ...prev, [milestone.id]: { ...taskDraft, title: event.target.value } }))}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            event.preventDefault();
-                            void handleAddTaskToMilestone(goal, milestone);
-                          }
-                        }}
-                        placeholder={language === "vi" ? "Tên task" : "Task title"}
-                        className="rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-xs text-zinc-900 outline-none transition focus:border-zinc-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                      />
-                      <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
-                        <select
-                          value={taskDraft.priority}
-                          onChange={(event) => setTaskDrafts((prev) => ({ ...prev, [milestone.id]: { ...taskDraft, priority: event.target.value as TaskPriority } }))}
-                          className="min-w-0 rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-xs text-zinc-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                        >
-                          <option value="Cao">{language === "vi" ? "Cao" : "High"}</option>
-                          <option value="Trung bình">{language === "vi" ? "Trung bình" : "Medium"}</option>
-                          <option value="Thấp">{language === "vi" ? "Thấp" : "Low"}</option>
-                        </select>
-                        <input
-                          type="date"
-                          value={taskDraft.dueDate}
-                          onChange={(event) => setTaskDrafts((prev) => ({ ...prev, [milestone.id]: { ...taskDraft, dueDate: event.target.value } }))}
-                          className="min-w-0 rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-xs text-zinc-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => void handleAddTaskToMilestone(goal, milestone)}
-                          className="inline-flex items-center justify-center rounded-md bg-zinc-900 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-zinc-800 dark:bg-slate-100 dark:text-slate-950"
-                        >
-                          <Plus size={13} />
-                        </button>
-                      </div>
-                    </div>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1450,7 +1363,7 @@ export function GoalsView() {
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-indigo-500/35 bg-slate-900 p-8 text-center shadow-2xl backdrop-blur-xl">
+        <div className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-indigo-500/35 bg-slate-900 p-5 text-center shadow-2xl backdrop-blur-xl sm:p-8">
           <div className="absolute -left-12 -top-12 h-32 w-32 rounded-full bg-indigo-500/20 blur-3xl" />
           <div className="absolute -bottom-12 -right-12 h-32 w-32 rounded-full bg-violet-500/20 blur-3xl" />
           <div className="relative space-y-5">
@@ -1546,16 +1459,14 @@ export function GoalsView() {
               {goals.length ? goals.map(renderGoalCard) : (
                 <div className="flex h-full w-[calc(100vw-2rem)] max-w-[420px] flex-none items-center justify-center rounded-lg border border-dashed border-zinc-200 bg-white px-6 text-center text-sm text-zinc-500 dark:border-slate-800 dark:bg-slate-900 sm:w-[400px]">
                   {language === "vi" ? "Chưa có goal nào. Tạo goal đầu tiên ở cột bên cạnh." : "No goals yet. Create your first goal in the next column."}
-                </div>              )}
+                </div>
+              )}
 
-              <section className="flex h-full w-[calc(100vw-2rem)] max-w-[420px] flex-none snap-start flex-col rounded-xl border border-dashed border-zinc-300 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:w-[400px]">
-                <div className=" px-1 mb-3">
+              <section className="flex h-full w-[calc(100vw-2rem)] max-w-[420px] flex-none snap-start flex-col rounded-xl border border-dashed border-zinc-300 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900 sm:w-[400px]">
+                <div className="mb-3 px-1">
                   <h3 className="text-base font-bold text-zinc-950 dark:text-slate-50">
                     {language === "vi" ? "Tạo goal mới" : "Create a new goal"}
                   </h3>
-                  <p className="mt-1 text-xs text-zinc-500 dark:text-slate-400">
-                    {language === "vi" ? "Goal mới sẽ xuất hiện như một cột riêng." : "New goals appear as their own columns."}
-                  </p>
                 </div>
                 <div className="space-y-3">
                   <input
@@ -1590,6 +1501,21 @@ export function GoalsView() {
                       <option key={period} value={period}>{getPeriodLabel(period, language)}</option>
                     ))}
                   </select>
+                  <input
+                    type="date"
+                    value={aiDraft.deadline}
+                    onChange={(event) => setAiDraft((prev) => ({ ...prev, deadline: event.target.value }))}
+                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 mr-3"
+                  />
+                  <select
+                    value={aiDraft.priority}
+                    onChange={(event) => setAiDraft((prev) => ({ ...prev, priority: event.target.value as AIGoalDraft["priority"] }))}
+                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  >
+                    <option value="HIGH">{language === "vi" ? "Ưu tiên cao" : "High priority"}</option>
+                    <option value="MEDIUM">{language === "vi" ? "Ưu tiên vừa" : "Medium priority"}</option>
+                    <option value="LOW">{language === "vi" ? "Ưu tiên thấp" : "Low priority"}</option>
+                  </select>
                   <button
                     type="button"
                     onClick={() => void handleAddGoal()}
@@ -1606,6 +1532,22 @@ export function GoalsView() {
         </div>
       </div>
 
+      {taskModalInitialValues && (
+        <TaskModal
+          key={`${taskModalInitialValues.goalId || "goal"}-${taskModalInitialValues.milestoneId || "milestone"}-${taskModalInitialValues.dueDate || "no-date"}`}
+          initialValues={taskModalInitialValues}
+          onClose={() => setTaskModalInitialValues(null)}
+          onSave={handleSaveTask}
+        />
+      )}
+      {editingTask && (
+        <TaskModal
+          key={editingTask.id}
+          task={editingTask}
+          onClose={() => setEditingTask(null)}
+          onSave={handleSaveTask}
+        />
+      )}
       {renderUpgradeModal()}
     </div>
   );

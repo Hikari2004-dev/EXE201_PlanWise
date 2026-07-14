@@ -124,7 +124,7 @@ export function AnalyticsView() {
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 overflow-y-auto font-sans text-slate-900 dark:text-slate-100">
       {/* Page Header */}
-      <div className="pt-6 sm:pt-8 pb-5 sm:pb-6 px-4 sm:px-8 flex items-center justify-between flex-shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 sticky top-0 z-10 gap-3">
+      <div className="sticky top-0 z-10 flex flex-shrink-0 flex-wrap items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 pb-5 pt-6 dark:border-slate-800 dark:bg-slate-950 sm:items-center sm:px-8 sm:pb-6 sm:pt-8">
         <div>
           <h1 className="text-[1.3rem] sm:text-[1.6rem] font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
             {language === "vi" ? "Phân Tích & Đánh Giá" : "Analytics & Review"}
@@ -544,8 +544,8 @@ export function AnalyticsView() {
           </div>
 
           {!user?.isPremium && (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-8 bg-slate-50/10 dark:bg-slate-950/10 rounded-3xl">
-              <div className="bg-slate-900 border border-indigo-500/35 rounded-3xl p-8 max-w-sm w-full text-center space-y-6 shadow-2xl relative overflow-hidden backdrop-blur-xl text-slate-100">
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-3xl bg-slate-50/10 p-4 dark:bg-slate-950/10 sm:p-8">
+              <div className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-indigo-500/35 bg-slate-900 p-5 text-center text-slate-100 shadow-2xl backdrop-blur-xl sm:p-8 space-y-6">
                 <div className="absolute -top-12 -left-12 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl"></div>
                 <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-violet-500/20 rounded-full blur-3xl"></div>
 
