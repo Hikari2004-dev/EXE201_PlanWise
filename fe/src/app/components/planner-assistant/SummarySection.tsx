@@ -25,13 +25,13 @@ export function SummarySection({ plan, language }: SummarySectionProps) {
       label: language === "vi" ? "Công việc" : "Tasks",
       value: tasks.length,
       icon: CheckSquare,
-      className: "border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-200",
+      className: "border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-200",
     },
     {
       label: language === "vi" ? "Thói quen" : "Habits",
       value: habits.length,
       icon: Repeat2,
-      className: "border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-200",
+      className: "border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-200",
     },
   ];
 

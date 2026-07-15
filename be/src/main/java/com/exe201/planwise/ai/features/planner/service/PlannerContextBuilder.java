@@ -49,7 +49,7 @@ public class PlannerContextBuilder {
         appendSettings(context, userId);
         appendCategories(context, categoryRepository.findByUserIdOrderBySortOrderAsc(userId));
         appendEvents(context, eventRepository.findByUserIdAndDateRange(userId, startDate, endDate));
-        appendTasks(context, taskRepository.findByUserIdOrderBySortOrderAsc(userId), startDate, endDate);
+        appendTasks(context, taskRepository.findByUserIdOrderBySortOrderAsc(userId), startDate, endDate, now);
         appendHabits(context, habitRepository.findByUserIdAndIsActiveTrueOrderBySortOrderAsc(userId));
         appendGoals(context, goalRepository.findByUserIdOrderBySortOrderAsc(userId));
 
@@ -66,7 +66,7 @@ public class PlannerContextBuilder {
     }
 
     private void appendCategories(StringBuilder context, List<Category> categories) {
-        context.append("Available categories:\n");
+        context.append("Available categories (copy the UUID exactly when using categoryId):\n");
         if (categories.isEmpty()) {
             context.append("- none\n\n");
             return;
@@ -103,11 +103,11 @@ public class PlannerContextBuilder {
         context.append('\n');
     }
 
-    private void appendTasks(StringBuilder context, List<Task> tasks, LocalDate startDate, LocalDate endDate) {
-        context.append("Relevant open tasks:\n");
+    private void appendTasks(StringBuilder context, List<Task> tasks, LocalDate startDate, LocalDate endDate, OffsetDateTime now) {
+        context.append("Relevant open tasks, including overdue tasks (copy id exactly when using existingTaskId):\n");
         List<Task> relevantTasks = tasks.stream()
                 .filter(task -> !task.isCompleted())
-                .filter(task -> isRelevantTask(task, startDate, endDate))
+                .filter(task -> isRelevantTask(task, startDate, endDate) || isOverdueTask(task, now))
                 .limit(40)
                 .toList();
         if (relevantTasks.isEmpty()) {
@@ -116,6 +116,8 @@ public class PlannerContextBuilder {
         }
         relevantTasks.forEach(task -> context
                 .append("- ")
+                .append(task.getId())
+                .append(" | ")
                 .append(task.getTitle())
                 .append(" | due=")
                 .append(task.getDueDate() == null ? "none" : task.getDueDate())
@@ -123,6 +125,10 @@ public class PlannerContextBuilder {
                 .append(task.getScheduledAt() == null ? "none" : task.getScheduledAt())
                 .append(" | priority=")
                 .append(task.getPriority())
+                .append(" | categoryId=")
+                .append(task.getCategory() == null ? "none" : task.getCategory().getId())
+                .append(" | status=")
+                .append(isOverdueTask(task, now) ? "overdue" : "open")
                 .append('\n'));
         context.append('\n');
     }
@@ -145,7 +151,7 @@ public class PlannerContextBuilder {
     }
 
     private void appendGoals(StringBuilder context, List<Goal> goals) {
-        context.append("Active goals:\n");
+        context.append("Active goals (copy the UUID exactly when using goalId):\n");
         List<Goal> activeGoals = goals.stream()
                 .filter(goal -> !goal.isCompleted())
                 .limit(30)
@@ -181,6 +187,10 @@ public class PlannerContextBuilder {
         }
         LocalDate date = dateTime.toLocalDate();
         return !date.isBefore(startDate) && !date.isAfter(endDate);
+    }
+
+    private boolean isOverdueTask(Task task, OffsetDateTime now) {
+        return task.getDueDate() != null && task.getDueDate().isBefore(now);
     }
 
     private String twoDigits(int value) {

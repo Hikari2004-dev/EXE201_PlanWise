@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.UUID;
 
 public record PlannerTaskDraft(
+        UUID existingTaskId,
+
         @NotBlank(message = "Tiêu đề công việc không được để trống")
         @Size(max = 255, message = "Tiêu đề công việc không được vượt quá 255 ký tự")
         String title,

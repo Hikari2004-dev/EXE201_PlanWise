@@ -7,6 +7,8 @@ import com.exe201.planwise.ai.features.planner.entity.PlannerDraftStatus;
 import com.exe201.planwise.ai.features.planner.parser.PlannerDraftParser;
 import com.exe201.planwise.ai.features.planner.repository.PlannerDraftRepository;
 import com.exe201.planwise.ai.features.planner.validator.PlannerDraftValidator;
+import com.exe201.planwise.category.entity.Category;
+import com.exe201.planwise.category.repository.CategoryRepository;
 import com.exe201.planwise.event.dto.CalendarEventDto;
 import com.exe201.planwise.event.dto.CreateEventRequest;
 import com.exe201.planwise.event.service.CalendarEventService;
@@ -18,6 +20,7 @@ import com.exe201.planwise.habit.enums.HabitFrequency;
 import com.exe201.planwise.habit.service.HabitService;
 import com.exe201.planwise.task.dto.CreateTaskRequest;
 import com.exe201.planwise.task.dto.TaskDto;
+import com.exe201.planwise.task.dto.UpdateTaskRequest;
 import com.exe201.planwise.task.service.TaskService;
 import com.exe201.planwise.user.entity.User;
 import com.exe201.planwise.user.repository.UserRepository;
@@ -44,6 +47,7 @@ public class PlannerAssistantServiceImpl implements PlannerAssistantService {
     private final CalendarEventService eventService;
     private final TaskService taskService;
     private final HabitService habitService;
+    private final CategoryRepository categoryRepository;
 
     @Override
     @Transactional
@@ -94,12 +98,12 @@ public class PlannerAssistantServiceImpl implements PlannerAssistantService {
 
         List<CalendarEventDto> events = new ArrayList<>();
         for (PlannerEventDraft eventDraft : plan.events()) {
-            events.add(eventService.createEvent(userId, toCreateEventRequest(eventDraft)));
+            events.add(eventService.createEvent(userId, toCreateEventRequest(userId, eventDraft)));
         }
 
         List<TaskDto> tasks = new ArrayList<>();
         for (PlannerTaskDraft taskDraft : plan.tasks()) {
-            tasks.add(taskService.createTask(userId, toCreateTaskRequest(taskDraft)));
+            tasks.add(applyTaskDraft(userId, taskDraft));
         }
 
         List<HabitDto> habits = new ArrayList<>();
@@ -132,14 +136,14 @@ public class PlannerAssistantServiceImpl implements PlannerAssistantService {
         return variables;
     }
 
-    private CreateEventRequest toCreateEventRequest(PlannerEventDraft draft) {
+    private CreateEventRequest toCreateEventRequest(UUID userId, PlannerEventDraft draft) {
         return new CreateEventRequest(
                 draft.title(),
                 draft.eventDate(),
                 draft.startHour(),
                 draft.startMin() == null ? 0 : draft.startMin(),
                 draft.duration(),
-                draft.color(),
+                resolveCategoryColor(userId, draft.categoryId()),
                 draft.location(),
                 draft.notes(),
                 draft.categoryId(),
@@ -148,14 +152,14 @@ public class PlannerAssistantServiceImpl implements PlannerAssistantService {
         );
     }
 
-    private CreateTaskRequest toCreateTaskRequest(PlannerTaskDraft draft) {
+    private CreateTaskRequest toCreateTaskRequest(UUID userId, PlannerTaskDraft draft) {
         return new CreateTaskRequest(
                 draft.title(),
                 draft.description(),
                 draft.dueDate(),
                 draft.scheduledAt(),
                 draft.priority(),
-                draft.color(),
+                resolveCategoryColor(userId, draft.categoryId()),
                 draft.categoryId(),
                 draft.goalId(),
                 draft.milestoneId(),
@@ -168,6 +172,36 @@ public class PlannerAssistantServiceImpl implements PlannerAssistantService {
         );
     }
 
+    private TaskDto applyTaskDraft(UUID userId, PlannerTaskDraft draft) {
+        if (draft.existingTaskId() != null) {
+            return taskService.updateTask(userId, draft.existingTaskId(), toUpdateTaskRequest(userId, draft));
+        }
+        return taskService.createTask(userId, toCreateTaskRequest(userId, draft));
+    }
+
+    private UpdateTaskRequest toUpdateTaskRequest(UUID userId, PlannerTaskDraft draft) {
+        UUID categoryId = draft.categoryId();
+        return new UpdateTaskRequest(
+                draft.title(),
+                draft.description(),
+                draft.dueDate(),
+                draft.scheduledAt(),
+                draft.priority(),
+                categoryId == null ? null : resolveCategoryColor(userId, categoryId),
+                categoryId,
+                draft.goalId(),
+                draft.milestoneId(),
+                draft.eisenhowerMatrix(),
+                null,
+                draft.estimatedTime(),
+                null,
+                draft.contexts(),
+                draft.checklist(),
+                draft.showOnCalendar(),
+                null
+        );
+    }
+
     private CreateHabitRequest toCreateHabitRequest(PlannerHabitDraft draft) {
         return new CreateHabitRequest(
                 draft.title(),
@@ -175,7 +209,18 @@ public class PlannerAssistantServiceImpl implements PlannerAssistantService {
                 draft.frequency() == null ? HabitFrequency.daily : draft.frequency(),
                 draft.targetCount() == null ? (short) 1 : draft.targetCount(),
                 draft.repeatDays(),
-                draft.color()
+                "emerald"
         );
+    }
+
+    private String resolveCategoryColor(UUID userId, UUID categoryId) {
+        if (categoryId == null) {
+            return "indigo";
+        }
+        return categoryRepository.findById(categoryId)
+                .filter(category -> category.getUser().getId().equals(userId))
+                .map(Category::getColor)
+                .map(Enum::name)
+                .orElse("indigo");
     }
 }

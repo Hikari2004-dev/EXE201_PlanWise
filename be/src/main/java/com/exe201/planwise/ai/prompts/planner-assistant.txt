@@ -14,60 +14,76 @@ User constraints:
 Existing PlanWise context:
 {{plannerContext}}
 
-Return JSON schema:
+Return JSON contract:
+- Return exactly one JSON object with these top-level fields: summary, events, tasks, habits.
+- Use real values only. Never output placeholder strings such as "string", "UUID or null", "YYYY-MM-DDTHH:mm:ss+07:00 or null", or "indigo | blue | ...".
+- Use JSON null without quotes for unknown optional values.
+- Use valid JSON numbers only. Decimals must include a leading zero, for example 0.5, never .5.
+- Use empty arrays [] for sections with no generated items.
+- Do not include fields outside the contract.
+- Do not output color fields. PlanWise derives colors from categoryId on the backend.
+
+Valid response shape:
 {
-  "summary": "string",
-  "events": [
-    {
-      "title": "string",
-      "eventDate": "YYYY-MM-DD",
-      "startHour": 9,
-      "startMin": 0,
-      "duration": 1.5,
-      "color": "indigo | blue | emerald | amber | rose | purple | teal | orange",
-      "location": "string",
-      "notes": "string",
-      "categoryId": "UUID or null",
-      "isRecurring": false,
-      "recurrenceRule": "string or null"
-    }
-  ],
-  "tasks": [
-    {
-      "title": "string",
-      "description": "string",
-      "dueDate": "YYYY-MM-DDTHH:mm:ss+07:00 or null",
-      "scheduledAt": "YYYY-MM-DDTHH:mm:ss+07:00 or null",
-      "priority": "HIGH | MEDIUM | LOW",
-      "color": "indigo | blue | emerald | amber | rose | purple | teal | orange",
-      "categoryId": "UUID or null",
-      "goalId": "UUID or null",
-      "milestoneId": "UUID or null",
-      "eisenhowerMatrix": "urgent-important | not-urgent-important | urgent-not-important | not-urgent-not-important | null",
-      "estimatedTime": 60,
-      "contexts": ["string"],
-      "checklist": ["string"],
-      "showOnCalendar": true
-    }
-  ],
-  "habits": [
-    {
-      "title": "string",
-      "description": "string",
-      "frequency": "daily | weekly | monthly",
-      "targetCount": 1,
-      "repeatDays": ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"],
-      "color": "indigo | blue | emerald | amber | rose | purple | teal | orange"
-    }
-  ]
+  "summary": "Short natural-language summary of this draft",
+  "events": [],
+  "tasks": [],
+  "habits": []
 }
+
+Event item fields:
+- title: string, required, max 255 characters.
+- eventDate: string date in YYYY-MM-DD format, required.
+- startHour: integer 0-23, required.
+- startMin: integer 0-59, use 0 if unsure.
+- duration: positive number of hours, max 24.
+- location: string or null.
+- notes: string or null.
+- categoryId: existing category UUID from context or null.
+- isRecurring: boolean.
+- recurrenceRule: string or null.
+
+Task item fields:
+- existingTaskId: existing open task UUID from context when updating or rescheduling an existing task; null when creating a new task.
+- title: string, required, max 255 characters.
+- description: string or null.
+- dueDate: string datetime in YYYY-MM-DDTHH:mm:ss+07:00 format or null.
+- scheduledAt: string datetime in YYYY-MM-DDTHH:mm:ss+07:00 format or null.
+- priority: one allowed priority string.
+- categoryId: existing category UUID from context or null.
+- goalId: existing active goal UUID from context or null.
+- milestoneId: existing milestone UUID from context or null; use null if no milestone UUID is shown.
+- eisenhowerMatrix: one allowed Eisenhower value or null.
+- estimatedTime: positive integer minutes.
+- contexts: array of strings, or [].
+- checklist: array of strings, or [].
+- showOnCalendar: boolean.
+
+Habit item fields:
+- title: string, required, max 255 characters.
+- description: string or null.
+- frequency: one allowed frequency string.
+- targetCount: positive integer.
+- repeatDays: array of allowed weekday strings; use [] unless frequency is weekly.
+
+Allowed values:
+- priority: HIGH, MEDIUM, LOW.
+- frequency: daily, weekly, monthly.
+- repeatDays: MON, TUE, WED, THU, FRI, SAT, SUN.
+- eisenhowerMatrix: urgent-important, not-urgent-important, urgent-not-important, not-urgent-not-important, or null.
 
 Planning rules:
 - Generate only draft objects that directly satisfy the user's request.
 - The backend will store this as a draft. Never imply that objects are already created.
 - Use existing events and tasks to avoid schedule conflicts.
+- When the user asks to reschedule, reorganize, move, or update existing/overdue tasks, return those tasks with existingTaskId copied exactly from context. Do not create duplicate replacement tasks.
+- For overdue tasks, choose new dueDate and scheduledAt values that are not before the current date/time and fit inside the planning window.
+- Do not recreate active habits already listed in Existing PlanWise context.
+- Do not create both a habit and repeated event occurrences for the same routine unless the user explicitly asks for both.
 - Prefer existing categoryId values when the category clearly matches. Otherwise use null.
+- Copy UUID values exactly from Existing PlanWise context. Never invent, shorten, or modify UUIDs.
 - Use goalId only when the task clearly supports an active goal from context.
+- Do not choose colors. Colors follow the selected category. If categoryId is null, the backend uses its default color.
 - Keep titles concise and action-oriented.
 - Use Vietnamese titles and descriptions if the user request is Vietnamese.
 - If a section is not needed, return an empty array for that section.
@@ -75,6 +91,8 @@ Planning rules:
 Date and time rules:
 - Never generate dates or scheduled times before the current date/time.
 - Keep events within the planning window unless the user explicitly asks otherwise.
+- Do not generate eventDate, dueDate, or scheduledAt after {{endDate}} unless the user explicitly asks outside the planning window.
+- Do not generate scheduledAt after dueDate.
 - Use local timezone +07:00 for task dueDate and scheduledAt.
 - For all-day or unscheduled tasks, use null scheduledAt and set dueDate only when useful.
 

@@ -4,7 +4,6 @@ import com.exe201.planwise.ai.features.planner.dto.PlannerDraftPlan;
 import com.exe201.planwise.ai.features.planner.dto.PlannerEventDraft;
 import com.exe201.planwise.ai.features.planner.dto.PlannerHabitDraft;
 import com.exe201.planwise.ai.features.planner.dto.PlannerTaskDraft;
-import com.exe201.planwise.common.enums.EventColor;
 import com.exe201.planwise.exception.AppException;
 import com.exe201.planwise.exception.ErrorCode;
 import com.exe201.planwise.habit.enums.HabitFrequency;
@@ -64,9 +63,6 @@ public class PlannerDraftValidator {
         if (event.duration() == null || event.duration() <= 0 || event.duration() > 24) {
             throw invalid("Thời lượng sự kiện không hợp lệ");
         }
-        if (!isBlank(event.color())) {
-            validateColor(event.color());
-        }
     }
 
     private void validateTask(PlannerTaskDraft task, OffsetDateTime now) {
@@ -81,9 +77,6 @@ public class PlannerDraftValidator {
         }
         if (!isBlank(task.priority())) {
             validatePriority(task.priority());
-        }
-        if (!isBlank(task.color())) {
-            validateColor(task.color());
         }
         if (!isBlank(task.eisenhowerMatrix()) && !VALID_EISENHOWER.contains(task.eisenhowerMatrix().trim())) {
             throw invalid("Ma trận Eisenhower của công việc không hợp lệ");
@@ -108,23 +101,12 @@ public class PlannerDraftValidator {
                 }
             }
         }
-        if (!isBlank(habit.color())) {
-            validateColor(habit.color());
-        }
     }
 
     private void validatePriority(String priority) {
         String normalized = priority.trim().toUpperCase(Locale.ROOT);
         if (!Set.of("HIGH", "MEDIUM", "LOW", "CAO", "THẤP", "TRUNG BÌNH").contains(normalized)) {
             throw invalid("Độ ưu tiên công việc không hợp lệ");
-        }
-    }
-
-    private void validateColor(String color) {
-        try {
-            EventColor.valueOf(color.trim().toLowerCase(Locale.ROOT));
-        } catch (IllegalArgumentException ex) {
-            throw invalid("Màu trong bản nháp không hợp lệ");
         }
     }
 

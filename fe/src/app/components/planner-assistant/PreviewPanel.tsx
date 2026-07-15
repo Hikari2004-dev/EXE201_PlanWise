@@ -1,7 +1,7 @@
-import { AlertTriangle, CheckCircle2, ClipboardList, RefreshCw, Sparkles, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardList, Sparkles, X } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Button } from "../ui/button";
-import type { PlannerDraftPlan, PlannerEventDraft } from "../../api";
+import type { PlannerDraftPlan, PlannerEventDraft, PlannerHabitDraft, PlannerTaskDraft } from "../../api";
 import { PreviewCard } from "./PreviewCard";
 import { SummarySection } from "./SummarySection";
 
@@ -13,9 +13,11 @@ interface PreviewPanelProps {
   error: string | null;
   isApplying: boolean;
   applied: boolean;
-  canRegenerate: boolean;
+  onUpdateEvent: (index: number, item: PlannerEventDraft) => void;
+  onUpdateTask: (index: number, item: PlannerTaskDraft) => void;
+  onUpdateHabit: (index: number, item: PlannerHabitDraft) => void;
+  onDeleteItem: (kind: "events" | "tasks" | "habits", index: number) => void;
   onApply: () => void;
-  onRegenerate: () => void;
   onCancel: () => void;
 }
 
@@ -27,9 +29,11 @@ export function PreviewPanel({
   error,
   isApplying,
   applied,
-  canRegenerate,
+  onUpdateEvent,
+  onUpdateTask,
+  onUpdateHabit,
+  onDeleteItem,
   onApply,
-  onRegenerate,
   onCancel,
 }: PreviewPanelProps) {
   const warnings = plan ? getWarnings(plan, language) : [];
@@ -49,8 +53,8 @@ export function PreviewPanel({
             <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
               {hasPlan
                 ? language === "vi"
-                  ? "Xem lại những mục sẽ được tạo"
-                  : "Review what will be created"
+                  ? "Chỉnh sửa bản nháp trước khi áp dụng"
+                  : "Edit the draft before applying"
                 : language === "vi"
                   ? "Kế hoạch AI sẽ xuất hiện tại đây"
                   : "The generated plan will appear here"}
@@ -114,21 +118,45 @@ export function PreviewPanel({
               {events.length > 0 && (
                 <PreviewGroup title={language === "vi" ? "Sự kiện" : "Events"}>
                   {events.map((event, index) => (
-                    <PreviewCard key={`event-${index}-${event.title}`} kind="event" item={event} language={language} />
+                    <PreviewCard
+                      key={`event-${index}`}
+                      kind="event"
+                      item={event}
+                      language={language}
+                      disabled={isApplying || applied}
+                      onChange={(item) => onUpdateEvent(index, item)}
+                      onDelete={() => onDeleteItem("events", index)}
+                    />
                   ))}
                 </PreviewGroup>
               )}
               {tasks.length > 0 && (
                 <PreviewGroup title={language === "vi" ? "Công việc" : "Tasks"}>
                   {tasks.map((task, index) => (
-                    <PreviewCard key={`task-${index}-${task.title}`} kind="task" item={task} language={language} />
+                    <PreviewCard
+                      key={`task-${index}`}
+                      kind="task"
+                      item={task}
+                      language={language}
+                      disabled={isApplying || applied}
+                      onChange={(item) => onUpdateTask(index, item)}
+                      onDelete={() => onDeleteItem("tasks", index)}
+                    />
                   ))}
                 </PreviewGroup>
               )}
               {habits.length > 0 && (
                 <PreviewGroup title={language === "vi" ? "Thói quen" : "Habits"}>
                   {habits.map((habit, index) => (
-                    <PreviewCard key={`habit-${index}-${habit.title}`} kind="habit" item={habit} language={language} />
+                    <PreviewCard
+                      key={`habit-${index}`}
+                      kind="habit"
+                      item={habit}
+                      language={language}
+                      disabled={isApplying || applied}
+                      onChange={(item) => onUpdateHabit(index, item)}
+                      onDelete={() => onDeleteItem("habits", index)}
+                    />
                   ))}
                 </PreviewGroup>
               )}
@@ -149,10 +177,6 @@ export function PreviewPanel({
         <Button type="button" variant="outline" onClick={onCancel}>
           <X size={15} />
           {language === "vi" ? "Đóng" : "Cancel"}
-        </Button>
-        <Button type="button" variant="outline" disabled={!canRegenerate || isLoading || isApplying} onClick={onRegenerate}>
-          <RefreshCw size={15} />
-          {language === "vi" ? "Tạo lại" : "Regenerate"}
         </Button>
         <Button type="button" disabled={!hasPlan || isLoading || isApplying || applied} onClick={onApply} className="bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-slate-200">
           <CheckCircle2 size={15} />

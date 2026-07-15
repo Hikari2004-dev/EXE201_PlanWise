@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -6,7 +6,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
-import { aiPlannerAssistantApi, type PlannerDraftPlan, type PlannerDraftResponse } from "../../api";
+import {
+  aiPlannerAssistantApi,
+  type PlannerDraftPlan,
+  type PlannerDraftResponse,
+  type PlannerEventDraft,
+  type PlannerHabitDraft,
+  type PlannerTaskDraft,
+} from "../../api";
 import { useData } from "../../context/DataContext";
 import { ConversationPanel, type ConversationMessage } from "./ConversationPanel";
 import { PreviewPanel } from "./PreviewPanel";
@@ -26,7 +33,7 @@ export function PlannerAssistantModal({ open, onOpenChange }: PlannerAssistantMo
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [input, setInput] = useState("");
   const [draft, setDraft] = useState<PlannerDraftResponse | null>(null);
-  const [lastRequest, setLastRequest] = useState("");
+  const draftPlanRef = useRef<PlannerDraftPlan | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
   const [applied, setApplied] = useState(false);
@@ -48,12 +55,15 @@ export function PlannerAssistantModal({ open, onOpenChange }: PlannerAssistantMo
   const loadingText = loadingSteps[language][stepIndex];
   const plan = draft?.plan || null;
 
+  useEffect(() => {
+    draftPlanRef.current = plan;
+  }, [plan]);
+
   const sendRequest = async (value: string) => {
     const message = value.trim();
     if (!message || isGenerating) return;
 
     setInput("");
-    setLastRequest(message);
     setIsGenerating(true);
     setApplied(false);
     setError(null);
@@ -62,6 +72,7 @@ export function PlannerAssistantModal({ open, onOpenChange }: PlannerAssistantMo
     try {
       const response = await aiPlannerAssistantApi.generate({ message });
       const normalized = normalizeDraftResponse(response);
+      draftPlanRef.current = normalized.plan;
       setDraft(normalized);
       setMessages((current) => [
         ...current,
@@ -92,7 +103,8 @@ export function PlannerAssistantModal({ open, onOpenChange }: PlannerAssistantMo
     setIsApplying(true);
     setError(null);
     try {
-      await aiPlannerAssistantApi.approve(draft.id, { plan: stripClientOnlyFields(draft.plan) });
+      const editedPlan = normalizePlan(draftPlanRef.current || draft.plan);
+      await aiPlannerAssistantApi.approve(draft.id, { plan: stripClientOnlyFields(editedPlan) });
       await refreshData();
       setApplied(true);
       setMessages((current) => [
@@ -110,10 +122,41 @@ export function PlannerAssistantModal({ open, onOpenChange }: PlannerAssistantMo
     }
   };
 
-  const regenerate = () => {
-    if (lastRequest) {
-      void sendRequest(lastRequest);
-    }
+  const updateEventItem = (index: number, item: PlannerEventDraft) => updateDraftPlan((plan) => ({
+    ...plan,
+    events: replaceAt(plan.events || [], index, item),
+  }));
+
+  const updateTaskItem = (index: number, item: PlannerTaskDraft) => updateDraftPlan((plan) => ({
+    ...plan,
+    tasks: replaceAt(plan.tasks || [], index, item),
+  }));
+
+  const updateHabitItem = (index: number, item: PlannerHabitDraft) => updateDraftPlan((plan) => ({
+    ...plan,
+    habits: replaceAt(plan.habits || [], index, item),
+  }));
+
+  const deletePlanItem = (kind: "events" | "tasks" | "habits", index: number) => {
+    updateDraftPlan((plan) => ({
+      ...plan,
+      [kind]: (plan[kind] || []).filter((_, itemIndex) => itemIndex !== index),
+    }));
+  };
+
+  const updateDraftPlan = (updater: (plan: PlannerDraftPlan) => PlannerDraftPlan) => {
+    setDraft((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        plan: (() => {
+          const nextPlan = normalizePlan(updater(current.plan));
+          draftPlanRef.current = nextPlan;
+          return nextPlan;
+        })(),
+      };
+    });
+    setApplied(false);
   };
 
   const description = useMemo(
@@ -151,9 +194,11 @@ export function PlannerAssistantModal({ open, onOpenChange }: PlannerAssistantMo
             error={error}
             isApplying={isApplying}
             applied={applied}
-            canRegenerate={!!lastRequest}
+            onUpdateEvent={updateEventItem}
+            onUpdateTask={updateTaskItem}
+            onUpdateHabit={updateHabitItem}
+            onDeleteItem={deletePlanItem}
             onApply={() => void applyPlan()}
-            onRegenerate={regenerate}
             onCancel={() => onOpenChange(false)}
           />
         </div>
@@ -165,13 +210,21 @@ export function PlannerAssistantModal({ open, onOpenChange }: PlannerAssistantMo
 function normalizeDraftResponse(response: PlannerDraftResponse): PlannerDraftResponse {
   return {
     ...response,
-    plan: {
-      ...response.plan,
-      events: response.plan.events || [],
-      tasks: response.plan.tasks || [],
-      habits: response.plan.habits || [],
-    },
+    plan: normalizePlan(response.plan),
   };
+}
+
+function normalizePlan(plan: PlannerDraftPlan): PlannerDraftPlan {
+  return {
+    ...plan,
+    events: plan.events || [],
+    tasks: plan.tasks || [],
+    habits: plan.habits || [],
+  };
+}
+
+function replaceAt<T>(items: T[], index: number, item: T) {
+  return items.map((current, itemIndex) => itemIndex === index ? item : current);
 }
 
 function buildAssistantSummary(plan: PlannerDraftPlan, language: "vi" | "en") {

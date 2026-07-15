@@ -151,6 +151,7 @@ export interface PlannerEventDraft {
 }
 
 export interface PlannerTaskDraft {
+  existingTaskId?: string;
   title: string;
   description?: string;
   dueDate?: string;
