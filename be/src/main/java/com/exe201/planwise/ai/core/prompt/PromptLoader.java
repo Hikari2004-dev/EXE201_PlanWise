@@ -13,11 +13,9 @@ import java.util.stream.Collectors;
 @Component
 public class PromptLoader {
 
-    private static final String PROMPT_CLASSPATH = "com/exe201/planwise/ai/prompts/";
-
     public String load(String fileName) {
         try {
-            ClassPathResource resource = new ClassPathResource(PROMPT_CLASSPATH + fileName);
+            ClassPathResource resource = new ClassPathResource("prompts/" + fileName);
             return resource.getContentAsString(StandardCharsets.UTF_8);
         } catch (Exception ex) {
             throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "Không tìm thấy prompt AI");

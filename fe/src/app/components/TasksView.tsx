@@ -23,7 +23,6 @@ import {
 import { useData } from "../context/DataContext";
 import { COLOR_MAP, type Task } from "../data/mockData";
 import { HintBubble } from "./HintBubble";
-import { PlannerAssistantButton } from "./planner-assistant";
 import { TaskModal } from "./TaskModal";
 
 // Normalize color to lowercase for consistent lookups
@@ -999,16 +998,13 @@ export function TasksView() {
           </div>
         </div>
 
-        <div className="mt-2 flex items-center gap-2">
-          <PlannerAssistantButton />
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center justify-center gap-2 px-3 py-3 sm:px-4 sm:py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md shadow-indigo-200 dark:shadow-none"
-          >
-            <Plus size={16} />
-            <span className="hidden sm:inline">{language === "vi" ? "Thêm công việc" : "Add Task"}</span>
-          </button>
-        </div>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center justify-center gap-2 px-3 py-3 sm:px-4 sm:py-2 mt-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md shadow-indigo-200 dark:shadow-none"
+        >
+          <Plus size={16} />
+          <span className="hidden sm:inline">{language === "vi" ? "Thêm công việc" : "Add Task"}</span>
+        </button>
       </div>
 
       {/* Filters and Controls */}

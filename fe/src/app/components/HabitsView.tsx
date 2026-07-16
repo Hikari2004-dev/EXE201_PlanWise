@@ -5,7 +5,6 @@ import { useData } from "../context/DataContext";
 import { HintBubble } from "./HintBubble";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router";
-import { PlannerAssistantButton } from "./planner-assistant";
 
 const toLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -392,24 +391,21 @@ export function HabitsView() {
           <h1 className="text-[1.3rem] sm:text-[1.6rem] font-extrabold tracking-tight text-slate-900 dark:text-slate-50">{language === 'vi' ? "Theo dõi thói quen" : "Habit Tracker"}</h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1 dark:text-slate-400">{language === 'vi' ? "Xây dựng kỷ luật hàng ngày" : "Build daily discipline"}</p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <PlannerAssistantButton />
-          <button
-            onClick={() => {
-              if (!user?.isPremium && habits.length >= 3) {
-                setShowUpgradeModal(true);
-                return;
-              }
-              resetHabitForm();
-              setShowAddModal(true);
-            }}
-            className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md shadow-indigo-200 dark:shadow-none cursor-pointer shrink-0"
-          >
-            <Plus size={16} />
-            <span className="hidden sm:inline">{language === 'vi' ? "Thêm thói quen" : "Add Habit"}</span>
-            <span className="sm:hidden">+</span>
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            if (!user?.isPremium && habits.length >= 3) {
+              setShowUpgradeModal(true);
+              return;
+            }
+            resetHabitForm();
+            setShowAddModal(true);
+          }}
+          className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md shadow-indigo-200 dark:shadow-none cursor-pointer shrink-0"
+        >
+          <Plus size={16} />
+          <span className="hidden sm:inline">{language === 'vi' ? "Thêm thói quen" : "Add Habit"}</span>
+          <span className="sm:hidden">+</span>
+        </button>
       </div>
 
       <div className="flex-1 p-4 sm:p-8 space-y-6 max-w-[1440px] mx-auto w-full pb-12">

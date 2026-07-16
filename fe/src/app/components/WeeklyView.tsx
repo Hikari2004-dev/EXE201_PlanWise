@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronLeft, ChevronRight, Plus, MapPin, Clock, X, Edit2, Trash2, Brain } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { HintBubble } from "./HintBubble";
-import { PlannerAssistantButton } from "./planner-assistant";
 import {
   DAYS,
   DAYS_VI,
@@ -822,7 +821,6 @@ export function WeeklyView() {
               <ChevronRight size={16} />
             </button>
           </div>
-          <PlannerAssistantButton />
           <button onClick={() => {
             const defaultDate = weekDates[0];
             const eventDate = formatIsoDate(defaultDate);

@@ -6,7 +6,6 @@ import {
 } from "lucide-react";
 import { HintBubble } from "./HintBubble";
 import { NotificationCenter } from "./NotificationCenter";
-import { PlannerAssistantButton } from "./planner-assistant";
 import { useData } from "../context/DataContext";
 import { COLOR_MAP, getTimeString, type EventColor } from "../data/mockData";
 
@@ -302,7 +301,6 @@ export function DashboardView() {
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          <PlannerAssistantButton />
           <NotificationCenter />
           <CurrentTimeIndicator />
           <div className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-orange-50 to-amber-50 border border-amber-200 rounded-full px-3.5 py-1.5 shadow-sm dark:from-amber-500/15 dark:to-orange-500/15 dark:border-amber-400/30 dark:bg-slate-900">
