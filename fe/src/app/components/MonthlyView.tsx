@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Plus, X, Clock, MapPin, Tag, Edit2 } from "l
 import { useData } from "../context/DataContext";
 import { COLOR_MAP, DAYS, getTimeString, type CalendarEvent, type EventColor } from "../data/mockData";
 import { HintBubble } from "./HintBubble";
+import { PlannerAssistantButton } from "./planner-assistant";
 
 // March 2026: starts on Sunday (0), 31 days
 const MONTH_START_DAY = 0; // Sunday
@@ -155,6 +156,7 @@ export function MonthlyView() {
           <p className="text-xs text-gray-400 mt-0.5 dark:text-slate-300">{language === 'vi' ? MONTH_NAME : "March 2026"}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <PlannerAssistantButton />
           <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5 dark:bg-slate-800">
             <button 
               onClick={() => navigate('/timetable')}

@@ -55,7 +55,7 @@ export function CategoryModal({ onClose }: CategoryModalProps) {
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-96 max-h-[600px] overflow-hidden flex flex-col"
+        className="flex max-h-[calc(100vh-2rem)] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-2xl sm:max-h-[600px]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -75,7 +75,7 @@ export function CategoryModal({ onClose }: CategoryModalProps) {
               return (
                 <div
                   key={cat.id}
-                  className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                  className={`flex min-w-0 items-center gap-3 rounded-xl border p-3 transition-all ${
                     isEditing ? "border-indigo-300 bg-indigo-50" : "border-gray-100 hover:border-gray-200"
                   }`}
                 >
@@ -121,7 +121,7 @@ export function CategoryModal({ onClose }: CategoryModalProps) {
                   ) : (
                     <>
                       <div className={`w-3 h-3 rounded-full flex-shrink-0 ${colors.dot}`} />
-                      <span className="flex-1 text-sm text-gray-700 font-medium">{cat.name}</span>
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-700">{cat.name}</span>
                       <div className="flex gap-1">
                         <button
                           onClick={() => handleEdit(cat.id)}

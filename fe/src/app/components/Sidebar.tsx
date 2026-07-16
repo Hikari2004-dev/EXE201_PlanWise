@@ -162,7 +162,7 @@ export function Sidebar({
       className={`relative flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out h-full
         ${
           isMobile
-            ? "fixed inset-y-0 left-0 z-50 w-[260px] shadow-2xl shadow-black/50"
+            ? `fixed inset-y-0 left-0 z-50 w-[min(82vw,260px)] shadow-2xl shadow-black/50 ${isOpen ? "translate-x-0" : "-translate-x-full"}`
             : effectiveOpen
               ? "w-[230px]"
               : "w-16"
@@ -234,12 +234,9 @@ export function Sidebar({
       {/* ── Scrollable content area ── */}
       <div className="flex-1 overflow-y-auto min-h-0 sidebar-scroll">
         {/* ── Navigation ── */}
-        <nav className="py-5 px-2.5 space-y-0.5">
+        <nav className="px-2.5 py-1 space-y-0.5">
           {effectiveOpen && (
             <div className="px-2.5 mb-2">
-              <span className="text-[9px] text-slate-600 uppercase tracking-widest font-bold">
-                {language === "vi" ? "Điều hướng" : "Main"}
-              </span>
             </div>
           )}
           {navItems.map(({ path, label, icon: Icon }) => (
@@ -299,7 +296,7 @@ export function Sidebar({
 
         {/* ── Divider ── */}
         {effectiveOpen && (
-          <div className="mx-4 border-t border-white/[0.05] my-1" />
+          <div className="mx-4 border-t border-white/[0.05] mt-1" />
         )}
 
         {/* ── Categories ── */}
@@ -307,7 +304,7 @@ export function Sidebar({
           <div className="px-4 py-3">
             <div className="flex items-center gap-2 mb-2.5">
               <Tag size={11} className="text-slate-600" />
-              <span className="text-[9px] text-slate-600 uppercase tracking-widest font-bold flex-1">
+              <span className="text-[10px] text-slate-600 uppercase tracking-widest font-bold flex-1">
                 {language === "vi" ? "Danh mục" : "Categories"}
               </span>
               <button

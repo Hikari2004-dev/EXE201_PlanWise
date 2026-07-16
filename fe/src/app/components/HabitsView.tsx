@@ -5,6 +5,7 @@ import { useData } from "../context/DataContext";
 import { HintBubble } from "./HintBubble";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router";
+import { PlannerAssistantButton } from "./planner-assistant";
 
 const toLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -150,7 +151,7 @@ export function HabitsView() {
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div className="bg-slate-900 border border-indigo-500/35 rounded-3xl p-8 max-w-sm w-full text-center space-y-6 shadow-2xl relative overflow-hidden backdrop-blur-xl">
+        <div className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-indigo-500/35 bg-slate-900 p-5 text-center shadow-2xl backdrop-blur-xl sm:p-8 space-y-6">
           <div className="absolute -top-12 -left-12 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl"></div>
           <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-violet-500/20 rounded-full blur-3xl"></div>
 
@@ -386,26 +387,29 @@ export function HabitsView() {
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 overflow-y-auto font-sans text-slate-900 dark:text-slate-100">
       {/* Header */}
-      <div className="pt-6 sm:pt-8 pb-5 sm:pb-6 px-4 sm:px-8 flex items-center justify-between flex-shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 sticky top-0 z-10 gap-3">
+      <div className="sticky top-0 z-10 flex flex-shrink-0 flex-wrap items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 pb-5 pt-6 dark:border-slate-800 dark:bg-slate-950 sm:items-center sm:px-8 sm:pb-6 sm:pt-8">
         <div>
           <h1 className="text-[1.3rem] sm:text-[1.6rem] font-extrabold tracking-tight text-slate-900 dark:text-slate-50">{language === 'vi' ? "Theo dõi thói quen" : "Habit Tracker"}</h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1 dark:text-slate-400">{language === 'vi' ? "Xây dựng kỷ luật hàng ngày" : "Build daily discipline"}</p>
         </div>
-        <button
-          onClick={() => {
-            if (!user?.isPremium && habits.length >= 3) {
-              setShowUpgradeModal(true);
-              return;
-            }
-            resetHabitForm();
-            setShowAddModal(true);
-          }}
-          className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md shadow-indigo-200 dark:shadow-none cursor-pointer shrink-0"
-        >
-          <Plus size={16} />
-          <span className="hidden sm:inline">{language === 'vi' ? "Thêm thói quen" : "Add Habit"}</span>
-          <span className="sm:hidden">+</span>
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <PlannerAssistantButton />
+          <button
+            onClick={() => {
+              if (!user?.isPremium && habits.length >= 3) {
+                setShowUpgradeModal(true);
+                return;
+              }
+              resetHabitForm();
+              setShowAddModal(true);
+            }}
+            className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md shadow-indigo-200 dark:shadow-none cursor-pointer shrink-0"
+          >
+            <Plus size={16} />
+            <span className="hidden sm:inline">{language === 'vi' ? "Thêm thói quen" : "Add Habit"}</span>
+            <span className="sm:hidden">+</span>
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 p-4 sm:p-8 space-y-6 max-w-[1440px] mx-auto w-full pb-12">

@@ -165,8 +165,8 @@ export function PaymentResultPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-slate-950 p-6 text-slate-100">
-      <div className="max-w-md w-full rounded-3xl bg-slate-900/40 border border-white/[0.05] p-8 text-center backdrop-blur-xl space-y-6 shadow-2xl relative overflow-hidden">
+    <div className="flex min-h-screen w-full items-center justify-center bg-slate-950 p-4 text-slate-100 sm:p-6">
+      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/[0.05] bg-slate-900/40 p-5 text-center shadow-2xl backdrop-blur-xl sm:p-8 space-y-6">
         
         {/* Glow effect */}
         <div className="absolute -top-12 -left-12 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl"></div>

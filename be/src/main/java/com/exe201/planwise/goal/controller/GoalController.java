@@ -1,6 +1,6 @@
 package com.exe201.planwise.goal.controller;
 
-import com.exe201.planwise.ai.dto.CreateGoalFromDraftRequest;
+import com.exe201.planwise.ai.features.goal.dto.CreateGoalFromDraftRequest;
 import com.exe201.planwise.goal.dto.*;
 import com.exe201.planwise.goal.enums.GoalPeriod;
 import com.exe201.planwise.goal.service.GoalService;
