@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Plus,
   Search,
@@ -21,14 +21,27 @@ import {
   Maximize2,
 } from "lucide-react";
 import { useData } from "../context/DataContext";
-import { COLOR_MAP, type Task } from "../data/mockData";
+import { COLOR_MAP, type Task, type EventColor } from "../data/mockData";
 import { HintBubble } from "./HintBubble";
-import { TaskModal } from "./TaskModal";
 
 // Normalize color to lowercase for consistent lookups
 function normalizeColor(color: string | undefined): string {
   if (!color) return "indigo";
   return color.toLowerCase();
+}
+
+function toDateTimeLocalValue(value?: string) {
+  if (!value) return "";
+  const trimmed = value.trim();
+  const dateOnly = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    return `${dateOnly[1]}-${dateOnly[2]}-${dateOnly[3]}T00:00`;
+  }
+
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (num: number) => String(num).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function formatDueDateLabel(dueDate?: string) {
@@ -115,6 +128,13 @@ function getShortTaskDateLabel(task: Task, language: "vi" | "en") {
   }).format(date);
 }
 
+function normalizeChecklistItems(value: string) {
+  return value
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function getTaskStatus(task: Task) {
   if (task.status) return task.status;
   if (task.completed) return "COMPLETED";
@@ -185,10 +205,16 @@ function compareTasksForBoard(a: Task, b: Task) {
   return a.sortOrder - b.sortOrder;
 }
 
+const EVENT_COLORS: EventColor[] = ["indigo", "blue", "emerald", "amber", "rose", "purple", "teal", "orange"];
 
 // Focus Mode Constants
 const MAX_PAUSE_COUNT = 3;
 
+interface TaskModalProps {
+  task?: Task;
+  onClose: () => void;
+  onSave: (task: Omit<Task, "id"> | Task) => Promise<void>;
+}
 
 type FocusMethodKey = "pomodoro" | "sprint" | "deep";
 
@@ -419,14 +445,14 @@ function FocusSessionOverlay({
   const isCompleted = timeLeft === 0;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950 px-4 py-8 text-white sm:px-6">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950 px-6 py-8 text-white">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.28),_transparent_32%),radial-gradient(circle_at_bottom,_rgba(16,185,129,0.18),_transparent_25%)]" />
 
       {/* Nút thoát - chỉ hiện khi tạm dừng hoặc đã hết lượt */}
       {(isPaused || pauseCount >= MAX_PAUSE_COUNT) && (
         <button
           onClick={endFocusMode}
-          className="absolute left-4 top-4 inline-flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full border border-rose-500/50 bg-rose-500/20 px-3 py-2 text-xs font-semibold text-rose-300 transition hover:bg-rose-500/30 hover:text-rose-200 sm:left-6 sm:top-6 sm:px-4 sm:text-sm"
+          className="absolute left-6 top-6 inline-flex items-center gap-2 rounded-full border border-rose-500/50 bg-rose-500/20 px-4 py-2 text-sm font-semibold text-rose-300 transition hover:bg-rose-500/30 hover:text-rose-200"
         >
           <XCircle size={16} />
           Thoát focus ({MAX_PAUSE_COUNT - pauseCount + (isPaused ? 1 : 0)}/{MAX_PAUSE_COUNT})
@@ -435,14 +461,14 @@ function FocusSessionOverlay({
 
       <div className="relative z-10 flex w-full max-w-5xl flex-col items-center justify-center gap-8">
         {isCompleted ? (
-          <div className="space-y-6 text-center">
-            <div className="mb-4 text-4xl font-bold text-emerald-400 sm:text-6xl">
+          <div className="text-center space-y-6">
+            <div className="text-6xl font-bold text-emerald-400 mb-4">
               Hoàn thành!
             </div>
-            <p className="mb-8 text-base text-white/70 sm:text-xl">
+            <p className="text-xl text-white/70 mb-8">
               Bạn đã hoàn thành phiên Focus Mode
             </p>
-            <div className="flex flex-col justify-center gap-3 sm:flex-row sm:gap-4">
+            <div className="flex gap-4 justify-center">
               <button
                 onClick={async () => { await onCompleteTask(task.id); }}
                 className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition"
@@ -534,6 +560,368 @@ function FocusSessionOverlay({
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function TaskModal({ task, onClose, onSave }: TaskModalProps) {
+  const { categories, goals, addCategory } = useData();
+  const resolvedCategoryId = task?.categoryId || categories[0]?.id || "";
+  const [showCategoryPopup, setShowCategoryPopup] = useState(false);
+  const [categoryForm, setCategoryForm] = useState({ name: "", color: "indigo" as EventColor });
+  const [form, setForm] = useState({
+    title: task?.title || "",
+    categoryId: resolvedCategoryId,
+    dueDate: task?.dueDate ? toDateTimeLocalValue(task.dueDate) : "",
+    scheduledAt: toDateTimeLocalValue(task?.scheduledAt),
+    priority: (task?.priority || "Trung bình") as Task["priority"],
+    color: normalizeColor(task?.color) || "indigo" as EventColor,
+    description: task?.description || "",
+    status: task?.status || (task?.completed ? "COMPLETED" : "IN_PROGRESS"),
+    eisenhowerMatrix: task?.eisenhowerMatrix || "",
+    estimatedTime: task?.estimatedTime || "",
+    contexts: task?.contexts || [] as string[],
+    checklist: task?.checklist?.join("\n") || "",
+    goalId: task?.goalId || "",
+    milestoneId: task?.milestoneId || "",
+    showOnCalendar: task?.showOnCalendar ?? true,
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+
+  const selectedGoal = goals.find((goal) => goal.id === form.goalId);
+  const selectedMilestones = selectedGoal?.milestones || [];
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.title.trim() || isSubmitting) return;
+    
+    const taskData = {
+      title: form.title,
+      categoryId: form.categoryId || categories[0]?.id || undefined,
+      dueDate: form.dueDate,
+      scheduledAt: form.scheduledAt ? new Date(form.scheduledAt).toISOString() : undefined,
+      priority: form.priority,
+      completed: form.status === "COMPLETED",
+      status: form.status,
+      color: form.color,
+      description: form.description,
+      eisenhowerMatrix: form.eisenhowerMatrix || undefined,
+      estimatedTime: form.estimatedTime ? Number(form.estimatedTime) : undefined,
+      contexts: form.contexts.length > 0 ? form.contexts : undefined,
+      checklist: normalizeChecklistItems(form.checklist),
+      goalId: form.goalId || undefined,
+      milestoneId: form.milestoneId || undefined,
+      showOnCalendar: form.showOnCalendar,
+    };
+
+    try {
+      setIsSubmitting(true);
+      if (task) {
+        await onSave({
+          ...task,
+          ...taskData,
+        });
+      } else {
+        await onSave({
+          ...taskData,
+          sortOrder: 0,
+        });
+      }
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCreateCategory = async () => {
+    if (!categoryForm.name.trim() || isCreatingCategory) return;
+
+    try {
+      setCategoryError(null);
+      setIsCreatingCategory(true);
+      const createdCategory = await addCategory({ name: categoryForm.name.trim(), color: categoryForm.color });
+      setCategoryForm({ name: "", color: "indigo" });
+      setShowCategoryPopup(false);
+      setForm((prev) => ({
+        ...prev,
+        categoryId: createdCategory.id,
+        color: normalizeColor(createdCategory.color) as EventColor,
+      }));
+    } catch (error) {
+      setCategoryError(error instanceof Error ? error.message : "Không thể tạo danh mục");
+    } finally {
+      setIsCreatingCategory(false);
+    }
+  };
+
+  const selectedCategory = categories.find(c => c.id === (form.categoryId || categories[0]?.id || ""));
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-[420px] overflow-hidden border border-zinc-200 ring-1 ring-black/5 dark:bg-slate-900 dark:border-slate-800 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
+        {/* Modal header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 bg-zinc-50/50 dark:bg-slate-900/50 dark:border-slate-850">
+          <div>
+            <h3 className="text-base font-semibold text-zinc-950 dark:text-slate-50 tracking-tight">
+              {task ? "Chỉnh sửa công việc" : "Thêm công việc mới"}
+            </h3>
+            <p className="text-xs text-zinc-500 dark:text-slate-400 mt-0.5">{task ? "Cập nhật thông tin task" : "Điền thông tin để tạo task mới"}</p>
+          </div>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-850 transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Tiêu đề *</label>
+            <input
+              type="text"
+              required
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder="VD: Hoàn thành báo cáo"
+              className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Danh mục</label>
+              <select
+                value={form.categoryId || categories[0]?.id || ""}
+                onChange={(e) => {
+                  const catId = e.target.value;
+                  if (catId === "__other__") {
+                    setCategoryError(null);
+                    setShowCategoryPopup(true);
+                    return;
+                  }
+                  const cat = categories.find(c => c.id === catId);
+                  setForm({ ...form, categoryId: catId, color: normalizeColor(cat?.color) as EventColor || form.color });
+                }}
+                className="w-full border border-zinc-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all bg-white"
+              >
+                {categories.length === 0 && <option value="">Đang tải danh mục...</option>}
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id} className="dark:bg-slate-900">{cat.name}</option>
+                ))}
+                <option value="__other__" className="dark:bg-slate-900">Khác</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Hạn chót</label>
+              <input
+                type="datetime-local"
+                value={form.dueDate}
+                onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all bg-white"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Trạng thái</label>
+              <select
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value })}
+                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all bg-white"
+              >
+                <option value="IN_PROGRESS">Đang làm</option>
+                <option value="COMPLETED">Hoàn thành</option>
+                <option value="MISSED">Trễ hạn</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Thời gian diễn ra</label>
+              <input
+                type="datetime-local"
+                value={form.scheduledAt}
+                onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })}
+                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all bg-white"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-zinc-600 mb-2 block uppercase tracking-wider">Mức độ ưu tiên</label>
+            <div className="flex gap-2">
+              {(["Cao", "Trung bình", "Thấp"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setForm({ ...form, priority: p })}
+                  className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-all ${
+                    form.priority === p ? PRIORITY_COLORS[p] : "border-zinc-200 text-zinc-500 bg-white hover:bg-zinc-50 hover:border-zinc-300"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Goal</label>
+              <select
+                value={form.goalId}
+                onChange={(e) => setForm({ ...form, goalId: e.target.value, milestoneId: "" })}
+                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all bg-white"
+              >
+                <option value="">Không thuộc goal</option>
+                {goals.map((goal) => (
+                  <option key={goal.id} value={goal.id}>{goal.title}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Milestone</label>
+              <select
+                value={form.milestoneId}
+                onChange={(e) => setForm({ ...form, milestoneId: e.target.value })}
+                disabled={!selectedGoal}
+                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all bg-white disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400"
+              >
+                <option value="">Không thuộc milestone</option>
+                {selectedMilestones.map((milestone) => (
+                  <option key={milestone.id} value={milestone.id}>{milestone.title}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Calendar</label>
+              <label className="flex h-[42px] items-center gap-2 rounded-lg border border-zinc-300 px-3 text-sm font-medium text-zinc-700">
+                <input
+                  type="checkbox"
+                  checked={form.showOnCalendar}
+                  onChange={(e) => setForm({ ...form, showOnCalendar: e.target.checked })}
+                  className="rounded border-zinc-300"
+                />
+                Hiển thị trên lịch
+              </label>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Mô tả</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              placeholder="Thêm chi tiết..."
+              rows={2}
+              className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all resize-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-zinc-600 mb-1.5 block uppercase tracking-wider">Checklist</label>
+            <textarea
+              value={form.checklist}
+              onChange={(e) => setForm({ ...form, checklist: e.target.value })}
+              placeholder="Mỗi dòng là một checklist item"
+              rows={3}
+              className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:border-zinc-400 transition-all resize-none"
+            />
+          </div>
+          <div className="flex gap-3 pt-2 border-t border-zinc-100 mt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 border border-zinc-300 text-zinc-700 text-sm font-semibold py-2 rounded-lg hover:bg-zinc-50 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isSubmitting}
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              className="flex-1 bg-zinc-900 text-white text-sm font-semibold py-2 rounded-lg hover:bg-zinc-800 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Đang lưu..." : task ? "Cập nhật" : "Thêm mới"}
+            </button>
+          </div>
+        </form>
+      </div>
+      {showCategoryPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => {
+          setCategoryError(null);
+          setShowCategoryPopup(false);
+          setCategoryForm({ name: "", color: "indigo" });
+        }}>
+          <div className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h4 className="text-base font-semibold text-zinc-900">Tạo danh mục mới</h4>
+                <p className="mt-1 text-xs text-zinc-500">Danh mục này sẽ thuộc tài khoản hiện tại của bạn.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCategoryError(null);
+                  setShowCategoryPopup(false);
+                  setCategoryForm({ name: "", color: "indigo" });
+                }}
+                className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-zinc-600">Tên danh mục</label>
+                <input
+                  type="text"
+                  value={categoryForm.name}
+                  onChange={(e) => {
+                    setCategoryError(null);
+                    setCategoryForm({ ...categoryForm, name: e.target.value });
+                  }}
+                  placeholder="VD: Việc cá nhân"
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-600">Màu danh mục</label>
+                <div className="flex flex-wrap gap-2">
+                  {(["indigo", "blue", "emerald", "amber", "rose", "purple", "teal", "orange"] as EventColor[]).map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setCategoryForm({ ...categoryForm, color })}
+                      className={`h-7 w-7 rounded-full ${COLOR_MAP[color].bg} transition-all ${categoryForm.color === color ? `ring-2 ring-offset-2 ${COLOR_MAP[color].ring}` : ""}`}
+                    />
+                  ))}
+                </div>
+              </div>
+              {categoryError && <p className="text-xs font-medium text-rose-600">{categoryError}</p>}
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategoryError(null);
+                    setShowCategoryPopup(false);
+                    setCategoryForm({ name: "", color: "indigo" });
+                  }}
+                  className="flex-1 rounded-lg border border-zinc-200 py-2 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateCategory}
+                  className="flex-1 rounded-lg bg-zinc-900 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={!categoryForm.name.trim() || isCreatingCategory}
+                >
+                  {isCreatingCategory ? "Đang tạo..." : "Tạo danh mục"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -820,6 +1208,28 @@ function TaskCard({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onEdit(task);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    <Edit2 size={12} />
+                    {language === "vi" ? "Sửa" : "Edit"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onDelete(task.id);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200"
+                  >
+                    <Trash2 size={12} />
+                    {language === "vi" ? "Xóa" : "Delete"}
+                  </button>
                   {!task.completed && (
                     <button
                       type="button"
@@ -945,14 +1355,14 @@ export function TasksView() {
   return (
     <div className="flex flex-col h-full bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* Header */}
-      <div className="flex flex-shrink-0 flex-wrap items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-950 sm:px-8 sm:py-3">
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between flex-shrink-0 dark:bg-slate-950 dark:border-slate-800 gap-3">
         <div>
           <h1 className="text-[1.4rem] sm:text-[1.6rem] font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
             {language === "vi" ? "Công việc" : "Tasks"}
           </h1>
 
           {/* Stats bar */}
-          <div className="flex flex-wrap items-center sm:pt-1 gap-4 sm:gap-4">
+          <div className="flex flex-wrap items-center pt-2 sm:pt-2 gap-4 sm:gap-4">
             <div className="flex items-center gap-2.5 text-sm text-slate-600 dark:text-slate-350">
               <div className="w-8 h-8 bg-rose-50 border border-rose-100 rounded-lg flex items-center justify-center shadow-sm dark:bg-rose-500/15 dark:border-rose-500/30">
                 <AlertCircle size={14} className="text-rose-500" />
@@ -982,7 +1392,7 @@ export function TasksView() {
             </div>
 
             {/* Progress bar */}
-            <div className="w-full max-w-full md:w-64">
+            <div className="w-full md:w-64 max-w-full px-5">
               <div className="flex justify-between text-xs font-medium text-zinc-550 mb-2 dark:text-slate-400">
                 <span>{language === "vi" ? "Tiến độ tổng thể" : "Overall progress"}</span>
                 <span className="text-zinc-900 dark:text-white">{tasks.length > 0 ? Math.round((completed / tasks.length) * 100) : 0}%</span>
@@ -1000,7 +1410,7 @@ export function TasksView() {
 
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center justify-center gap-2 px-3 py-3 sm:px-4 sm:py-2 mt-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md shadow-indigo-200 dark:shadow-none"
+          className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md shadow-indigo-200 dark:shadow-none"
         >
           <Plus size={16} />
           <span className="hidden sm:inline">{language === "vi" ? "Thêm công việc" : "Add Task"}</span>
@@ -1008,7 +1418,7 @@ export function TasksView() {
       </div>
 
       {/* Filters and Controls */}
-      <div className="bg-white border-b border-zinc-200 px-4 sm:px-8 py-3 flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0 dark:bg-slate-950 dark:border-slate-800">
+      <div className="bg-white border-b border-zinc-200 px-4 sm:px-8 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0 dark:bg-slate-950 dark:border-slate-800">
         {/* Status tabs */}
         <div className="flex items-center bg-zinc-100/80 rounded-lg p-1 border border-zinc-200 dark:bg-slate-900 dark:border-slate-850 overflow-x-auto w-full md:w-auto shrink-0 scrollbar-none">
           {(["Tất cả", "Đang làm", "Hoàn thành", "Tập trung"] as FilterTab[]).map((tab) => {
@@ -1094,7 +1504,7 @@ export function TasksView() {
       {/* Goal board */}
       <div className="min-h-0 flex-1 overflow-hidden">
         <div className="flex h-full min-h-0 flex-col">
-          <div className="shrink-0 px-4 pt-4 sm:px-8">
+          <div className="shrink-0 px-4 pt-5 sm:px-8">
             <HintBubble
               id="tasks_intro"
               title="Công việc"
@@ -1106,15 +1516,29 @@ export function TasksView() {
             </HintBubble>
           </div>
           <div className="flex min-h-0 flex-1 flex-col">
-            <div className="min-h-0 flex-1 overflow-x-auto px-4 pb-2 sm:px-8">
-              <div className="flex h-full min-h-[400px] min-w-max snap-x snap-mandatory gap-4">
+            <div className="flex shrink-0 items-center justify-between gap-3 px-4 pb-3 sm:px-8">
+              <div className="flex min-w-0 items-center gap-2 text-xs font-semibold text-zinc-500 dark:text-slate-400">
+                <FolderKanban size={14} className="shrink-0" />
+                <span className="truncate">
+                  {language === "vi"
+                    ? `${filtered.length} task khớp bộ lọc trong ${boardColumns.length} cột`
+                    : `${filtered.length} matching tasks across ${boardColumns.length} columns`}
+                </span>
+              </div>
+              <div className="hidden text-xs font-medium text-zinc-400 sm:block">
+                {language === "vi" ? "Cuộn ngang để xem thêm goal" : "Scroll horizontally for more goals"}
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-x-auto px-4 pb-5 sm:px-8">
+              <div className="flex h-full min-h-[420px] min-w-max snap-x snap-mandatory gap-4 pb-2">
                 {boardColumns.map((column) => (
                   <section
                     key={column.id}
                     className="flex h-full w-[calc(100vw-2rem)] max-w-[420px] flex-none snap-start flex-col rounded-xl border border-zinc-200 bg-zinc-100/70 dark:border-slate-800 dark:bg-slate-900/60 sm:w-[400px]"
                   >
-                    <div className="border-b border-zinc-200 p-3 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-t-xl">
-                      <div className="flex items-start justify-between gap-3 px-2 pt-1">
+                    <div className="border-b border-zinc-200 px-3 py-4 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-t-xl">
+                      <div className="flex items-start justify-between gap-3 px-2">
                         <div className="min-w-0 px-1">
                           <div className="flex items-center gap-2">
                             <h3 className="truncate text-md font-bold text-zinc-900 dark:text-slate-50">
@@ -1122,7 +1546,7 @@ export function TasksView() {
                             </h3>
                           </div>
                           <p className="mt-1 line-clamp-2 text-xs text-zinc-500 dark:text-slate-400">
-                            {column.description}
+                            {column.description || (language === "vi" ? "Goal chưa có mô tả" : "No goal description")}
                           </p>
                         </div>
                         <span className="shrink-0 rounded-md border border-zinc-200 bg-white px-2 py-1 text-[10px] font-bold text-zinc-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">

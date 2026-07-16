@@ -150,7 +150,7 @@ export function AdminDashboard() {
 
   if (error) {
     return (
-      <div className="flex h-96 flex-col items-center justify-center p-4 sm:p-8">
+      <div className="flex flex-col items-center justify-center h-96 p-8">
         <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
           <XCircle size={32} className="text-destructive" />
         </div>
@@ -173,7 +173,7 @@ export function AdminDashboard() {
 
   if (!stats) {
     return (
-      <div className="flex h-96 flex-col items-center justify-center p-4 sm:p-8">
+      <div className="flex flex-col items-center justify-center h-96 p-8">
         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
           <BarChart3 size={32} className="text-muted-foreground" />
         </div>
@@ -196,7 +196,7 @@ export function AdminDashboard() {
   const monthlyRev = stats?.monthlyRevenue || 0;
 
   return (
-    <div className="mx-auto max-w-7xl p-4 sm:p-6">
+    <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
@@ -530,7 +530,7 @@ export function AdminDashboard() {
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-2 gap-3 mt-4">
                   {planChartData.map((item, index) => (
                     <div key={index} className="flex items-center gap-3 p-3 bg-muted/50 dark:bg-muted rounded-xl">
                       <div className="w-4 h-4 rounded-full" style={{ backgroundColor: item.color }} />

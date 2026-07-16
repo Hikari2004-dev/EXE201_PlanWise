@@ -150,7 +150,7 @@ export function HabitsView() {
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-indigo-500/35 bg-slate-900 p-5 text-center shadow-2xl backdrop-blur-xl sm:p-8 space-y-6">
+        <div className="bg-slate-900 border border-indigo-500/35 rounded-3xl p-8 max-w-sm w-full text-center space-y-6 shadow-2xl relative overflow-hidden backdrop-blur-xl">
           <div className="absolute -top-12 -left-12 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl"></div>
           <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-violet-500/20 rounded-full blur-3xl"></div>
 
@@ -386,7 +386,7 @@ export function HabitsView() {
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 overflow-y-auto font-sans text-slate-900 dark:text-slate-100">
       {/* Header */}
-      <div className="sticky top-0 z-10 flex flex-shrink-0 flex-wrap items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 pb-5 pt-6 dark:border-slate-800 dark:bg-slate-950 sm:items-center sm:px-8 sm:pb-6 sm:pt-8">
+      <div className="pt-6 sm:pt-8 pb-5 sm:pb-6 px-4 sm:px-8 flex items-center justify-between flex-shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 sticky top-0 z-10 gap-3">
         <div>
           <h1 className="text-[1.3rem] sm:text-[1.6rem] font-extrabold tracking-tight text-slate-900 dark:text-slate-50">{language === 'vi' ? "Theo dõi thói quen" : "Habit Tracker"}</h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1 dark:text-slate-400">{language === 'vi' ? "Xây dựng kỷ luật hàng ngày" : "Build daily discipline"}</p>
