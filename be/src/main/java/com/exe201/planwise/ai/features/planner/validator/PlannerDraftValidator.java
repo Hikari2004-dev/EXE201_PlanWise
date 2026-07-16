@@ -12,6 +12,9 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
@@ -32,26 +35,39 @@ public class PlannerDraftValidator {
     );
 
     public void validate(PlannerDraftPlan plan) {
+        normalize(plan);
+    }
+
+    public PlannerDraftPlan normalize(PlannerDraftPlan plan) {
         if (plan == null) {
             throw invalid("Bản nháp lập kế hoạch không được để trống");
-        }
-        if (plan.events().isEmpty() && plan.tasks().isEmpty() && plan.habits().isEmpty()) {
-            throw invalid("Bản nháp phải có ít nhất một sự kiện, công việc hoặc thói quen");
         }
 
         LocalDate today = LocalDate.now(DEFAULT_ZONE);
         OffsetDateTime now = OffsetDateTime.now(DEFAULT_ZONE);
-        plan.events().forEach(event -> validateEvent(event, today));
-        plan.tasks().forEach(task -> validateTask(task, now));
+        List<String> warnings = new ArrayList<>(plan.warnings());
+        plan.events().forEach(event -> validateEvent(event, today, warnings));
+        plan.tasks().forEach(task -> validateTask(task, now, warnings));
         plan.habits().forEach(this::validateHabit);
+
+        return new PlannerDraftPlan(
+                plan.summary(),
+                deduplicateWarnings(warnings),
+                plan.events(),
+                plan.tasks(),
+                plan.habits()
+        );
     }
 
-    private void validateEvent(PlannerEventDraft event, LocalDate today) {
+    private void validateEvent(PlannerEventDraft event, LocalDate today, List<String> warnings) {
         if (event == null || isBlank(event.title())) {
             throw invalid("Sự kiện trong bản nháp thiếu tiêu đề");
         }
-        if (event.eventDate() == null || event.eventDate().isBefore(today)) {
+        if (event.eventDate() == null) {
             throw invalid("Ngày sự kiện trong bản nháp không hợp lệ");
+        }
+        if (event.eventDate().isBefore(today)) {
+            warnings.add("Sự kiện \"" + event.title() + "\" có ngày trong quá khứ.");
         }
         if (event.startHour() == null || event.startHour() < 0 || event.startHour() > 23) {
             throw invalid("Giờ bắt đầu sự kiện phải nằm trong khoảng 0-23");
@@ -65,15 +81,15 @@ public class PlannerDraftValidator {
         }
     }
 
-    private void validateTask(PlannerTaskDraft task, OffsetDateTime now) {
+    private void validateTask(PlannerTaskDraft task, OffsetDateTime now, List<String> warnings) {
         if (task == null || isBlank(task.title())) {
             throw invalid("Công việc trong bản nháp thiếu tiêu đề");
         }
         if (task.dueDate() != null && task.dueDate().isBefore(now)) {
-            throw invalid("Hạn công việc không được nằm trong quá khứ");
+            warnings.add("Công việc \"" + task.title() + "\" có hạn trong quá khứ.");
         }
         if (task.scheduledAt() != null && task.scheduledAt().isBefore(now)) {
-            throw invalid("Thời gian lên lịch công việc không được nằm trong quá khứ");
+            warnings.add("Công việc \"" + task.title() + "\" có thời gian lên lịch trong quá khứ.");
         }
         if (!isBlank(task.priority())) {
             validatePriority(task.priority());
@@ -112,6 +128,10 @@ public class PlannerDraftValidator {
 
     private AppException invalid(String message) {
         return new AppException(ErrorCode.AI_DRAFT_INVALID, message);
+    }
+
+    private List<String> deduplicateWarnings(List<String> warnings) {
+        return new ArrayList<>(new LinkedHashSet<>(warnings));
     }
 
     private boolean isBlank(String value) {

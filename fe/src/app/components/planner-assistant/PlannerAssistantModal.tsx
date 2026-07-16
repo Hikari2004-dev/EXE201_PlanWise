@@ -217,6 +217,7 @@ function normalizeDraftResponse(response: PlannerDraftResponse): PlannerDraftRes
 function normalizePlan(plan: PlannerDraftPlan): PlannerDraftPlan {
   return {
     ...plan,
+    warnings: plan.warnings || [],
     events: plan.events || [],
     tasks: plan.tasks || [],
     habits: plan.habits || [],
@@ -240,6 +241,7 @@ function buildAssistantSummary(plan: PlannerDraftPlan, language: "vi" | "en") {
 function stripClientOnlyFields(plan: PlannerDraftPlan): PlannerDraftPlan {
   return {
     summary: plan.summary,
+    warnings: plan.warnings || [],
     events: plan.events || [],
     tasks: plan.tasks || [],
     habits: plan.habits || [],

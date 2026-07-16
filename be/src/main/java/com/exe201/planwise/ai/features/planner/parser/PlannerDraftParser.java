@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,6 +34,10 @@ public class PlannerDraftParser {
             String json = sanitizePlannerJson(jsonResponseExtractor.extractObject(rawResponse));
             return objectMapper.readValue(json, PlannerDraftPlan.class);
         } catch (AppException ex) {
+            if (isMissingPlannerContent(ex)) {
+                log.warn("Planner AI response did not contain a usable JSON object: {}", ex.getMessage());
+                return emptyPlanWithWarning(ex.getMessage());
+            }
             throw ex;
         } catch (Exception ex) {
             log.warn("Planner AI response could not be parsed: {}", ex.getMessage());
@@ -87,5 +92,20 @@ public class PlannerDraftParser {
         }
         matcher.appendTail(sanitized);
         return sanitized.toString();
+    }
+
+    private boolean isMissingPlannerContent(AppException ex) {
+        String message = ex.getMessage();
+        return "AI không trả về nội dung".equals(message) || "AI không trả về JSON object".equals(message);
+    }
+
+    private PlannerDraftPlan emptyPlanWithWarning(String reason) {
+        return new PlannerDraftPlan(
+                "Planner Assistant chưa có thay đổi nào để áp dụng.",
+                List.of(reason + ". Không có mục mới hoặc cập nhật nào được tạo."),
+                List.of(),
+                List.of(),
+                List.of()
+        );
     }
 }

@@ -15,7 +15,7 @@ Existing PlanWise context:
 {{plannerContext}}
 
 Return JSON contract:
-- Return exactly one JSON object with these top-level fields: summary, events, tasks, habits.
+- Return exactly one JSON object with these top-level fields: summary, warnings, events, tasks, habits.
 - Use real values only. Never output placeholder strings such as "string", "UUID or null", "YYYY-MM-DDTHH:mm:ss+07:00 or null", or "indigo | blue | ...".
 - Use JSON null without quotes for unknown optional values.
 - Use valid JSON numbers only. Decimals must include a leading zero, for example 0.5, never .5.
@@ -26,6 +26,7 @@ Return JSON contract:
 Valid response shape:
 {
   "summary": "Short natural-language summary of this draft",
+  "warnings": [],
   "events": [],
   "tasks": [],
   "habits": []
@@ -78,6 +79,7 @@ Planning rules:
 - Use existing events and tasks to avoid schedule conflicts.
 - When the user asks to reschedule, reorganize, move, or update existing/overdue tasks, return those tasks with existingTaskId copied exactly from context. Do not create duplicate replacement tasks.
 - For overdue tasks, choose new dueDate and scheduledAt values that are not before the current date/time and fit inside the planning window.
+- If all requested tasks are already scheduled correctly and no changes are needed, return empty arrays with a clear reason in summary and one warning explaining that there is nothing to apply.
 - Do not recreate active habits already listed in Existing PlanWise context.
 - Do not create both a habit and repeated event occurrences for the same routine unless the user explicitly asks for both.
 - Prefer existing categoryId values when the category clearly matches. Otherwise use null.
@@ -89,7 +91,7 @@ Planning rules:
 - If a section is not needed, return an empty array for that section.
 
 Date and time rules:
-- Never generate dates or scheduled times before the current date/time.
+- Avoid generating dates or scheduled times before the current date/time. If a past date/time is unavoidable because the user explicitly requested it, include a warning.
 - Keep events within the planning window unless the user explicitly asks otherwise.
 - Do not generate eventDate, dueDate, or scheduledAt after {{endDate}} unless the user explicitly asks outside the planning window.
 - Do not generate scheduledAt after dueDate.

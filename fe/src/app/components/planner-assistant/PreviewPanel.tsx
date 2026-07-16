@@ -41,6 +41,7 @@ export function PreviewPanel({
   const tasks = plan?.tasks || [];
   const habits = plan?.habits || [];
   const hasPlan = events.length > 0 || tasks.length > 0 || habits.length > 0;
+  const hasDraft = !!plan;
 
   return (
     <section className="flex min-h-[420px] flex-col border-t border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-950/60 lg:border-l lg:border-t-0">
@@ -82,7 +83,7 @@ export function PreviewPanel({
               <span className="h-2 w-2 animate-bounce rounded-full bg-amber-500" />
             </div>
           </div>
-        ) : !hasPlan ? (
+        ) : !hasDraft ? (
           <div className="flex min-h-[360px] flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-white px-6 text-center dark:border-slate-800 dark:bg-slate-950">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-slate-100 text-slate-500 dark:bg-slate-900 dark:text-slate-300">
               <ClipboardList size={22} />
@@ -98,7 +99,7 @@ export function PreviewPanel({
           </div>
         ) : (
           <div className="space-y-4">
-            <SummarySection plan={plan!} language={language} />
+            <SummarySection plan={plan} language={language} />
 
             {warnings.length > 0 && (
               <Alert className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-100">
@@ -114,7 +115,20 @@ export function PreviewPanel({
               </Alert>
             )}
 
-            <div className="space-y-5">
+            {!hasPlan && (
+              <div className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-6 text-center dark:border-slate-800 dark:bg-slate-950">
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                  {language === "vi" ? "Không có mục nào cần áp dụng" : "No items to apply"}
+                </p>
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                  {language === "vi"
+                    ? "Planner Assistant không tạo mục mới hoặc cập nhật nào cho yêu cầu này."
+                    : "Planner Assistant did not create or update anything for this request."}
+                </p>
+              </div>
+            )}
+
+            {hasPlan && <div className="space-y-5">
               {events.length > 0 && (
                 <PreviewGroup title={language === "vi" ? "Sự kiện" : "Events"}>
                   {events.map((event, index) => (
@@ -160,7 +174,7 @@ export function PreviewPanel({
                   ))}
                 </PreviewGroup>
               )}
-            </div>
+            </div>}
           </div>
         )}
 

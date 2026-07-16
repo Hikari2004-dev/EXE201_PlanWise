@@ -63,8 +63,8 @@ public class PlannerAssistantServiceImpl implements PlannerAssistantService {
                 "planner-assistant.txt",
                 promptVariables(request, context),
                 plannerDraftParser::parse,
-                draft -> draft,
-                plannerDraftValidator::validate
+                plannerDraftValidator::normalize,
+                draft -> {}
         );
 
         PlannerDraft draft = PlannerDraft.builder()
@@ -94,7 +94,7 @@ public class PlannerAssistantServiceImpl implements PlannerAssistantService {
         PlannerDraftPlan plan = request != null && request.plan() != null
                 ? request.plan()
                 : plannerDraftParser.fromJson(draft.getGeneratedJson());
-        plannerDraftValidator.validate(plan);
+        plan = plannerDraftValidator.normalize(plan);
 
         List<CalendarEventDto> events = new ArrayList<>();
         for (PlannerEventDraft eventDraft : plan.events()) {
