@@ -7,6 +7,7 @@ export { habitApi } from "./habit";
 export { focusApi } from "./focus";
 export { reflectionApi } from "./reflection";
 export { aiGoalPlannerApi } from "./aiGoalPlanner";
+export { aiPlannerAssistantApi } from "./aiPlannerAssistant";
 export { notificationApi } from "./notification";
 export { settingsApi } from "./settings";
 

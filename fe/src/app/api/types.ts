@@ -122,6 +122,110 @@ export interface GoalDraftResponse {
   createdAt: string;
 }
 
+export type PlannerDraftStatus = "CREATED" | "APPROVED" | "REJECTED" | "EXPIRED";
+export type PlannerPriority = "HIGH" | "MEDIUM" | "LOW";
+
+export interface GeneratePlannerDraftRequest {
+  prompt?: string;
+  date?: string;
+  startDate?: string;
+  endDate?: string;
+  timezone?: string;
+  goals?: string[];
+  constraints?: string[];
+  availableMinutes?: number;
+  includeEvents?: boolean;
+  includeTasks?: boolean;
+  includeHabits?: boolean;
+}
+
+export interface PlannerEventDraft {
+  id?: string;
+  title: string;
+  description?: string;
+  eventDate?: string;
+  date?: string;
+  startTime?: string;
+  endTime?: string;
+  startHour?: number;
+  startMin?: number;
+  duration?: number;
+  color?: string;
+  location?: string;
+  notes?: string;
+  categoryId?: string;
+  categoryName?: string;
+  [key: string]: any;
+}
+
+export interface PlannerTaskDraft {
+  id?: string;
+  title: string;
+  description?: string;
+  dueDate?: string;
+  scheduledAt?: string;
+  priority?: PlannerPriority;
+  estimatedTime?: number;
+  color?: string;
+  categoryId?: string;
+  categoryName?: string;
+  goalId?: string;
+  milestoneId?: string;
+  checklist?: string[];
+  contexts?: string[];
+  showOnCalendar?: boolean;
+  [key: string]: any;
+}
+
+export interface PlannerHabitDraft {
+  id?: string;
+  title: string;
+  description?: string;
+  frequency?: "daily" | "weekly" | "monthly";
+  targetCount?: number;
+  repeatDays?: string[];
+  color?: string;
+  categoryId?: string;
+  categoryName?: string;
+  [key: string]: any;
+}
+
+export interface PlannerDraftPlan {
+  title?: string;
+  summary?: string;
+  date?: string;
+  startDate?: string;
+  endDate?: string;
+  events?: PlannerEventDraft[];
+  tasks?: PlannerTaskDraft[];
+  habits?: PlannerHabitDraft[];
+  suggestions?: string[];
+  warnings?: string[];
+  [key: string]: any;
+}
+
+export interface PlannerDraftResponse {
+  id: string;
+  status: PlannerDraftStatus;
+  plan: PlannerDraftPlan;
+  createdAt: string;
+}
+
+export interface ApprovePlannerDraftRequest {
+  draftId: string;
+  plan?: PlannerDraftPlan;
+}
+
+export interface PlannerApprovalResponse {
+  id?: string;
+  status?: PlannerDraftStatus;
+  plan?: PlannerDraftPlan;
+  createdEvents?: ApiCalendarEvent[];
+  createdTasks?: ApiTask[];
+  createdHabits?: ApiHabit[];
+  message?: string;
+}
+
 export interface CreateGoalFromDraftRequest {
   draftId: string;
   roadmap?: GoalRoadmapDraft;
