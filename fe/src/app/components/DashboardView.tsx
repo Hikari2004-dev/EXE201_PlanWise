@@ -6,16 +6,8 @@ import {
 } from "lucide-react";
 import { HintBubble } from "./HintBubble";
 import { NotificationCenter } from "./NotificationCenter";
-import { PlannerAssistantButton } from "./planner-assistant";
 import { useData } from "../context/DataContext";
 import { COLOR_MAP, getTimeString, type EventColor } from "../data/mockData";
-
-const EVENT_COLORS: EventColor[] = ["indigo", "blue", "emerald", "amber", "rose", "purple", "teal", "orange"];
-
-function normalizeEventColor(color?: string): EventColor {
-  const normalized = (color || "indigo").toLowerCase();
-  return EVENT_COLORS.includes(normalized as EventColor) ? (normalized as EventColor) : "indigo";
-}
 
 function parseScheduledAt(value?: string) {
   if (!value) return null;
@@ -309,7 +301,6 @@ export function DashboardView() {
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          <PlannerAssistantButton />
           <NotificationCenter />
           <CurrentTimeIndicator />
           <div className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-orange-50 to-amber-50 border border-amber-200 rounded-full px-3.5 py-1.5 shadow-sm dark:from-amber-500/15 dark:to-orange-500/15 dark:border-amber-400/30 dark:bg-slate-900">
@@ -372,7 +363,7 @@ export function DashboardView() {
                   </h3>
                 </div>
                 <Link
-                  to="/dashboard/timetable"
+                  to="/timetable"
                   className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-full transition-colors dark:bg-indigo-500/15 dark:text-indigo-200 dark:hover:bg-indigo-500/25 dark:hover:text-indigo-100"
                 >
                   {language === "vi" ? "Xem đầy đủ" : "View all"} <ArrowRight size={12} />
@@ -393,7 +384,7 @@ export function DashboardView() {
                   const ed = sd + item.duration;
                   const isNow = nd >= sd && nd < ed;
                   const isPast = nd >= ed;
-                  const colors = COLOR_MAP[normalizeEventColor(item.color)];
+                  const colors = COLOR_MAP[item.color as EventColor];
                   const catName = categories.find(c => c.id === item.categoryId)?.name || "";
 
                   return (
@@ -530,7 +521,7 @@ export function DashboardView() {
                     {language === "vi" ? "Sắp Đến Hạn" : "Upcoming"}
                   </h3>
                 </div>
-                <Link to="/dashboard/tasks" className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2.5 py-1 rounded-full hover:bg-indigo-100 transition-colors dark:bg-indigo-500/15 dark:text-indigo-200 dark:hover:bg-indigo-500/25 dark:hover:text-indigo-100">
+                <Link to="/tasks" className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2.5 py-1 rounded-full hover:bg-indigo-100 transition-colors dark:bg-indigo-500/15 dark:text-indigo-200 dark:hover:bg-indigo-500/25 dark:hover:text-indigo-100">
                   {language === "vi" ? "Tất cả" : "All"}
                 </Link>
               </div>
@@ -570,7 +561,7 @@ export function DashboardView() {
                     </p>
                   </div>
                 </div>
-                <Link to="/dashboard/habits" className="text-xs font-semibold text-orange-700 hover:text-orange-900 bg-orange-50 px-2.5 py-1 rounded-full hover:bg-orange-100 transition-colors dark:bg-orange-500/15 dark:text-orange-200 dark:hover:bg-orange-500/25">
+                <Link to="/habits" className="text-xs font-semibold text-orange-700 hover:text-orange-900 bg-orange-50 px-2.5 py-1 rounded-full hover:bg-orange-100 transition-colors dark:bg-orange-500/15 dark:text-orange-200 dark:hover:bg-orange-500/25">
                   {language === "vi" ? "Tất cả" : "All"}
                 </Link>
               </div>
@@ -628,6 +619,7 @@ export function DashboardView() {
               </div>
               <div className="space-y-4">
                 {categoryStats.map((cat, idx) => {
+                  const colors = COLOR_MAP[cat.color as EventColor];
                   return (
                     <div key={cat.id}>
                       <div className="flex justify-between items-center mb-1.5">

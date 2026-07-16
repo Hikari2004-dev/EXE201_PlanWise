@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronLeft, ChevronRight, Plus, MapPin, Clock, X, Edit2, Trash2, Brain } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { HintBubble } from "./HintBubble";
-import { PlannerAssistantButton } from "./planner-assistant";
 import {
   DAYS,
   DAYS_VI,
@@ -16,6 +15,8 @@ const START_HOUR = 0;
 const END_HOUR = 24;
 const HOUR_HEIGHT = 72;
 const DEFAULT_START_HOUR = 8;
+const DEFAULT_END_HOUR = 18;
+const MIN_VISIBLE_HOURS = 6;
 const WEEK_HEADERS_VI = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 const WEEKDAY_TO_INDEX: Record<string, number> = {
   Mon: 0,
@@ -102,7 +103,9 @@ function formatMonthLabel(date: Date, language: string) {
 }
 
 function formatHourLabel(hour: number) {
-  return `${String(hour).padStart(2, "0")}:00`;
+  const period = hour >= 12 ? "CH" : "SA";
+  const display = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+  return `${display} ${period}`;
 }
 
 function formatTimeValue(hour: number, minute: number) {
@@ -280,7 +283,7 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-[384px] flex-col overflow-hidden rounded-2xl border bg-white shadow-2xl duration-150 animate-in zoom-in-95 dark:border-slate-800 dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-[384px] border dark:border-slate-800 overflow-hidden animate-in zoom-in-95 duration-150" onClick={(e) => e.stopPropagation()}>
         <div className={`${colors.light} px-5 py-4 border-b border-black/5 dark:border-white/5`}>
           <div className="flex items-start justify-between">
             <h3 className={`${colors.text} leading-tight font-bold text-base`}>{event ? "Chỉnh sửa sự kiện" : "Thêm sự kiện mới"}</h3>
@@ -289,7 +292,7 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
             </button>
           </div>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-3 overflow-y-auto px-4 py-4 sm:px-5">
+        <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3">
           <div>
             <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Tiêu đề *</label>
             <input
@@ -301,7 +304,7 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
               className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all"
             />
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Ngày</label>
               <select
@@ -347,7 +350,7 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Thời gian bắt đầu</label>
               <input
@@ -404,7 +407,7 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
         </form>
       </div>
       {showCategoryPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm" onClick={() => {
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => {
           setCategoryError(null);
           setShowCategoryPopup(false);
           setCategoryForm({ name: "", color: "indigo" });
@@ -586,7 +589,6 @@ export function WeeklyView() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const didInitialScrollRef = useRef(false);
 
   const handleSaveEvent = (eventData: CalendarEventDraft) => {
     if ("id" in eventData) {
@@ -690,25 +692,55 @@ export function WeeklyView() {
     return [...events, ...calendarTasks];
   }, [events, calendarTasks]);
 
-  const visibleStartHour = START_HOUR;
-  const visibleEndHour = END_HOUR;
+  const visibleWeekItems = useMemo(() => {
+    return allCalendarItems.filter((item) => weekDates.some((date) => doesItemOccurOnDate(item, date, weekDates)));
+  }, [allCalendarItems, weekDates]);
+
+  const { visibleStartHour, visibleEndHour } = useMemo(() => {
+    if (visibleWeekItems.length === 0) {
+      return {
+        visibleStartHour: DEFAULT_START_HOUR,
+        visibleEndHour: DEFAULT_END_HOUR,
+      };
+    }
+
+    const earliestHour = Math.min(...visibleWeekItems.map((item) => item.startHour));
+    const latestHour = Math.max(...visibleWeekItems.map((item) => Math.ceil(item.startHour + item.startMin / 60 + item.duration)));
+
+    const paddedStart = Math.max(0, earliestHour - 1);
+    const paddedEnd = Math.min(24, latestHour + 1);
+
+    if (paddedEnd - paddedStart >= MIN_VISIBLE_HOURS) {
+      return {
+        visibleStartHour: paddedStart,
+        visibleEndHour: paddedEnd,
+      };
+    }
+
+    const missingHours = MIN_VISIBLE_HOURS - (paddedEnd - paddedStart);
+    const extraStart = Math.floor(missingHours / 2);
+    const extraEnd = missingHours - extraStart;
+
+    return {
+      visibleStartHour: Math.max(0, paddedStart - extraStart),
+      visibleEndHour: Math.min(24, paddedEnd + extraEnd),
+    };
+  }, [visibleWeekItems]);
 
   const hours = useMemo(
-    () => Array.from({ length: visibleEndHour - visibleStartHour + 1 }, (_, i) => visibleStartHour + i),
+    () => Array.from({ length: Math.max(1, visibleEndHour - visibleStartHour) }, (_, i) => visibleStartHour + i),
     [visibleEndHour, visibleStartHour]
   );
 
   const currentTimeTop = (currentHour - visibleStartHour + currentMin / 60) * HOUR_HEIGHT;
   const isCurrentTimeVisible = currentHour >= visibleStartHour && currentHour < visibleEndHour;
-  const isViewingCurrentWeek = weekDates.some((date) => isSameDate(date, today));
 
   useEffect(() => {
-    if (didInitialScrollRef.current || calendarMode !== "week" || !scrollRef.current) return;
-
-    didInitialScrollRef.current = true;
-    const targetHour = isViewingCurrentWeek ? currentHour + currentMin / 60 : DEFAULT_START_HOUR;
-    scrollRef.current.scrollTop = Math.max(0, (targetHour - visibleStartHour) * HOUR_HEIGHT - HOUR_HEIGHT);
-  }, [calendarMode, currentHour, currentMin, isViewingCurrentWeek, visibleStartHour]);
+    if (scrollRef.current && calendarMode === "week") {
+      const preferredStartHour = Math.min(visibleStartHour + 1, visibleEndHour - 1);
+      scrollRef.current.scrollTop = Math.max(0, (preferredStartHour - visibleStartHour) * HOUR_HEIGHT);
+    }
+  }, [calendarMode, visibleEndHour, visibleStartHour]);
 
   const monthCells = useMemo(() => {
     const firstDay = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1);
@@ -822,7 +854,6 @@ export function WeeklyView() {
               <ChevronRight size={16} />
             </button>
           </div>
-          <PlannerAssistantButton />
           <button onClick={() => {
             const defaultDate = weekDates[0];
             const eventDate = formatIsoDate(defaultDate);
@@ -849,7 +880,7 @@ export function WeeklyView() {
       </div>
 
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-        <div className="px-4 sm:px-6 bg-white dark:bg-slate-950 border-b border-gray-100 dark:border-slate-800">
+        <div className="px-4 sm:px-6 pt-4 bg-white dark:bg-slate-950 border-b border-gray-100 dark:border-slate-800">
           <HintBubble id="weekly_timetable_intro" title={calendarMode === "week" ? (language === "vi" ? "Lịch tuần" : "Weekly Schedule") : language === "vi" ? "Lịch tháng" : "Monthly Calendar"} color="indigo" persistent={false} className="mb-4">
             {calendarMode === "week"
               ? language === "vi"
@@ -879,9 +910,9 @@ export function WeeklyView() {
               })}
             </div>
 
-            <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-auto dark:bg-slate-950 py-2">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-auto dark:bg-slate-950">
               <div className="flex relative" style={{ height: `${(visibleEndHour - visibleStartHour) * HOUR_HEIGHT}px`, minWidth: "520px" }}>
-                <div className="w-10 sm:w-12 flex-shrink-0 relative">
+                <div className="w-12 sm:w-16 flex-shrink-0 relative">
                   {hours.map((hour) => (
                     <div key={hour} className="absolute right-2 sm:right-3 text-[9px] sm:text-[10px] text-gray-400 dark:text-slate-500 font-semibold select-none" style={{ top: `${(hour - visibleStartHour) * HOUR_HEIGHT - 7}px` }}>
                       {formatHourLabel(hour)}
@@ -917,7 +948,7 @@ export function WeeklyView() {
                       {hours.map((hour) => (
                         <div key={hour} className="absolute w-full border-t border-gray-100 dark:border-slate-900" style={{ top: `${(hour - visibleStartHour) * HOUR_HEIGHT}px` }} />
                       ))}
-                      {hours.slice(0, -1).map((hour) => (
+                      {hours.map((hour) => (
                         <div key={`h-${hour}`} className="absolute w-full border-t border-dashed border-gray-50 dark:border-slate-900/50 opacity-40" style={{ top: `${(hour - visibleStartHour) * HOUR_HEIGHT + HOUR_HEIGHT / 2}px` }} />
                       ))}
 

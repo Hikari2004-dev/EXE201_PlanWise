@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Outlet } from "react-router";
 import { Sidebar } from "./Sidebar";
+import { Chatbot } from "./Chatbot";
 import { DataProvider } from "../context/DataContext";
 import { Menu } from "lucide-react";
 
@@ -57,6 +58,7 @@ export function Layout() {
             <Outlet />
           </div>
         </div>
+        <Chatbot />
       </div>
     </DataProvider>
   );

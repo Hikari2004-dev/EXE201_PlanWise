@@ -1,14 +1,14 @@
 package com.exe201.planwise.goal.service;
 
-import com.exe201.planwise.ai.features.goal.dto.CreateGoalFromDraftRequest;
-import com.exe201.planwise.ai.features.goal.dto.GoalMilestoneDraft;
-import com.exe201.planwise.ai.features.goal.dto.GoalRoadmapDraft;
-import com.exe201.planwise.ai.features.goal.dto.GoalTaskDraft;
-import com.exe201.planwise.ai.features.goal.entity.GoalDraft;
-import com.exe201.planwise.ai.features.goal.entity.GoalDraftStatus;
-import com.exe201.planwise.ai.features.goal.parser.GoalDraftParser;
-import com.exe201.planwise.ai.features.goal.repository.GoalDraftRepository;
-import com.exe201.planwise.ai.features.goal.validator.GoalDraftValidator;
+import com.exe201.planwise.ai.dto.CreateGoalFromDraftRequest;
+import com.exe201.planwise.ai.dto.GoalMilestoneDraft;
+import com.exe201.planwise.ai.dto.GoalRoadmapDraft;
+import com.exe201.planwise.ai.dto.GoalTaskDraft;
+import com.exe201.planwise.ai.entity.GoalDraft;
+import com.exe201.planwise.ai.entity.GoalDraftStatus;
+import com.exe201.planwise.ai.parser.GoalDraftParser;
+import com.exe201.planwise.ai.repository.GoalDraftRepository;
+import com.exe201.planwise.ai.validator.GoalDraftValidator;
 import com.exe201.planwise.category.entity.Category;
 import com.exe201.planwise.category.repository.CategoryRepository;
 import com.exe201.planwise.common.enums.EventColor;
