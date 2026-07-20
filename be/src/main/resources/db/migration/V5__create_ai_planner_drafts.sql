@@ -1,4 +1,9 @@
-CREATE TYPE ai_planner_draft_status AS ENUM ('CREATED', 'APPROVED', 'REJECTED', 'EXPIRED');
+DO $$
+BEGIN
+    CREATE TYPE ai_planner_draft_status AS ENUM ('CREATED', 'APPROVED', 'REJECTED', 'EXPIRED');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS ai_planner_drafts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

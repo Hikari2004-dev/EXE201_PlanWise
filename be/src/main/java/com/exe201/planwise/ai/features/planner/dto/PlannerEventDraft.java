@@ -7,8 +7,8 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 public record PlannerEventDraft(
-        @NotBlank(message = "Tieu de su kien khong duoc de trong")
-        @Size(max = 255, message = "Tieu de su kien khong duoc vuot qua 255 ky tu")
+        @NotBlank(message = "Tiêu đề sự kiện không được để trống")
+        @Size(max = 255, message = "Tiêu đề sự kiện không được vượt quá 255 ký tự")
         String title,
 
         LocalDate eventDate,
@@ -19,6 +19,8 @@ public record PlannerEventDraft(
 
         Double duration,
 
+        String color,
+
         String location,
 
         String notes,
@@ -28,9 +30,4 @@ public record PlannerEventDraft(
         Boolean isRecurring,
 
         String recurrenceRule
-) {
-    public PlannerEventDraft {
-        if (startMin == null) startMin = 0;
-        if (isRecurring == null) isRecurring = false;
-    }
-}
+) {}

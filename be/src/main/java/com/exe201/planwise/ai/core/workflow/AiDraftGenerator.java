@@ -1,7 +1,7 @@
 package com.exe201.planwise.ai.core.workflow;
 
-import com.exe201.planwise.ai.prompt.PromptLoader;
-import com.exe201.planwise.ai.provider.AIProvider;
+import com.exe201.planwise.ai.core.prompt.PromptLoader;
+import com.exe201.planwise.ai.core.provider.AIProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -22,23 +22,11 @@ public class AiDraftGenerator {
             Map<String, ?> variables,
             Function<String, T> parser,
             UnaryOperator<T> normalizer,
-            Consumer<T> validator
-    ) {
-        T draft = parser.apply(aiProvider.chat(injectVariables(promptLoader.load(promptFile), variables)));
-        draft = normalizer.apply(draft);
-        validator.accept(draft);
-        return draft;
-    }
-
-    private String injectVariables(String template, Map<String, ?> variables) {
-        String prompt = template;
-        for (Map.Entry<String, ?> entry : variables.entrySet()) {
-            prompt = prompt.replace("{{" + entry.getKey() + "}}", toString(entry.getValue()));
-        }
-        return prompt;
-    }
-
-    private String toString(Object value) {
-        return value == null ? "" : value.toString();
+            Consumer<T> validator) {
+        String prompt = promptLoader.loadAndRender(promptFile, variables);
+        T draft = parser.apply(aiProvider.chat(prompt));
+        T normalizedDraft = normalizer.apply(draft);
+        validator.accept(normalizedDraft);
+        return normalizedDraft;
     }
 }

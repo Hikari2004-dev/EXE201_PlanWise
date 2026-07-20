@@ -1,7 +1,6 @@
 package com.exe201.planwise.ai.features.planner.service;
 
 import com.exe201.planwise.ai.features.planner.dto.GeneratePlannerDraftRequest;
-import com.exe201.planwise.ai.features.planner.dto.PlannerPromptContext;
 import com.exe201.planwise.category.entity.Category;
 import com.exe201.planwise.category.repository.CategoryRepository;
 import com.exe201.planwise.event.entity.CalendarEvent;

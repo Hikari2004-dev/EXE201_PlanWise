@@ -9,26 +9,19 @@ public class JsonResponseExtractor {
 
     public String extractObject(String value) {
         if (value == null || value.isBlank()) {
-            throw new AppException(ErrorCode.AI_DRAFT_INVALID, "AI khong tra ve noi dung");
+            throw new AppException(ErrorCode.AI_DRAFT_INVALID, "AI không trả về nội dung");
         }
 
-        String trimmed = stripCodeFence(value.trim());
+        String trimmed = value.trim();
+        if (trimmed.startsWith("```")) {
+            trimmed = trimmed.replaceFirst("^```(?:json)?", "").replaceFirst("```$", "").trim();
+        }
+
         int firstBrace = trimmed.indexOf('{');
         int lastBrace = trimmed.lastIndexOf('}');
         if (firstBrace < 0 || lastBrace <= firstBrace) {
-            throw new AppException(ErrorCode.AI_DRAFT_INVALID, "AI khong tra ve JSON object");
+            throw new AppException(ErrorCode.AI_DRAFT_INVALID, "AI không trả về JSON object");
         }
-
         return trimmed.substring(firstBrace, lastBrace + 1);
-    }
-
-    private String stripCodeFence(String value) {
-        if (!value.startsWith("```")) {
-            return value;
-        }
-        return value
-                .replaceFirst("^```(?:json)?", "")
-                .replaceFirst("```$", "")
-                .trim();
     }
 }

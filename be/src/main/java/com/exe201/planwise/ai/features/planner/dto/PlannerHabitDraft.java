@@ -7,8 +7,8 @@ import jakarta.validation.constraints.Size;
 import java.util.Set;
 
 public record PlannerHabitDraft(
-        @NotBlank(message = "Tieu de thoi quen khong duoc de trong")
-        @Size(max = 255, message = "Tieu de thoi quen khong duoc vuot qua 255 ky tu")
+        @NotBlank(message = "Tiêu đề thói quen không được để trống")
+        @Size(max = 255, message = "Tiêu đề thói quen không được vượt quá 255 ký tự")
         String title,
 
         String description,
@@ -17,7 +17,9 @@ public record PlannerHabitDraft(
 
         Short targetCount,
 
-        Set<String> repeatDays
+        Set<String> repeatDays,
+
+        String color
 ) {
     public PlannerHabitDraft {
         if (repeatDays == null) repeatDays = Set.of();

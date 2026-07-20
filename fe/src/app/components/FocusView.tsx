@@ -296,7 +296,7 @@ export function FocusView() {
 
             <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 space-y-3">
               <p className="text-sm text-muted-foreground font-medium">Chọn thời gian focus:</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Button
                   variant="outline"
                   className="h-auto py-3 flex-col gap-1"
@@ -494,7 +494,7 @@ export function FocusView() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-center">
-              <div className="text-6xl font-mono font-bold text-blue-600 mb-4">
+              <div className="mb-4 font-mono text-4xl font-bold text-blue-600 sm:text-6xl">
                 {formatTime(currentTime)}
               </div>
               <div className="flex justify-center gap-2">
@@ -566,12 +566,12 @@ export function FocusView() {
               {topTasks.map((task, index) => (
                 <div
                   key={task.id}
-                  className="flex items-start gap-3 p-3 border rounded-lg"
+                  className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-start"
                 >
                   <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold">
                     {index + 1}
                   </div>
-                  <div className="flex-1">
+                  <div className="min-w-0 flex-1">
                     <h3 className="font-medium">{task.title}</h3>
                     <p className="text-sm text-muted-foreground mb-2">
                       {task.description}
@@ -602,7 +602,7 @@ export function FocusView() {
                         ))}
                     </div>
                   </div>
-                  <Button size="sm" variant="outline">
+                  <Button size="sm" variant="outline" className="self-start">
                     Bắt đầu
                   </Button>
                 </div>
@@ -618,7 +618,7 @@ export function FocusView() {
           <CardTitle>Ma trận Eisenhower</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4 h-96">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:h-96">
             {/* Urgent & Important */}
             <div className="border-2 border-red-200 rounded-lg p-4 bg-red-50">
               <h3 className="font-semibold text-red-700 mb-3">
@@ -695,14 +695,14 @@ export function FocusView() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Textarea
               placeholder="Ghi lại ý tưởng, ghi chú nhanh..."
               value={quickNote}
               onChange={(e) => setQuickNote(e.target.value)}
               className="flex-1"
             />
-            <div className="flex flex-col gap-2">
+            <div className="flex gap-2 sm:flex-col">
               <Button size="sm">
                 <StickyNote className="w-4 h-4" />
               </Button>

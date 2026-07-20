@@ -91,7 +91,7 @@ export function LoginPage() {
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-violet-500/10 blur-[120px] pointer-events-none" />
 
       <div className="w-full max-w-[460px] relative z-10">
-        <div className="flex flex-col items-center mb-8">
+        <div className="flex flex-col items-center mb-5">
           <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/20 mb-3 animate-pulse">
             <Sparkles size={20} className="text-white" />
           </div>
@@ -103,8 +103,8 @@ export function LoginPage() {
           </p>
         </div>
 
-        <div className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-8 shadow-2xl shadow-slate-200/50 dark:shadow-none">
-          <div className="mb-6 text-center">
+        <div className="rounded-3xl border border-slate-200/50 bg-white/80 px-8 py-6 shadow-2xl shadow-slate-200/50 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/60 dark:shadow-none">
+          <div className="mb-5 text-center">
             <h2 className="text-xl font-bold text-slate-950 dark:text-white">
               Chào mừng quay trở lại
             </h2>
@@ -257,7 +257,7 @@ export function LoginPage() {
           </Button>
         </div>
 
-        <div className="text-center mb-4">
+        <div className="text-center my-1">
           <Link
             to="/forgot-password"
             className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
