@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Plus, MapPin, Clock, X, Edit2, Trash2, Brain } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, MapPin, Clock, X, Edit2, Trash2, Brain, CalendarDays, ExternalLink } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { HintBubble } from "./HintBubble";
 import { PlannerAssistantButton } from "./planner-assistant";
+import { CalendarIntegrationToolbar } from "./calendar/CalendarIntegrationToolbar";
 import {
   DAYS,
   DAYS_VI,
@@ -119,6 +120,11 @@ type CalendarEventDraft = (Omit<CalendarEvent, "id"> | CalendarEvent) & { eventD
 function doesItemOccurOnDate(item: WeeklyCalendarItem, date: Date, weekDates: Date[]) {
   const itemDate = item.eventDate ? parseIsoDate(item.eventDate) : null;
   if (itemDate) {
+    if (item.allDay) {
+      const durationDays = Math.max(1, Math.ceil(item.duration / 24));
+      const lastDate = addDays(itemDate, durationDays - 1);
+      if (date >= itemDate && date <= lastDate) return true;
+    }
     if (isSameDate(itemDate, date)) return true;
 
     if (item.isRecurring && item.recurrenceRule === "WEEKLY") {
@@ -143,28 +149,32 @@ interface EventCardProps {
 function EventCard({ event, visibleStartHour, onClick }: EventCardProps) {
   const colors = COLOR_MAP[event.color as EventColor];
   const topPx = (event.startHour - visibleStartHour + event.startMin / 60) * HOUR_HEIGHT + 2;
-  const heightPx = Math.max(22, event.duration * HOUR_HEIGHT - 4);
+  const heightPx = event.allDay ? 28 : Math.max(22, event.duration * HOUR_HEIGHT - 4);
   const showLocation = heightPx > 52;
   const showTime = heightPx > 30;
   const isTaskItem = event.kind === "task";
+  const isExternal = event.readOnly || event.source === "GOOGLE";
 
   return (
     <div
-      draggable={!isTaskItem}
+      draggable={!isTaskItem && !isExternal}
       onDragStart={(e) => {
-        if (isTaskItem) return;
+        if (isTaskItem || isExternal) return;
         e.dataTransfer.setData("eventId", event.id.toString());
       }}
       onClick={() => {
         if (isTaskItem) return;
         onClick(event);
       }}
-      title={`${event.title} — ${event.startHour}:${String(event.startMin).padStart(2, "0")}`}
-      className={`absolute inset-x-0.5 rounded-md px-2 py-1 cursor-pointer overflow-hidden border-l-[3px] ${colors.light} ${colors.border} hover:brightness-95 active:scale-[0.99] transition-all duration-100 shadow-sm hover:shadow`}
+      title={`${event.title} - ${isExternal ? event.calendarName || "Google Calendar" : `${event.startHour}:${String(event.startMin).padStart(2, "0")}`}`}
+      className={`absolute inset-x-0.5 rounded-md px-2 py-1 cursor-pointer overflow-hidden border-l-[3px] ${colors.light} ${colors.border} hover:brightness-95 active:scale-[0.99] transition-all duration-100 shadow-sm hover:shadow ${isExternal ? "ring-1 ring-blue-200 dark:ring-blue-500/40" : ""}`}
       style={{ top: `${topPx}px`, height: `${heightPx}px`, minHeight: "22px" }}
     >
-      <p className={`text-[11px] font-semibold leading-tight truncate ${colors.text}`}>{event.title}</p>
-      {showTime && (
+      <div className="flex min-w-0 items-center gap-1">
+        {isExternal && <span className="shrink-0 rounded bg-blue-600 px-1 text-[8px] font-bold leading-4 text-white">G</span>}
+        <p className={`min-w-0 truncate text-[11px] font-semibold leading-tight ${colors.text}`}>{event.title}</p>
+      </div>
+      {showTime && !event.allDay && (
         <p className={`text-[10px] leading-tight mt-0.5 opacity-70 truncate ${colors.text}`}>
           {event.startHour}:{String(event.startMin).padStart(2, "0")}
         </p>
@@ -189,7 +199,8 @@ interface EventModalProps {
 
 function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalProps) {
   const { categories, addCategory } = useData();
-  const resolvedCategoryId = event?.categoryId || categories[0]?.id || "";
+  const isReadOnly = Boolean(event?.readOnly || event?.source === "GOOGLE");
+  const resolvedCategoryId = isReadOnly ? "" : event?.categoryId || categories[0]?.id || "";
   const [showCategoryPopup, setShowCategoryPopup] = useState(false);
   const [categoryForm, setCategoryForm] = useState({ name: "", color: "indigo" as EventColor });
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
@@ -215,6 +226,7 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) return;
     if (!form.title.trim()) return;
 
     const dayIndex = WEEKDAY_TO_INDEX[form.day] ?? 0;
@@ -275,7 +287,9 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
     }
   };
 
-  const selectedCategory = categories.find((c) => c.id === (form.categoryId || categories[0]?.id || ""));
+  const selectedCategory = isReadOnly
+    ? undefined
+    : categories.find((c) => c.id === (form.categoryId || categories[0]?.id || ""));
   const colors = selectedCategory ? COLOR_MAP[selectedCategory.color as EventColor] : COLOR_MAP[form.color];
 
   return (
@@ -283,19 +297,31 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
       <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-[384px] flex-col overflow-hidden rounded-2xl border bg-white shadow-2xl duration-150 animate-in zoom-in-95 dark:border-slate-800 dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
         <div className={`${colors.light} px-5 py-4 border-b border-black/5 dark:border-white/5`}>
           <div className="flex items-start justify-between">
-            <h3 className={`${colors.text} leading-tight font-bold text-base`}>{event ? "Chỉnh sửa sự kiện" : "Thêm sự kiện mới"}</h3>
+            <h3 className={`${colors.text} leading-tight font-bold text-base`}>{isReadOnly ? "Chi tiết sự kiện" : event ? "Chỉnh sửa sự kiện" : "Thêm sự kiện mới"}</h3>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-black/5 transition-colors">
               <X size={16} />
             </button>
           </div>
         </div>
         <form onSubmit={handleSubmit} className="space-y-3 overflow-y-auto px-4 py-4 sm:px-5">
+          {isReadOnly && (
+            <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-200">
+              <CalendarDays size={14} />
+              <span className="min-w-0 flex-1 truncate">{event?.calendarName || "Google Calendar"}</span>
+              {event?.externalHtmlLink && (
+                <a href={event.externalHtmlLink} target="_blank" rel="noreferrer" className="rounded p-1 hover:bg-blue-100 dark:hover:bg-blue-500/20" title="Open in Google Calendar">
+                  <ExternalLink size={13} />
+                </a>
+              )}
+            </div>
+          )}
           <div>
             <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Tiêu đề *</label>
             <input
               type="text"
               required
               value={form.title}
+              disabled={isReadOnly}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               placeholder="VD: Họp nhóm"
               className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all"
@@ -306,6 +332,7 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
               <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Ngày</label>
               <select
                 value={form.day}
+                disabled={isReadOnly}
                 onChange={(e) => {
                   const nextDay = e.target.value;
                   const nextDayIndex = WEEKDAY_TO_INDEX[nextDay] ?? 0;
@@ -325,6 +352,7 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
               <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Danh mục</label>
               <select
                 value={form.categoryId || categories[0]?.id || ""}
+                disabled={isReadOnly}
                 onChange={(e) => {
                   const catId = e.target.value;
                   if (catId === "__other__") {
@@ -354,6 +382,7 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
                 type="time"
                 step={1800}
                 value={form.startTime}
+                disabled={isReadOnly}
                 onChange={(e) => setForm({ ...form, startTime: e.target.value })}
                 className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all"
               />
@@ -364,6 +393,7 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
                 type="time"
                 step={1800}
                 value={form.endTime}
+                disabled={isReadOnly}
                 onChange={(e) => setForm({ ...form, endTime: e.target.value })}
                 className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all"
               />
@@ -371,16 +401,17 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
           </div>
           <div>
             <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Địa điểm</label>
-            <input type="text" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Phòng họp A" className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all" />
+            <input type="text" value={form.location} disabled={isReadOnly} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Phòng họp A" className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all" />
           </div>
           <div>
             <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Ghi chú</label>
-            <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Thêm ghi chú..." rows={2} className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none transition-all" />
+            <textarea value={form.notes} disabled={isReadOnly} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Thêm ghi chú..." rows={2} className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none transition-all" />
           </div>
           <label className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-slate-700 px-3 py-2.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
             <input
               type="checkbox"
               checked={form.isRecurring}
+              disabled={isReadOnly}
               onChange={(e) => setForm({ ...form, isRecurring: e.target.checked })}
               className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
             />
@@ -390,7 +421,7 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
             </div>
           </label>
           <div className="flex gap-2 pt-1">
-            {event && "id" in event && onDelete && (
+            {!isReadOnly && event && "id" in event && onDelete && (
               <button type="button" onClick={() => {
                 onDelete(event.id);
                 onClose();
@@ -398,12 +429,12 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
                 <Trash2 size={14} />
               </button>
             )}
-            <button type="button" onClick={onClose} className="flex-1 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-350 text-sm py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">Hủy</button>
-            <button type="submit" className="flex-1 bg-zinc-900 dark:bg-indigo-600 hover:bg-zinc-800 dark:hover:bg-indigo-700 text-white text-sm py-2 rounded-xl transition-colors">Lưu</button>
+            <button type="button" onClick={onClose} className="flex-1 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-350 text-sm py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">{isReadOnly ? "Đóng" : "Hủy"}</button>
+            {!isReadOnly && <button type="submit" className="flex-1 bg-zinc-900 dark:bg-indigo-600 hover:bg-zinc-800 dark:hover:bg-indigo-700 text-white text-sm py-2 rounded-xl transition-colors">Lưu</button>}
           </div>
         </form>
       </div>
-      {showCategoryPopup && (
+      {showCategoryPopup && !isReadOnly && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm" onClick={() => {
           setCategoryError(null);
           setShowCategoryPopup(false);
@@ -528,16 +559,20 @@ function DayDetailPanel({ date, events, onClose, onEditEvent, language }: DayDet
                   const colors = COLOR_MAP[event.color as EventColor];
                   const category = categories.find((c) => c.id === event.categoryId);
                   return (
-                    <div key={event.id} className={`rounded-xl p-3 ${colors.light} border-l-4 ${colors.border} ${event.kind === "task" ? "cursor-default" : "cursor-pointer hover:brightness-95"} transition-all group`} onClick={() => {
+                    <div key={event.id} className={`rounded-xl p-3 ${colors.light} border-l-4 ${colors.border} ${event.kind === "task" ? "cursor-default" : "cursor-pointer hover:brightness-95"} ${event.readOnly ? "ring-1 ring-blue-200 dark:ring-blue-500/40" : ""} transition-all group`} onClick={() => {
                       if (event.kind === "task") return;
                       onEditEvent(event);
                     }}>
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
                           <p className={`text-sm font-semibold ${colors.text}`}>{event.title}</p>
-                          {category && <p className={`text-xs mt-0.5 opacity-70 ${colors.text}`}>{category.name}</p>}
+                          {event.readOnly ? (
+                            <p className="mt-1 inline-flex items-center gap-1 rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                              <CalendarDays size={10} /> {event.calendarName || "Google Calendar"}
+                            </p>
+                          ) : category && <p className={`text-xs mt-0.5 opacity-70 ${colors.text}`}>{category.name}</p>}
                         </div>
-                        {event.kind !== "task" && (
+                        {event.kind !== "task" && !event.readOnly && (
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={(e) => {
                               e.stopPropagation();
@@ -551,7 +586,7 @@ function DayDetailPanel({ date, events, onClose, onEditEvent, language }: DayDet
                       <div className="mt-2 space-y-1">
                         <div className={`flex items-center gap-1.5 text-xs opacity-70 ${colors.text}`}>
                           <Clock size={11} />
-                          {getTimeString(event.startHour, event.startMin, event.duration)}
+                          {event.allDay ? (language === "vi" ? "Cả ngày" : "All day") : getTimeString(event.startHour, event.startMin, event.duration)}
                         </div>
                         <div className={`flex items-center gap-1.5 text-xs opacity-70 ${colors.text}`}>
                           <MapPin size={11} />
@@ -574,13 +609,19 @@ function DayDetailPanel({ date, events, onClose, onEditEvent, language }: DayDet
   );
 }
 
-export function WeeklyView() {
-  const { events, tasks, addEvent, updateEvent, deleteEvent, language } = useData();
+interface WeeklyViewProps {
+  initialMode?: "week" | "month";
+}
+
+export function WeeklyView({ initialMode = "week" }: WeeklyViewProps) {
+  const { events, tasks, addEvent, updateEvent, deleteEvent, refreshData, loading, language } = useData();
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newEventDraft, setNewEventDraft] = useState<CalendarEventDraft | null>(null);
   const [coachState, setCoachState] = useState<"idle" | "suggesting" | "processing" | "done">("idle");
-  const [calendarMode, setCalendarMode] = useState<"week" | "month">("week");
+  const [calendarMode, setCalendarMode] = useState<"week" | "month">(initialMode);
+  const [showPlanwiseEvents, setShowPlanwiseEvents] = useState(true);
+  const [showGoogleEvents, setShowGoogleEvents] = useState(true);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [monthCursor, setMonthCursor] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -686,9 +727,21 @@ export function WeeklyView() {
     return items;
   }, [tasks, language]);
 
+  const planwiseEventCount = useMemo(
+    () => events.filter((event) => event.source !== "GOOGLE").length,
+    [events],
+  );
+  const googleEventCount = useMemo(
+    () => events.filter((event) => event.source === "GOOGLE").length,
+    [events],
+  );
+  const visibleEvents = useMemo(
+    () => events.filter((event) => event.source === "GOOGLE" ? showGoogleEvents : showPlanwiseEvents),
+    [events, showGoogleEvents, showPlanwiseEvents],
+  );
   const allCalendarItems = useMemo<WeeklyCalendarItem[]>(() => {
-    return [...events, ...calendarTasks];
-  }, [events, calendarTasks]);
+    return [...visibleEvents, ...calendarTasks];
+  }, [visibleEvents, calendarTasks]);
 
   const visibleStartHour = START_HOUR;
   const visibleEndHour = END_HOUR;
@@ -701,6 +754,9 @@ export function WeeklyView() {
   const currentTimeTop = (currentHour - visibleStartHour + currentMin / 60) * HOUR_HEIGHT;
   const isCurrentTimeVisible = currentHour >= visibleStartHour && currentHour < visibleEndHour;
   const isViewingCurrentWeek = weekDates.some((date) => isSameDate(date, today));
+  const hasAllDayEvents = weekDates.some((date) =>
+    allCalendarItems.some((item) => item.allDay && doesItemOccurOnDate(item, date, weekDates)),
+  );
 
   useEffect(() => {
     if (didInitialScrollRef.current || calendarMode !== "week" || !scrollRef.current) return;
@@ -849,6 +905,19 @@ export function WeeklyView() {
       </div>
 
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+        <div className="flex-shrink-0 border-b border-gray-100 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-950 sm:px-6">
+          <CalendarIntegrationToolbar
+            enabled={!loading}
+            language={language}
+            planwiseEventCount={planwiseEventCount}
+            googleEventCount={googleEventCount}
+            showPlanwise={showPlanwiseEvents}
+            showGoogle={showGoogleEvents}
+            onTogglePlanwise={() => setShowPlanwiseEvents((current) => !current)}
+            onToggleGoogle={() => setShowGoogleEvents((current) => !current)}
+            onRefresh={refreshData}
+          />
+        </div>
         <div className="px-4 sm:px-6 bg-white dark:bg-slate-950 border-b border-gray-100 dark:border-slate-800">
           <HintBubble id="weekly_timetable_intro" title={calendarMode === "week" ? (language === "vi" ? "Lịch tuần" : "Weekly Schedule") : language === "vi" ? "Lịch tháng" : "Monthly Calendar"} color="indigo" persistent={false} className="mb-4">
             {calendarMode === "week"
@@ -879,6 +948,40 @@ export function WeeklyView() {
               })}
             </div>
 
+            {hasAllDayEvents && (
+              <div className="flex flex-shrink-0 border-b border-gray-100 bg-white dark:border-slate-800 dark:bg-slate-950">
+                <div className="flex w-12 shrink-0 items-center justify-center text-gray-400 dark:text-slate-500 sm:w-16" title={language === "vi" ? "Cả ngày" : "All day"}>
+                  <CalendarDays size={13} />
+                </div>
+                {DAYS.map((day, index) => {
+                  const date = weekDates[index];
+                  const dayEvents = allCalendarItems.filter(
+                    (item) => item.allDay && doesItemOccurOnDate(item, date, weekDates),
+                  );
+                  return (
+                    <div key={`all-day-${day}`} className="min-h-9 min-w-0 flex-1 space-y-1 border-l border-gray-50 px-1 py-1 dark:border-slate-900">
+                      {dayEvents.slice(0, 2).map((event) => {
+                        const colors = COLOR_MAP[event.color as EventColor];
+                        return (
+                          <button
+                            type="button"
+                            key={event.id}
+                            onClick={() => event.kind !== "task" && setSelectedEvent(event)}
+                            className={`flex h-6 w-full min-w-0 items-center gap-1 rounded px-1.5 text-left text-[9px] font-semibold ${colors.badge} ${event.readOnly ? "ring-1 ring-blue-200 dark:ring-blue-500/40" : ""}`}
+                            title={event.title}
+                          >
+                            {event.readOnly && <span className="shrink-0 rounded bg-blue-600 px-1 text-[8px] text-white">G</span>}
+                            <span className="truncate">{event.title}</span>
+                          </button>
+                        );
+                      })}
+                      {dayEvents.length > 2 && <p className="px-1 text-[9px] text-gray-400">+{dayEvents.length - 2}</p>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-auto dark:bg-slate-950 py-2">
               <div className="flex relative" style={{ height: `${(visibleEndHour - visibleStartHour) * HOUR_HEIGHT}px`, minWidth: "520px" }}>
                 <div className="w-10 sm:w-12 flex-shrink-0 relative">
@@ -891,7 +994,7 @@ export function WeeklyView() {
 
                 {DAYS.map((day, dayIdx) => {
                   const columnDate = weekDates[dayIdx];
-                  const dayEvents = allCalendarItems.filter((item) => doesItemOccurOnDate(item, columnDate, weekDates));
+                  const dayEvents = allCalendarItems.filter((item) => !item.allDay && doesItemOccurOnDate(item, columnDate, weekDates));
                   const isToday = isSameDate(columnDate, today);
 
                   return (
@@ -902,6 +1005,9 @@ export function WeeklyView() {
                       onDrop={(e) => {
                         const eventId = e.dataTransfer.getData("eventId");
                         if (eventId?.startsWith("task-")) {
+                          return;
+                        }
+                        if (events.find((event) => event.id === eventId)?.readOnly) {
                           return;
                         }
                         if (eventId) {
@@ -1012,6 +1118,9 @@ export function WeeklyView() {
                         if (eventId?.startsWith("task-")) {
                           return;
                         }
+                        if (events.find((event) => event.id === eventId)?.readOnly) {
+                          return;
+                        }
                         if (eventId) {
                           e.stopPropagation();
                           updateEvent(eventId, { day: dayCode });
@@ -1031,15 +1140,16 @@ export function WeeklyView() {
                           return (
                             <div
                               key={event.id}
-                              className={`text-[9px] px-1.5 py-0.5 rounded truncate cursor-grab active:cursor-grabbing ${colors.badge}`}
+                              className={`text-[9px] px-1.5 py-0.5 rounded truncate ${event.readOnly ? "cursor-pointer ring-1 ring-blue-200 dark:ring-blue-500/40" : "cursor-grab active:cursor-grabbing"} ${colors.badge}`}
                               title={event.title}
-                              draggable
+                              draggable={!event.readOnly && event.kind !== "task"}
                               onDragStart={(e) => {
+                                if (event.readOnly || event.kind === "task") return;
                                 e.stopPropagation();
                                 e.dataTransfer.setData("eventId", event.id.toString());
                               }}
                             >
-                              {event.title}
+                              {event.readOnly ? `G | ${event.title}` : event.title}
                             </div>
                           );
                         })}

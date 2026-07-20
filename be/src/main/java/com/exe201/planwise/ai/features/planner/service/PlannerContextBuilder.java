@@ -3,8 +3,8 @@ package com.exe201.planwise.ai.features.planner.service;
 import com.exe201.planwise.ai.features.planner.dto.GeneratePlannerDraftRequest;
 import com.exe201.planwise.category.entity.Category;
 import com.exe201.planwise.category.repository.CategoryRepository;
-import com.exe201.planwise.event.entity.CalendarEvent;
-import com.exe201.planwise.event.repository.CalendarEventRepository;
+import com.exe201.planwise.event.dto.CalendarEventDto;
+import com.exe201.planwise.event.service.CalendarQueryService;
 import com.exe201.planwise.exception.AppException;
 import com.exe201.planwise.exception.ErrorCode;
 import com.exe201.planwise.goal.entity.Goal;
@@ -30,7 +30,7 @@ public class PlannerContextBuilder {
 
     private static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
-    private final CalendarEventRepository eventRepository;
+    private final CalendarQueryService calendarQueryService;
     private final TaskRepository taskRepository;
     private final HabitRepository habitRepository;
     private final GoalRepository goalRepository;
@@ -48,7 +48,7 @@ public class PlannerContextBuilder {
         StringBuilder context = new StringBuilder();
         appendSettings(context, userId);
         appendCategories(context, categoryRepository.findByUserIdOrderBySortOrderAsc(userId));
-        appendEvents(context, eventRepository.findByUserIdAndDateRange(userId, startDate, endDate));
+        appendEvents(context, calendarQueryService.getEvents(userId, null, startDate, endDate));
         appendTasks(context, taskRepository.findByUserIdOrderBySortOrderAsc(userId), startDate, endDate, now);
         appendHabits(context, habitRepository.findByUserIdAndIsActiveTrueOrderBySortOrderAsc(userId));
         appendGoals(context, goalRepository.findByUserIdOrderBySortOrderAsc(userId));
@@ -82,7 +82,7 @@ public class PlannerContextBuilder {
         context.append('\n');
     }
 
-    private void appendEvents(StringBuilder context, List<CalendarEvent> events) {
+    private void appendEvents(StringBuilder context, List<CalendarEventDto> events) {
         context.append("Existing calendar events in requested range:\n");
         if (events.isEmpty()) {
             context.append("- none\n\n");
@@ -90,15 +90,18 @@ public class PlannerContextBuilder {
         }
         events.stream().limit(40).forEach(event -> context
                 .append("- ")
-                .append(event.getEventDate())
+                .append(event.eventDate())
                 .append(' ')
-                .append(twoDigits(event.getStartHour()))
+                .append(twoDigits(event.startHour()))
                 .append(':')
-                .append(twoDigits(event.getStartMin()))
+                .append(twoDigits(event.startMin()))
                 .append(" for ")
-                .append(event.getDuration())
+                .append(event.duration())
                 .append("h | ")
-                .append(event.getTitle())
+                .append(event.title())
+                .append(" | source=")
+                .append(event.source())
+                .append(event.calendarName() == null ? "" : " | calendar=" + event.calendarName())
                 .append('\n'));
         context.append('\n');
     }

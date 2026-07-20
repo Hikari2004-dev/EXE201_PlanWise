@@ -7,6 +7,7 @@ import com.exe201.planwise.event.entity.CalendarEvent;
 import com.exe201.planwise.event.repository.CalendarEventRepository;
 import com.exe201.planwise.exception.AppException;
 import com.exe201.planwise.exception.ErrorCode;
+import com.exe201.planwise.integration.calendar.service.CalendarIntegrationService;
 import com.exe201.planwise.user.entity.User;
 import com.exe201.planwise.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ public class CalendarEventService {
     private final CalendarEventRepository eventRepository;
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
+    private final CalendarIntegrationService calendarIntegrationService;
 
     @Transactional(readOnly = true)
     public List<CalendarEventDto> getEvents(UUID userId) {
@@ -78,6 +80,7 @@ public class CalendarEventService {
                 .build();
 
         event = eventRepository.save(event);
+        calendarIntegrationService.synchronizeEvent(userId, event);
         log.info("Created event {} for user {}", event.getId(), userId);
 
         return CalendarEventDto.from(event);
@@ -125,12 +128,14 @@ public class CalendarEventService {
         }
 
         event = eventRepository.save(event);
+        calendarIntegrationService.synchronizeEvent(userId, event);
         return CalendarEventDto.from(event);
     }
 
     @Transactional
     public void deleteEvent(UUID userId, UUID eventId) {
         CalendarEvent event = findEventAndValidateOwnership(eventId, userId);
+        calendarIntegrationService.deleteSynchronizedEvent(userId, eventId);
         eventRepository.delete(event);
         log.info("Deleted event {} for user {}", eventId, userId);
     }

@@ -10,6 +10,12 @@ export { aiGoalPlannerApi } from "./aiGoalPlanner";
 export { aiPlannerAssistantApi } from "./aiPlannerAssistant";
 export { notificationApi } from "./notification";
 export { settingsApi } from "./settings";
+export { calendarIntegrationApi, getGoogleAuthorizationUrl } from "./calendarIntegration";
+export type {
+  CalendarConnectionState,
+  CalendarIntegrationStatus,
+  CalendarSyncResponse,
+} from "./calendarIntegration";
 
 // Re-export types
 export * from "./types";

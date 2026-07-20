@@ -48,6 +48,7 @@ spring:
             scope:
               - email
               - profile
+              - https://www.googleapis.com/auth/calendar
             redirect-uri: "{baseUrl}/api/v1/oauth2/callback/{registrationId}"
         provider:
           google:

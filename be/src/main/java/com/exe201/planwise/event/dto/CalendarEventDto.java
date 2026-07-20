@@ -1,15 +1,14 @@
 package com.exe201.planwise.event.dto;
 
 import com.exe201.planwise.event.entity.CalendarEvent;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import com.exe201.planwise.integration.calendar.model.ExternalCalendarEvent;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public record CalendarEventDto(
-        UUID id,
+        String id,
         String title,
         LocalDate eventDate,
         int startHour,
@@ -24,11 +23,19 @@ public record CalendarEventDto(
         String categoryName,
         String categoryColor,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        String source,
+        boolean readOnly,
+        boolean allDay,
+        String provider,
+        String externalCalendarId,
+        String externalEventId,
+        String calendarName,
+        String externalHtmlLink
 ) {
     public static CalendarEventDto from(CalendarEvent event) {
         return new CalendarEventDto(
-                event.getId(),
+                event.getId().toString(),
                 event.getTitle(),
                 event.getEventDate(),
                 event.getStartHour(),
@@ -43,7 +50,44 @@ public record CalendarEventDto(
                 event.getCategory() != null ? event.getCategory().getName() : null,
                 event.getCategory() != null ? event.getCategory().getColor().name() : null,
                 event.getCreatedAt(),
-                event.getUpdatedAt()
+                event.getUpdatedAt(),
+                "PLANWISE",
+                false,
+                false,
+                null,
+                null,
+                null,
+                "PlanWise",
+                null
+        );
+    }
+
+    public static CalendarEventDto from(ExternalCalendarEvent event) {
+        return new CalendarEventDto(
+                event.id(),
+                event.title(),
+                event.eventDate(),
+                event.startHour(),
+                event.startMin(),
+                event.duration(),
+                "blue",
+                event.location(),
+                event.notes(),
+                event.recurring(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                event.provider().toUpperCase(),
+                true,
+                event.allDay(),
+                event.provider(),
+                event.externalCalendarId(),
+                event.externalEventId(),
+                event.calendarName(),
+                event.htmlLink()
         );
     }
 }

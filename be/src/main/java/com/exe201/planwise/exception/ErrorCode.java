@@ -21,6 +21,7 @@ public enum ErrorCode {
     OAUTH2_PROVIDER_NOT_SUPPORTED(HttpStatus.BAD_REQUEST,        "OAuth2 provider không được hỗ trợ"),
     OAUTH2_EMAIL_NOT_FOUND    (HttpStatus.BAD_REQUEST,           "Không lấy được email từ OAuth2 provider"),
     OAUTH2_REDIRECT_URI_MISMATCH(HttpStatus.BAD_REQUEST,         "Redirect URI không hợp lệ"),
+    CALENDAR_SYNC_FAILED       (HttpStatus.BAD_GATEWAY,          "Không thể đồng bộ sự kiện với lịch bên ngoài"),
 
     // General
     BAD_REQUEST               (HttpStatus.BAD_REQUEST,           "Yêu cầu không hợp lệ"),

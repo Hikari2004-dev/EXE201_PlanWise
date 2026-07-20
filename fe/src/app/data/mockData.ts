@@ -20,6 +20,14 @@ export interface CalendarEvent {
   categoryId: string;
   isRecurring?: boolean;
   recurrenceRule?: string;
+  source?: "PLANWISE" | "GOOGLE" | string;
+  readOnly?: boolean;
+  allDay?: boolean;
+  provider?: string;
+  externalCalendarId?: string;
+  externalEventId?: string;
+  calendarName?: string;
+  externalHtmlLink?: string;
 }
 
 export interface Task {

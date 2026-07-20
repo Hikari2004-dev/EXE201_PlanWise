@@ -37,6 +37,14 @@ interface CalendarEvent {
   isRecurring?: boolean;
   recurrenceRule?: string;
   eventDate?: string;
+  source?: "PLANWISE" | "GOOGLE" | string;
+  readOnly?: boolean;
+  allDay?: boolean;
+  provider?: string;
+  externalCalendarId?: string;
+  externalEventId?: string;
+  calendarName?: string;
+  externalHtmlLink?: string;
 }
 
 interface Task {
@@ -172,6 +180,14 @@ function mapApiEventToCalendarEvent(event: ApiCalendarEvent): CalendarEvent {
     isRecurring: event.isRecurring,
     recurrenceRule: event.recurrenceRule,
     eventDate: event.eventDate,
+    source: event.source,
+    readOnly: event.readOnly,
+    allDay: event.allDay,
+    provider: event.provider,
+    externalCalendarId: event.externalCalendarId,
+    externalEventId: event.externalEventId,
+    calendarName: event.calendarName,
+    externalHtmlLink: event.externalHtmlLink,
   };
 }
 
@@ -556,6 +572,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const updateEvent = async (id: string, updates: Partial<CalendarEvent>) => {
+    if (events.find(event => event.id === id)?.readOnly) return;
+
     const updateData: Record<string, unknown> = {};
     if (updates.title) updateData.title = updates.title;
     if (updates.eventDate !== undefined) {
@@ -578,6 +596,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteEvent = async (id: string) => {
+    if (events.find(event => event.id === id)?.readOnly) return;
+
     await eventApi.delete(id);
     setEvents(prev => prev.filter(e => e.id !== id));
   };

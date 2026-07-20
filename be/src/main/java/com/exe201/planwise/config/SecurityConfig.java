@@ -21,6 +21,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -44,6 +46,8 @@ public class SecurityConfig {
     private final UserRepository userRepository;
     private final AppProperties appProperties;
     private final com.exe201.planwise.auth.oauth.HttpCookieOAuth2AuthorizationRequestRepository httpCookieOAuth2AuthorizationRequestRepository;
+    private final OAuth2AuthorizationRequestResolver oauth2AuthorizationRequestResolver;
+    private final OAuth2AuthorizedClientService oauth2AuthorizedClientService;
 
     // ── Security Filter Chain ─────────────────────────────────────────────────
 
@@ -77,8 +81,10 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2
+                .authorizedClientService(oauth2AuthorizedClientService)
                 .authorizationEndpoint(ep -> ep
                     .baseUri("/api/v1/oauth2/authorize")
+                    .authorizationRequestResolver(oauth2AuthorizationRequestResolver)
                     .authorizationRequestRepository(httpCookieOAuth2AuthorizationRequestRepository))
                 .redirectionEndpoint(ep -> ep
                     .baseUri("/api/v1/oauth2/callback/*"))

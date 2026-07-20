@@ -184,6 +184,39 @@ COMMENT ON COLUMN calendar_events.duration IS 'Thời lượng tính bằng gi�
 COMMENT ON COLUMN calendar_events.recurrence_rule IS 'Chuỗi lặp lịch theo chuẩn iCalendar RRULE';
 
 -- =============================================================================
+-- TABLES: calendar_connections, calendar_event_mappings
+-- Provider-neutral external calendar connection and synchronization mapping
+-- =============================================================================
+CREATE TABLE calendar_connections (
+    id                   UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id              UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider             VARCHAR(50) NOT NULL,
+    external_calendar_id VARCHAR(1024) NOT NULL,
+    display_name         VARCHAR(255) NOT NULL,
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, provider)
+);
+
+CREATE TABLE calendar_event_mappings (
+    id                     UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    calendar_connection_id UUID NOT NULL REFERENCES calendar_connections(id) ON DELETE CASCADE,
+    internal_event_id      UUID NOT NULL REFERENCES calendar_events(id) ON DELETE CASCADE,
+    external_event_id      VARCHAR(1024) NOT NULL,
+    external_etag          VARCHAR(255),
+    sync_status            VARCHAR(20) NOT NULL CHECK (sync_status IN ('SYNCED', 'FAILED')),
+    last_synced_at         TIMESTAMPTZ,
+    last_error             TEXT,
+    created_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (calendar_connection_id, internal_event_id),
+    UNIQUE (calendar_connection_id, external_event_id)
+);
+
+CREATE INDEX idx_calendar_connections_user ON calendar_connections(user_id);
+CREATE INDEX idx_calendar_event_mappings_internal ON calendar_event_mappings(internal_event_id);
+
+-- =============================================================================
 -- TABLE: tasks
 -- Công việc cần làm (FE: Task interface)
 -- =============================================================================
@@ -812,6 +845,8 @@ CREATE INDEX idx_notifications_unread ON notifications(user_id, created_at DESC)
 
 ALTER TABLE categories            ENABLE ROW LEVEL SECURITY;
 ALTER TABLE calendar_events       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE calendar_connections  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE calendar_event_mappings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks                 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE task_contexts         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE goals                 ENABLE ROW LEVEL SECURITY;

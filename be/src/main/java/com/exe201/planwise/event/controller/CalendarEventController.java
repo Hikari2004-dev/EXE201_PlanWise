@@ -2,6 +2,7 @@ package com.exe201.planwise.event.controller;
 
 import com.exe201.planwise.event.dto.*;
 import com.exe201.planwise.event.service.CalendarEventService;
+import com.exe201.planwise.event.service.CalendarQueryService;
 import com.exe201.planwise.security.UserPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import java.util.UUID;
 public class CalendarEventController {
 
     private final CalendarEventService eventService;
+    private final CalendarQueryService calendarQueryService;
 
     @GetMapping
     public ResponseEntity<List<CalendarEventDto>> getEvents(
@@ -29,15 +31,12 @@ public class CalendarEventController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         
-        List<CalendarEventDto> events;
-        if (date != null) {
-            events = eventService.getEventsByDate(principal.getId(), date);
-        } else if (startDate != null && endDate != null) {
-            events = eventService.getEventsByDateRange(principal.getId(), startDate, endDate);
-        } else {
-            events = eventService.getEvents(principal.getId());
-        }
-        return ResponseEntity.ok(events);
+        return ResponseEntity.ok(calendarQueryService.getEvents(
+                principal.getId(),
+                date,
+                startDate,
+                endDate
+        ));
     }
 
     @GetMapping("/{eventId}")
