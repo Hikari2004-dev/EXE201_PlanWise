@@ -48,6 +48,7 @@ sequenceDiagram
      - `http://localhost:3000`
    - Thêm **Authorized redirect URIs** (Đây là callback của Backend xử lý sau khi Google xác thực thành công):
      - `http://localhost:8080/api/v1/oauth2/callback/google`
+     - `https://planwise.q2k.click/api/v1/oauth2/callback/google` (production)
 5. Lưu lại để nhận **Client ID** và **Client Secret**.
 
 ### Bước 2.2: Cấu hình file `application.yaml` / `.env`
