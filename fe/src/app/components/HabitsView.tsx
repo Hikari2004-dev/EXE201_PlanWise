@@ -177,10 +177,6 @@ export function HabitsView() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-indigo-400 font-bold">✓</span>
-              <span>{language === 'vi' ? "Biểu đồ phân tích tiến độ nâng cao" : "Advanced progress charts"}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-indigo-400 font-bold">✓</span>
               <span>{language === 'vi' ? "Trợ lý AI lập kế hoạch thông minh" : "AI Coach scheduling mentor"}</span>
             </div>
           </div>

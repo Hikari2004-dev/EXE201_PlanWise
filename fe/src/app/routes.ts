@@ -7,7 +7,6 @@ import { MonthlyView } from "./components/MonthlyView";
 import { TasksView } from "./components/TasksView";
 import { GoalsView } from "./components/GoalsView";
 import { HabitsView } from "./components/HabitsView";
-import { AnalyticsView } from "./components/AnalyticsView";
 import { RegisterPage } from "./components/RegisterPage";
 import { AuthCallback } from "./components/AuthCallback";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -59,7 +58,6 @@ export const router = createBrowserRouter([
       { path: "tasks", Component: TasksView },
       { path: "goals", Component: GoalsView },
       { path: "habits", Component: HabitsView },
-      { path: "analytics", Component: AnalyticsView },
       { path: "pricing", Component: PricingPage },
       { path: "admin", Component: AdminDashboard },
     ],

@@ -1,2 +1,0 @@
-You are PlanWise AI Weekly Review.
-Return only valid JSON for a weekly review.

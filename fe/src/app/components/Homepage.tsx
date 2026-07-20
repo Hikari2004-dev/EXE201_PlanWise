@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { Calendar, Target, BarChart3, ArrowRight } from "lucide-react";
+import { Calendar, Target, ArrowRight } from "lucide-react";
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -103,7 +103,7 @@ export default function HomePage() {
             Tính năng nổi bật
           </h2>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 gap-8">
             <div className="rounded-3xl border border-white/10 bg-white/5 p-6 transition hover:border-indigo-500/40 sm:p-8">
               <Calendar
                 className="text-indigo-400 mb-4"
@@ -136,21 +136,6 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6 transition hover:border-emerald-500/40 sm:p-8">
-              <BarChart3
-                className="text-emerald-400 mb-4"
-                size={40}
-              />
-
-              <h3 className="font-bold text-xl mb-3">
-                Báo cáo năng suất
-              </h3>
-
-              <p className="text-slate-400">
-                Phân tích hiệu suất làm việc bằng biểu đồ trực quan
-                và báo cáo chi tiết.
-              </p>
-            </div>
           </div>
         </div>
       </section>

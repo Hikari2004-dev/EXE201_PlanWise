@@ -1388,10 +1388,6 @@ export function GoalsView() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-indigo-400">✓</span>
-                <span>{language === "vi" ? "Biểu đồ phân tích tiến độ nâng cao" : "Advanced progress charts"}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-indigo-400">✓</span>
                 <span>{language === "vi" ? "Trợ lý AI lập kế hoạch thông minh" : "AI Coach scheduling mentor"}</span>
               </div>
             </div>

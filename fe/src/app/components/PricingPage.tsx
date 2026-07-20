@@ -107,7 +107,6 @@ export function PricingPage() {
     featuresTitle: language === "vi" ? "Tính năng độc quyền Premium" : "Exclusive Premium Features",
     featureGoal: language === "vi" ? "Không giới hạn Mục tiêu (Bản miễn phí giới hạn 3)" : "Unlimited Goals (Free limited to 3)",
     featureHabit: language === "vi" ? "Không giới hạn Thói quen (Bản miễn phí giới hạn 3)" : "Unlimited Habits (Free limited to 3)",
-    featureAnalytics: language === "vi" ? "Biểu đồ Phân tích Tiến độ nâng cao" : "Advanced Progress & Analytics Charts",
     featureAI: language === "vi" ? "Trợ lý AI tư vấn lộ trình thông minh không giới hạn" : "Unlimited interactions with AI Coach",
     featureCategories: language === "vi" ? "Tự do tạo danh mục & màu sắc tùy biến" : "Custom categories & color personalization",
     featuresComparison: language === "vi" ? "So sánh các gói" : "Compare Plans",
@@ -267,7 +266,6 @@ export function PricingPage() {
             {[
               { text: t.featureGoal, desc: language === "vi" ? "Không lo giới hạn số lượng mục tiêu, thoải mái lập kế hoạch dài hạn." : "No limits on goal setting, design long-term plans freely." },
               { text: t.featureHabit, desc: language === "vi" ? "Tạo thói quen buổi sáng, tối và công việc mà không bị giới hạn." : "Track custom habits for routine building without constraint." },
-              { text: t.featureAnalytics, desc: language === "vi" ? "Mở khóa toàn bộ biểu đồ xu hướng, tỉ lệ hoàn thành thói quen nâng cao." : "Unlock standard graphs, calendar heatmap, and habit success rates." },
               { text: t.featureAI, desc: language === "vi" ? "Hỏi đáp không giới hạn với AI Mentor về cách tối ưu hóa thời gian biểu." : "Chat with AI coach for personal advice on scheduling and productivity." },
               { text: t.featureCategories, desc: language === "vi" ? "Phân loại công việc theo danh mục riêng với màu sắc cá nhân hóa." : "Define custom categories and choose palette accents for calendar visual cues." },
             ].map((f, index) => (
@@ -309,11 +307,6 @@ export function PricingPage() {
                   <td className="p-4 font-medium text-slate-300">{language === "vi" ? "Giới hạn Thói quen" : "Habit Limit"}</td>
                   <td className="p-4 text-center text-slate-500">3</td>
                   <td className="p-4 text-center font-bold text-indigo-300">{t.unlimited}</td>
-                </tr>
-                <tr>
-                  <td className="p-4 font-medium text-slate-300">{language === "vi" ? "Biểu đồ Phân tích" : "Analytics & Trends"}</td>
-                  <td className="p-4 text-center text-slate-500">{language === "vi" ? "Khóa" : "Locked"}</td>
-                  <td className="p-4 text-center font-bold text-indigo-300">{language === "vi" ? "Mở khóa toàn bộ" : "Fully Unlocked"}</td>
                 </tr>
                 <tr>
                   <td className="p-4 font-medium text-slate-300">{language === "vi" ? "Hỏi đáp Trợ lý AI" : "AI Mentor Interactions"}</td>

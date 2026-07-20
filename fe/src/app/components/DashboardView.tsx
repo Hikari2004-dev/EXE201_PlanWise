@@ -11,10 +11,16 @@ import { useData } from "../context/DataContext";
 import { COLOR_MAP, getTimeString, type EventColor } from "../data/mockData";
 
 const EVENT_COLORS: EventColor[] = ["indigo", "blue", "emerald", "amber", "rose", "purple", "teal", "orange"];
+const GOOGLE_HOLIDAY_CALENDAR_ID_MARKER = "#holiday@group.v.calendar.google.com";
 
 function normalizeEventColor(color?: string): EventColor {
   const normalized = (color || "indigo").toLowerCase();
   return EVENT_COLORS.includes(normalized as EventColor) ? (normalized as EventColor) : "indigo";
+}
+
+function isGoogleHolidayEvent(event: { source?: string; externalCalendarId?: string }) {
+  return event.source?.toUpperCase() === "GOOGLE"
+    && event.externalCalendarId?.toLowerCase().includes(GOOGLE_HOLIDAY_CALENDAR_ID_MARKER) === true;
 }
 
 function parseScheduledAt(value?: string) {
@@ -141,7 +147,7 @@ export function DashboardView() {
       setTogglingHabitIds(ids => ids.filter(id => id !== habitId));
     }
   };
-  const todayEvents = events.filter(e => e.day === todayDay).sort(
+  const todayEvents = events.filter(e => e.day === todayDay && !isGoogleHolidayEvent(e)).sort(
     (a, b) => a.startHour - b.startHour || a.startMin - b.startMin
   );
   const todayScheduledTasks = tasks
