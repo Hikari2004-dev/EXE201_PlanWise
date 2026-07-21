@@ -21,6 +21,21 @@ export interface CalendarSyncResponse {
   errors: string[];
 }
 
+export interface UpdateExternalCalendarEventRequest {
+  externalCalendarId: string;
+  externalEventId: string;
+  title: string;
+  eventDate: string;
+  startHour: number;
+  startMin: number;
+  duration: number;
+  location?: string;
+  notes?: string;
+  allDay: boolean;
+  isRecurring: boolean;
+  recurrenceRule?: string;
+}
+
 export const calendarIntegrationApi = {
   async getStatuses(): Promise<CalendarIntegrationStatus[]> {
     return request<CalendarIntegrationStatus[]>(API);
@@ -29,6 +44,27 @@ export const calendarIntegrationApi = {
   async sync(provider: string): Promise<CalendarSyncResponse> {
     return request<CalendarSyncResponse>(`${API}/${provider}/sync`, {
       method: "POST",
+    });
+  },
+
+  async updateEvent(
+    provider: string,
+    event: UpdateExternalCalendarEventRequest,
+  ): Promise<void> {
+    await request<void>(`${API}/${provider}/events`, {
+      method: "PUT",
+      body: JSON.stringify(event),
+    });
+  },
+
+  async deleteEvent(
+    provider: string,
+    externalCalendarId: string,
+    externalEventId: string,
+  ): Promise<void> {
+    const params = new URLSearchParams({ externalCalendarId, externalEventId });
+    await request<void>(`${API}/${provider}/events?${params.toString()}`, {
+      method: "DELETE",
     });
   },
 };
@@ -52,6 +88,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (!response.ok) {
     const error = await response.json().catch(() => null);
     throw new Error(error?.message || `HTTP ${response.status}`);
+  }
+  if (response.status === 204) {
+    return undefined as T;
   }
   return response.json();
 }

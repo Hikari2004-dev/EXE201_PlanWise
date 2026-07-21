@@ -5,6 +5,7 @@ import com.exe201.planwise.auth.oauth.OAuthAccessTokenService;
 import com.exe201.planwise.event.entity.CalendarEvent;
 import com.exe201.planwise.integration.calendar.model.ExternalCalendarDescriptor;
 import com.exe201.planwise.integration.calendar.model.ExternalCalendarEvent;
+import com.exe201.planwise.integration.calendar.model.ExternalCalendarEventUpdate;
 import com.exe201.planwise.integration.calendar.model.ExternalEventReference;
 import com.exe201.planwise.integration.calendar.provider.CalendarProviderException;
 import com.exe201.planwise.integration.calendar.provider.ExternalCalendarProvider;
@@ -204,6 +205,29 @@ public class GoogleCalendarProvider implements ExternalCalendarProvider {
     }
 
     @Override
+    public ExternalEventReference updateEvent(
+            UUID userId,
+            String calendarId,
+            String externalEventId,
+            ExternalCalendarEventUpdate update) {
+        String accessToken = requireAccessToken(userId);
+        try {
+            GoogleEvent response = updateEvent(
+                    accessToken,
+                    calendarId,
+                    externalEventId,
+                    eventPayload(update)
+            );
+            if (response == null || !StringUtils.hasText(response.id())) {
+                throw new CalendarProviderException("Google returned an empty event response");
+            }
+            return new ExternalEventReference(response.id(), response.etag());
+        } catch (RestClientResponseException exception) {
+            throw providerFailure("update an event", exception);
+        }
+    }
+
+    @Override
     public void deleteEvent(UUID userId, String calendarId, String externalEventId) {
         String accessToken = requireAccessToken(userId);
         try {
@@ -388,33 +412,62 @@ public class GoogleCalendarProvider implements ExternalCalendarProvider {
     }
 
     private Map<String, Object> eventPayload(CalendarEvent event) {
-        ZonedDateTime start = ZonedDateTime.of(
+        Map<String, Object> payload = eventPayload(new ExternalCalendarEventUpdate(
+                event.getTitle(),
                 event.getEventDate(),
-                LocalTime.of(event.getStartHour(), event.getStartMin()),
-                DEFAULT_ZONE
-        );
-        long durationMinutes = Math.max(1, Math.round(event.getDuration() * 60));
-        ZonedDateTime end = start.plusMinutes(durationMinutes);
-
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("summary", event.getTitle());
-        if (StringUtils.hasText(event.getLocation())) {
-            payload.put("location", event.getLocation());
-        }
-        if (StringUtils.hasText(event.getNotes())) {
-            payload.put("description", event.getNotes());
-        }
-        payload.put("start", dateTimePayload(start));
-        payload.put("end", dateTimePayload(end));
+                event.getStartHour(),
+                event.getStartMin(),
+                event.getDuration(),
+                event.getLocation(),
+                event.getNotes(),
+                false,
+                event.isRecurring(),
+                event.getRecurrenceRule()
+        ));
         payload.put("extendedProperties", Map.of(
                 "private", Map.of("planwiseEventId", event.getId().toString())
         ));
+        return payload;
+    }
 
-        String recurrence = normalizeRecurrence(event.getRecurrenceRule());
-        if (event.isRecurring() && recurrence != null) {
+    private Map<String, Object> eventPayload(ExternalCalendarEventUpdate event) {
+        if (event.eventDate() == null) {
+            throw new CalendarProviderException("Event date is required");
+        }
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("summary", event.title());
+        if (StringUtils.hasText(event.location())) {
+            payload.put("location", event.location());
+        }
+        if (StringUtils.hasText(event.notes())) {
+            payload.put("description", event.notes());
+        }
+
+        if (event.allDay()) {
+            long dayCount = Math.max(1L, (long) Math.ceil(Math.max(24.0, event.duration()) / 24.0));
+            payload.put("start", datePayload(event.eventDate()));
+            payload.put("end", datePayload(event.eventDate().plusDays(dayCount)));
+        } else {
+            ZonedDateTime start = ZonedDateTime.of(
+                    event.eventDate(),
+                    LocalTime.of(event.startHour(), event.startMin()),
+                    DEFAULT_ZONE
+            );
+            long durationMinutes = Math.max(1, Math.round(event.duration() * 60));
+            payload.put("start", dateTimePayload(start));
+            payload.put("end", dateTimePayload(start.plusMinutes(durationMinutes)));
+        }
+
+        String recurrence = normalizeRecurrence(event.recurrenceRule());
+        if (event.recurring() && recurrence != null) {
             payload.put("recurrence", List.of(recurrence));
         }
         return payload;
+    }
+
+    private Map<String, String> datePayload(LocalDate date) {
+        return Map.of("date", date.toString());
     }
 
     private GoogleEvent createEvent(

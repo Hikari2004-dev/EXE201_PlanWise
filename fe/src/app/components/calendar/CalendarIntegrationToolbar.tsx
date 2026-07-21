@@ -127,7 +127,6 @@ export function CalendarIntegrationToolbar({
         >
           <span className="flex h-3.5 w-3.5 items-center justify-center rounded bg-indigo-600 text-white">{showPlanwise && <Check size={10} />}</span>
           <span>PlanWise</span>
-          <span className="text-[10px] tabular-nums text-gray-400">{planwiseEventCount}</span>
         </button>
         <button
           type="button"
@@ -137,7 +136,6 @@ export function CalendarIntegrationToolbar({
         >
           <span className="flex h-3.5 w-3.5 items-center justify-center rounded bg-blue-600 text-white">{showGoogle ? <Check size={10} /> : "G"}</span>
           <span>Google</span>
-          <span className="text-[10px] tabular-nums text-gray-400">{googleEventCount}</span>
         </button>
       </div>
 

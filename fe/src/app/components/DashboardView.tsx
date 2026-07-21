@@ -12,6 +12,7 @@ import { COLOR_MAP, getTimeString, type EventColor } from "../data/mockData";
 
 const EVENT_COLORS: EventColor[] = ["indigo", "blue", "emerald", "amber", "rose", "purple", "teal", "orange"];
 const GOOGLE_HOLIDAY_CALENDAR_ID_MARKER = "#holiday@group.v.calendar.google.com";
+const GOOGLE_BIRTHDAY_CALENDAR_ID_MARKER = "#contacts@group.v.calendar.google.com";
 
 function normalizeEventColor(color?: string): EventColor {
   const normalized = (color || "indigo").toLowerCase();
@@ -21,6 +22,11 @@ function normalizeEventColor(color?: string): EventColor {
 function isGoogleHolidayEvent(event: { source?: string; externalCalendarId?: string }) {
   return event.source?.toUpperCase() === "GOOGLE"
     && event.externalCalendarId?.toLowerCase().includes(GOOGLE_HOLIDAY_CALENDAR_ID_MARKER) === true;
+}
+
+function isGoogleBirthdayEvent(event: { source?: string; externalCalendarId?: string }) {
+  return event.source?.toUpperCase() === "GOOGLE"
+    && event.externalCalendarId?.toLowerCase().includes(GOOGLE_BIRTHDAY_CALENDAR_ID_MARKER) === true;
 }
 
 function parseScheduledAt(value?: string) {
@@ -81,16 +87,6 @@ function formatTaskDueDateLabel(value?: string) {
   }).format(parsed).replace(",", "");
 }
 
-const WEEKDAY_TO_EVENT_DAY: Record<number, string> = {
-  0: "Sun",
-  1: "Mon",
-  2: "Tue",
-  3: "Wed",
-  4: "Thu",
-  5: "Fri",
-  6: "Sat",
-};
-
 function CurrentTimeIndicator() {
   const now = new Date();
   const h = now.getHours(), m = now.getMinutes();
@@ -110,7 +106,6 @@ export function DashboardView() {
   const { events, tasks, habits, categories, completeHabitDate, language } = useData();
   const [togglingHabitIds, setTogglingHabitIds] = useState<string[]>([]);
   const now = new Date();
-  const todayDay = WEEKDAY_TO_EVENT_DAY[now.getDay()] || "";
 
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const todayDate = toLocalDateString(today);
@@ -118,6 +113,9 @@ export function DashboardView() {
   const startOfWeek = new Date(today);
   startOfWeek.setDate(today.getDate() - ((today.getDay() + 6) % 7));
   const startOfWeekDate = toLocalDateString(startOfWeek);
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  const endOfWeekDate = toLocalDateString(endOfWeek);
   const monthPrefix = todayDate.slice(0, 7);
 
   const habitReminders = habits
@@ -147,9 +145,10 @@ export function DashboardView() {
       setTogglingHabitIds(ids => ids.filter(id => id !== habitId));
     }
   };
-  const todayEvents = events.filter(e => e.day === todayDay && !isGoogleHolidayEvent(e)).sort(
-    (a, b) => a.startHour - b.startHour || a.startMin - b.startMin
-  );
+  const todayEvents = events
+    .filter((event) => event.eventDate?.slice(0, 10) === todayDate)
+    .filter((event) => !isGoogleHolidayEvent(event) && !isGoogleBirthdayEvent(event))
+    .sort((a, b) => a.startHour - b.startHour || a.startMin - b.startMin);
   const todayScheduledTasks = tasks
     .filter((task) => !task.completed && task.showOnCalendar !== false)
     .filter((task) => {
@@ -212,7 +211,10 @@ export function DashboardView() {
     }),
   ].sort((a, b) => a.startHour - b.startHour || a.startMin - b.startMin);
   const completedCount  = tasks.filter(t => getTaskStatus(t) === "COMPLETED").length;
-  const totalEvents     = events.length + todayScheduledTasks.length;
+  const weeklyEventCount = events.filter((event) => {
+    const eventDate = event.eventDate?.slice(0, 10);
+    return !!eventDate && eventDate >= startOfWeekDate && eventDate <= endOfWeekDate;
+  }).length;
   const highPriority    = tasks.filter(t => getTaskStatus(t) !== "COMPLETED" && t.priority === "Cao").length;
   const completionRate  = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
 
@@ -258,7 +260,7 @@ export function DashboardView() {
     {
       label:   language === "vi" ? "Hôm nay" : "Today",
       value:   todayEvents.length + todayScheduledTasks.length,
-      sub:     language === "vi" ? "lịch + task đã lên giờ" : "events + scheduled tasks",
+      sub:     language === "vi" ? "Sự kiện + công việc" : "events + tasks",
       icon:    Zap,
       from:    "from-amber-500", to: "to-orange-500",
       shadow:  "shadow-amber-200",
@@ -274,16 +276,16 @@ export function DashboardView() {
       badge:   "bg-rose-50 text-rose-600",
     },
     {
-      label:   language === "vi" ? "Sự kiện tuần" : "Events",
-      value:   totalEvents,
-      sub:     `${categories.length} ${language === "vi" ? "danh mục" : "categories"}`,
+      label:   language === "vi" ? "Sự kiện tuần" : "Events This Week",
+      value:   weeklyEventCount,
+      sub:     language === "vi" ? "Sự kiện" : "Events",
       icon:    CalendarDays,
       from:    "from-violet-500", to: "to-indigo-600",
       shadow:  "shadow-indigo-200",
       badge:   "bg-indigo-50 text-indigo-600",
     },
     {
-      label:   "Task bị trễ hạn",
+      label:   language === "vi" ? "Task bị trễ hạn" : "Overdue Tasks",
       value:   missingTaskCount,
       sub:     language === "vi" ? "task bị trễ hạn" : "overdue tasks",
       icon:    XCircle,

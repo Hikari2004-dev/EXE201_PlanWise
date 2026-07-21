@@ -15,6 +15,7 @@ export type {
   CalendarConnectionState,
   CalendarIntegrationStatus,
   CalendarSyncResponse,
+  UpdateExternalCalendarEventRequest,
 } from "./calendarIntegration";
 
 // Re-export types

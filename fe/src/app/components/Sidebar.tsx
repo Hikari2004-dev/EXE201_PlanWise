@@ -307,7 +307,7 @@ export function Sidebar({
                 <Plus size={11} />
               </button>
             </div>
-            <div className="space-y-1 max-h-40 overflow-y-auto sidebar-scroll">
+            <div className="space-y-1 max-h-50 overflow-y-auto sidebar-scroll">
               {categories.map((cat) => {
                 const colors = COLOR_MAP[cat.color as EventColor];
                 return (

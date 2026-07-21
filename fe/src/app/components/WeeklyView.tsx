@@ -1,9 +1,19 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Plus, MapPin, Clock, X, Edit2, Trash2, Brain, CalendarDays, ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, MapPin, Clock, X, Edit2, Trash2, Brain, CalendarDays, ExternalLink, Loader2 } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { HintBubble } from "./HintBubble";
 import { PlannerAssistantButton } from "./planner-assistant";
 import { CalendarIntegrationToolbar } from "./calendar/CalendarIntegrationToolbar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
 import {
   DAYS,
   DAYS_VI,
@@ -193,14 +203,16 @@ interface EventModalProps {
   event?: CalendarEventDraft;
   weekDates: Date[];
   onClose: () => void;
-  onSave: (event: CalendarEventDraft) => void;
-  onDelete?: (id: string) => void;
+  onSave: (event: CalendarEventDraft) => Promise<void> | void;
+  onDelete?: (id: string) => Promise<void> | void;
 }
 
 function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalProps) {
   const { categories, addCategory } = useData();
-  const isReadOnly = Boolean(event?.readOnly || event?.source === "GOOGLE");
-  const resolvedCategoryId = isReadOnly ? "" : event?.categoryId || categories[0]?.id || "";
+  const isGoogleEvent = event?.source === "GOOGLE";
+  const isReadOnly = Boolean(event?.readOnly && !isGoogleEvent);
+  const canEditCategory = !isGoogleEvent && !isReadOnly;
+  const resolvedCategoryId = canEditCategory ? event?.categoryId || categories[0]?.id || "" : "";
   const [showCategoryPopup, setShowCategoryPopup] = useState(false);
   const [categoryForm, setCategoryForm] = useState({ name: "", color: "indigo" as EventColor });
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
@@ -222,11 +234,16 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
     categoryId: resolvedCategoryId,
     isRecurring: event?.isRecurring || false,
     eventDate: event?.eventDate,
+    allDay: event?.allDay || false,
   });
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isReadOnly) return;
+    if (isReadOnly || isSaving) return;
     if (!form.title.trim()) return;
 
     const dayIndex = WEEKDAY_TO_INDEX[form.day] ?? 0;
@@ -247,23 +264,47 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
       title: form.title,
       day: form.day,
       eventDate,
-      startHour,
-      startMin,
-      duration: durationMinutes / 60,
+      startHour: form.allDay ? 0 : startHour,
+      startMin: form.allDay ? 0 : startMin,
+      duration: form.allDay ? 24 : durationMinutes / 60,
       color: form.color,
-      location: form.location || "Chưa có",
+      location: isGoogleEvent ? form.location : form.location || "Chưa có",
       notes: form.notes,
       categoryId: form.categoryId || categories[0]?.id || "",
       isRecurring: form.isRecurring,
       recurrenceRule: form.isRecurring ? "WEEKLY" : undefined,
+      allDay: form.allDay,
     };
 
-    if (event) {
-      onSave({ ...event, ...eventData });
-    } else {
-      onSave(eventData);
+    try {
+      setSaveError(null);
+      setIsSaving(true);
+      if (event) {
+        await onSave({ ...event, ...eventData });
+      } else {
+        await onSave(eventData);
+      }
+      onClose();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Không thể lưu sự kiện");
+    } finally {
+      setIsSaving(false);
     }
-    onClose();
+  };
+
+  const handleDelete = async () => {
+    if (!event || !("id" in event) || !onDelete || isDeleting) return;
+    try {
+      setSaveError(null);
+      setIsDeleting(true);
+      await onDelete(event.id);
+      setShowDeleteConfirm(false);
+      onClose();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Không thể xóa sự kiện");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleCreateCategory = async () => {
@@ -287,7 +328,7 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
     }
   };
 
-  const selectedCategory = isReadOnly
+  const selectedCategory = !canEditCategory
     ? undefined
     : categories.find((c) => c.id === (form.categoryId || categories[0]?.id || ""));
   const colors = selectedCategory ? COLOR_MAP[selectedCategory.color as EventColor] : COLOR_MAP[form.color];
@@ -297,14 +338,14 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
       <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-[384px] flex-col overflow-hidden rounded-2xl border bg-white shadow-2xl duration-150 animate-in zoom-in-95 dark:border-slate-800 dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
         <div className={`${colors.light} px-5 py-4 border-b border-black/5 dark:border-white/5`}>
           <div className="flex items-start justify-between">
-            <h3 className={`${colors.text} leading-tight font-bold text-base`}>{isReadOnly ? "Chi tiết sự kiện" : event ? "Chỉnh sửa sự kiện" : "Thêm sự kiện mới"}</h3>
+            <h3 className={`${colors.text} leading-tight font-bold text-base`}>{isGoogleEvent ? "Chỉnh sửa Google Calendar" : isReadOnly ? "Chi tiết sự kiện" : event ? "Chỉnh sửa sự kiện" : "Thêm sự kiện mới"}</h3>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-black/5 transition-colors">
               <X size={16} />
             </button>
           </div>
         </div>
         <form onSubmit={handleSubmit} className="space-y-3 overflow-y-auto px-4 py-4 sm:px-5">
-          {isReadOnly && (
+          {(isGoogleEvent || isReadOnly) && (
             <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-200">
               <CalendarDays size={14} />
               <span className="min-w-0 flex-1 truncate">{event?.calendarName || "Google Calendar"}</span>
@@ -330,29 +371,40 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Ngày</label>
-              <select
-                value={form.day}
-                disabled={isReadOnly}
-                onChange={(e) => {
-                  const nextDay = e.target.value;
-                  const nextDayIndex = WEEKDAY_TO_INDEX[nextDay] ?? 0;
-                  const nextDate = weekDates[nextDayIndex] ?? weekDates[0] ?? new Date();
-                  setForm({ ...form, day: nextDay, eventDate: formatIsoDate(nextDate) });
-                }}
-                className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all cursor-pointer"
-              >
-                {DAYS.map((d, i) => (
-                  <option key={d} value={d} className="dark:bg-slate-900">
-                    {DAYS_VI[i]}
-                  </option>
-                ))}
-              </select>
+              {isGoogleEvent ? (
+                <input
+                  type="date"
+                  required
+                  value={form.eventDate || formatIsoDate(weekDates[0] ?? new Date())}
+                  disabled={isReadOnly}
+                  onChange={(e) => setForm({ ...form, eventDate: e.target.value })}
+                  className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all"
+                />
+              ) : (
+                <select
+                  value={form.day}
+                  disabled={isReadOnly}
+                  onChange={(e) => {
+                    const nextDay = e.target.value;
+                    const nextDayIndex = WEEKDAY_TO_INDEX[nextDay] ?? 0;
+                    const nextDate = weekDates[nextDayIndex] ?? weekDates[0] ?? new Date();
+                    setForm({ ...form, day: nextDay, eventDate: formatIsoDate(nextDate) });
+                  }}
+                  className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all cursor-pointer"
+                >
+                  {DAYS.map((d, i) => (
+                    <option key={d} value={d} className="dark:bg-slate-900">
+                      {DAYS_VI[i]}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             <div>
               <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Danh mục</label>
               <select
                 value={form.categoryId || categories[0]?.id || ""}
-                disabled={isReadOnly}
+                disabled={!canEditCategory}
                 onChange={(e) => {
                   const catId = e.target.value;
                   if (catId === "__other__") {
@@ -375,6 +427,18 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
               </select>
             </div>
           </div>
+          {isGoogleEvent && (
+            <label className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-slate-700 px-3 py-2.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
+              <input
+                type="checkbox"
+                checked={form.allDay}
+                disabled={isReadOnly}
+                onChange={(e) => setForm({ ...form, allDay: e.target.checked })}
+                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span className="text-sm font-medium text-gray-700 dark:text-slate-200">Cả ngày</span>
+            </label>
+          )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block font-medium">Thời gian bắt đầu</label>
@@ -382,7 +446,7 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
                 type="time"
                 step={1800}
                 value={form.startTime}
-                disabled={isReadOnly}
+                disabled={isReadOnly || form.allDay}
                 onChange={(e) => setForm({ ...form, startTime: e.target.value })}
                 className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all"
               />
@@ -393,7 +457,7 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
                 type="time"
                 step={1800}
                 value={form.endTime}
-                disabled={isReadOnly}
+                disabled={isReadOnly || form.allDay}
                 onChange={(e) => setForm({ ...form, endTime: e.target.value })}
                 className="w-full border border-gray-200 dark:border-slate-700 dark:bg-slate-850 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all"
               />
@@ -420,20 +484,36 @@ function EventModal({ event, weekDates, onClose, onSave, onDelete }: EventModalP
               <p className="text-xs text-gray-400 dark:text-slate-500">Sự kiện sẽ lặp lại mỗi tuần vào cùng thứ và giờ</p>
             </div>
           </label>
+          {saveError && <p className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">{saveError}</p>}
           <div className="flex gap-2 pt-1">
             {!isReadOnly && event && "id" in event && onDelete && (
-              <button type="button" onClick={() => {
-                onDelete(event.id);
-                onClose();
-              }} className="px-3 border border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 text-sm py-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors">
+              <button type="button" onClick={() => setShowDeleteConfirm(true)} disabled={isSaving || isDeleting} title="Xóa sự kiện" aria-label="Xóa sự kiện" className="px-3 border border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 text-sm py-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors disabled:cursor-not-allowed disabled:opacity-50">
                 <Trash2 size={14} />
               </button>
             )}
-            <button type="button" onClick={onClose} className="flex-1 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-350 text-sm py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">{isReadOnly ? "Đóng" : "Hủy"}</button>
-            {!isReadOnly && <button type="submit" className="flex-1 bg-zinc-900 dark:bg-indigo-600 hover:bg-zinc-800 dark:hover:bg-indigo-700 text-white text-sm py-2 rounded-xl transition-colors">Lưu</button>}
+            <button type="button" onClick={onClose} disabled={isSaving || isDeleting} className="flex-1 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-350 text-sm py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">{isReadOnly ? "Đóng" : "Hủy"}</button>
+            {!isReadOnly && <button type="submit" disabled={isSaving || isDeleting} className="flex-1 bg-zinc-900 dark:bg-indigo-600 hover:bg-zinc-800 dark:hover:bg-indigo-700 text-white text-sm py-2 rounded-xl transition-colors disabled:cursor-not-allowed disabled:opacity-60">{isSaving ? <span className="flex items-center justify-center gap-2"><Loader2 size={14} className="animate-spin" />Đang lưu...</span> : "Lưu"}</button>}
           </div>
         </form>
       </div>
+      <AlertDialog open={showDeleteConfirm} onOpenChange={(open) => !isDeleting && setShowDeleteConfirm(open)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{isGoogleEvent ? "Xóa sự kiện Google Calendar?" : "Xóa sự kiện?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {isGoogleEvent
+                ? "Sự kiện này cũng sẽ bị xóa khỏi Google Calendar. Hành động này không thể hoàn tác."
+                : "Sự kiện sẽ bị xóa khỏi lịch của bạn. Hành động này không thể hoàn tác."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); void handleDelete(); }} disabled={isDeleting} className="bg-rose-600 text-white hover:bg-rose-700">
+              {isDeleting ? <span className="flex items-center gap-2"><Loader2 size={14} className="animate-spin" />Đang xóa...</span> : "Xóa sự kiện"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {showCategoryPopup && !isReadOnly && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm" onClick={() => {
           setCategoryError(null);
@@ -572,7 +652,7 @@ function DayDetailPanel({ date, events, onClose, onEditEvent, language }: DayDet
                             </p>
                           ) : category && <p className={`text-xs mt-0.5 opacity-70 ${colors.text}`}>{category.name}</p>}
                         </div>
-                        {event.kind !== "task" && !event.readOnly && (
+                        {event.kind !== "task" && (!event.readOnly || event.source === "GOOGLE") && (
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={(e) => {
                               e.stopPropagation();
@@ -629,11 +709,11 @@ export function WeeklyView({ initialMode = "week" }: WeeklyViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const didInitialScrollRef = useRef(false);
 
-  const handleSaveEvent = (eventData: CalendarEventDraft) => {
+  const handleSaveEvent = async (eventData: CalendarEventDraft) => {
     if ("id" in eventData) {
-      updateEvent(eventData.id, eventData);
+      await updateEvent(eventData.id, eventData);
     } else {
-      addEvent(eventData);
+      await addEvent(eventData);
     }
   };
 

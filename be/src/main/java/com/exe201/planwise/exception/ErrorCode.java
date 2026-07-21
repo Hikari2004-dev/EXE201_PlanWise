@@ -22,6 +22,9 @@ public enum ErrorCode {
     OAUTH2_EMAIL_NOT_FOUND    (HttpStatus.BAD_REQUEST,           "Không lấy được email từ OAuth2 provider"),
     OAUTH2_REDIRECT_URI_MISMATCH(HttpStatus.BAD_REQUEST,         "Redirect URI không hợp lệ"),
     CALENDAR_SYNC_FAILED       (HttpStatus.BAD_GATEWAY,          "Không thể đồng bộ sự kiện với lịch bên ngoài"),
+    CALENDAR_EVENT_UPDATE_FAILED(HttpStatus.BAD_GATEWAY,         "Không thể cập nhật sự kiện Google Calendar"),
+    CALENDAR_EVENT_DELETE_FAILED(HttpStatus.BAD_GATEWAY,         "Không thể xóa sự kiện Google Calendar"),
+    CALENDAR_INTEGRATION_NOT_CONNECTED(HttpStatus.BAD_REQUEST,   "Google Calendar chưa được kết nối"),
 
     // General
     BAD_REQUEST               (HttpStatus.BAD_REQUEST,           "Yêu cầu không hợp lệ"),

@@ -6,10 +6,12 @@ import com.exe201.planwise.exception.AppException;
 import com.exe201.planwise.exception.ErrorCode;
 import com.exe201.planwise.integration.calendar.dto.CalendarIntegrationStatus;
 import com.exe201.planwise.integration.calendar.dto.CalendarSyncResponse;
+import com.exe201.planwise.integration.calendar.dto.UpdateExternalCalendarEventRequest;
 import com.exe201.planwise.integration.calendar.entity.CalendarConnection;
 import com.exe201.planwise.integration.calendar.entity.CalendarEventMapping;
 import com.exe201.planwise.integration.calendar.model.ExternalCalendarDescriptor;
 import com.exe201.planwise.integration.calendar.model.ExternalCalendarEvent;
+import com.exe201.planwise.integration.calendar.model.ExternalCalendarEventUpdate;
 import com.exe201.planwise.integration.calendar.model.ExternalEventReference;
 import com.exe201.planwise.integration.calendar.provider.ExternalCalendarProvider;
 import com.exe201.planwise.integration.calendar.repository.CalendarConnectionRepository;
@@ -206,6 +208,89 @@ public class CalendarIntegrationService {
                 synchronizedCount,
                 errors.size(),
                 errors
+        );
+    }
+
+    public void updateExternalEvent(
+            UUID userId,
+            String providerKey,
+            UpdateExternalCalendarEventRequest request) {
+        ExternalCalendarProvider provider = requireProvider(providerKey);
+        requireConnected(provider, userId);
+        ExternalCalendarEventUpdate update = toExternalEventUpdate(request);
+        try {
+            provider.updateEvent(
+                    userId,
+                    request.externalCalendarId(),
+                    request.externalEventId(),
+                    update
+            );
+        } catch (RuntimeException exception) {
+            log.warn("Unable to update Google event {} for user {}: {}",
+                    request.externalEventId(), userId, diagnosticMessage(exception));
+            throw new AppException(ErrorCode.CALENDAR_EVENT_UPDATE_FAILED);
+        }
+    }
+
+    public void deleteExternalEvent(
+            UUID userId,
+            String providerKey,
+            String externalCalendarId,
+            String externalEventId) {
+        ExternalCalendarProvider provider = requireProvider(providerKey);
+        requireConnected(provider, userId);
+        if (externalCalendarId == null || externalCalendarId.isBlank()
+                || externalEventId == null || externalEventId.isBlank()) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Calendar ID và Event ID là bắt buộc");
+        }
+        try {
+            provider.deleteEvent(userId, externalCalendarId, externalEventId);
+        } catch (RuntimeException exception) {
+            log.warn("Unable to delete Google event {} for user {}: {}",
+                    externalEventId, userId, diagnosticMessage(exception));
+            throw new AppException(ErrorCode.CALENDAR_EVENT_DELETE_FAILED);
+        }
+    }
+
+    private ExternalCalendarProvider requireProvider(String providerKey) {
+        ExternalCalendarProvider provider = providers.get(providerKey);
+        if (provider == null) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Calendar provider is not supported: " + providerKey);
+        }
+        return provider;
+    }
+
+    private void requireConnected(ExternalCalendarProvider provider, UUID userId) {
+        if (!provider.isConnected(userId)) {
+            throw new AppException(ErrorCode.CALENDAR_INTEGRATION_NOT_CONNECTED);
+        }
+    }
+
+    private ExternalCalendarEventUpdate toExternalEventUpdate(UpdateExternalCalendarEventRequest request) {
+        if (request.eventDate() == null || request.title() == null || request.title().isBlank()) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Tiêu đề và ngày sự kiện là bắt buộc");
+        }
+        if (request.startHour() < 0 || request.startHour() > 23
+                || request.startMin() < 0 || request.startMin() > 59) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Thời gian sự kiện không hợp lệ");
+        }
+        if (!request.allDay() && request.duration() <= 0) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Thời lượng sự kiện phải lớn hơn 0");
+        }
+        double duration = request.allDay()
+                ? Math.max(24.0, request.duration())
+                : request.duration();
+        return new ExternalCalendarEventUpdate(
+                request.title().trim(),
+                request.eventDate(),
+                request.startHour(),
+                request.startMin(),
+                duration,
+                request.location(),
+                request.notes(),
+                request.allDay(),
+                request.isRecurring(),
+                request.recurrenceRule()
         );
     }
 

@@ -9,6 +9,7 @@ import {
   reflectionApi,
   notificationApi,
   settingsApi,
+  calendarIntegrationApi,
   type ApiCategory,
   type ApiTask,
   type ApiCalendarEvent,
@@ -572,7 +573,47 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const updateEvent = async (id: string, updates: Partial<CalendarEvent>) => {
-    if (events.find(event => event.id === id)?.readOnly) return;
+    const currentEvent = events.find(event => event.id === id);
+    if (currentEvent?.source === "GOOGLE") {
+      if (!currentEvent.externalCalendarId || !currentEvent.externalEventId) {
+        throw new Error("Không thể xác định sự kiện Google Calendar");
+      }
+
+      const eventDate = updates.eventDate
+        ?? currentEvent.eventDate
+        ?? getEventDateFromWeekday(updates.day ?? currentEvent.day);
+      const startHour = updates.startHour ?? currentEvent.startHour;
+      const startMin = updates.startMin ?? currentEvent.startMin;
+      const duration = updates.duration ?? currentEvent.duration;
+      await calendarIntegrationApi.updateEvent(currentEvent.provider || "google", {
+        externalCalendarId: currentEvent.externalCalendarId,
+        externalEventId: currentEvent.externalEventId,
+        title: updates.title ?? currentEvent.title,
+        eventDate,
+        startHour,
+        startMin,
+        duration,
+        location: updates.location ?? currentEvent.location,
+        notes: updates.notes ?? currentEvent.notes,
+        allDay: updates.allDay ?? currentEvent.allDay ?? false,
+        isRecurring: updates.isRecurring ?? currentEvent.isRecurring ?? false,
+        recurrenceRule: updates.recurrenceRule ?? currentEvent.recurrenceRule,
+      });
+      setEvents(prev => prev.map(event => event.id === id
+        ? {
+            ...event,
+            ...updates,
+            eventDate,
+            startHour,
+            startMin,
+            duration,
+            allDay: updates.allDay ?? currentEvent.allDay ?? false,
+          }
+        : event));
+      await refreshData();
+      return;
+    }
+    if (currentEvent?.readOnly) return;
 
     const updateData: Record<string, unknown> = {};
     if (updates.title) updateData.title = updates.title;
@@ -596,7 +637,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteEvent = async (id: string) => {
-    if (events.find(event => event.id === id)?.readOnly) return;
+    const currentEvent = events.find(event => event.id === id);
+    if (currentEvent?.source === "GOOGLE") {
+      if (!currentEvent.externalCalendarId || !currentEvent.externalEventId) {
+        throw new Error("Không thể xác định sự kiện Google Calendar");
+      }
+      await calendarIntegrationApi.deleteEvent(
+        currentEvent.provider || "google",
+        currentEvent.externalCalendarId,
+        currentEvent.externalEventId,
+      );
+      setEvents(prev => prev.filter(event => event.id !== id));
+      await refreshData();
+      return;
+    }
+    if (currentEvent?.readOnly) return;
 
     await eventApi.delete(id);
     setEvents(prev => prev.filter(e => e.id !== id));
