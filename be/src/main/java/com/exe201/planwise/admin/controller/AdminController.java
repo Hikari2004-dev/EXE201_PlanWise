@@ -42,6 +42,13 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAllUsers());
     }
 
+    @GetMapping("/reflections")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<Map<String, Object>>> getUserReflections(
+            @RequestParam(defaultValue = "50") int limit) {
+        return ResponseEntity.ok(adminService.getUserReflections(limit));
+    }
+
     @PutMapping("/users/{userId}/role")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> updateUserRole(

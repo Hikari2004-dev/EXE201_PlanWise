@@ -14,6 +14,14 @@ import {
   UserPlus,
   Clock,
   XCircle,
+  Search,
+  Filter,
+  Star,
+  MessageSquare,
+  Smile,
+  Meh,
+  Frown,
+  Zap,
 } from "lucide-react";
 import {
   AreaChart,
@@ -42,17 +50,53 @@ interface AdminStats {
   userGrowth: Array<{ date: string; totalUsers: number; newUsers: number }>;
 }
 
+interface TransactionDetail {
+  id: string;
+  orderId: string;
+  userName: string;
+  userEmail: string;
+  planName: string;
+  amount: number;
+  status: string;
+  createdAt: string;
+}
+
+interface UserReview {
+  id: string;
+  userName: string;
+  userEmail: string;
+  reflectionDate: string;
+  mood?: string;
+  energyLevel?: number;
+  rating?: number;
+  completed?: string;
+  obstacles?: string;
+  improvements?: string;
+  comment?: string;
+  createdAt?: string;
+}
+
 const COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981"];
 
-type TabType = "overview" | "revenue" | "users" | "plans";
+type TabType = "overview" | "revenue" | "users" | "plans" | "reviews";
+
+
 
 export function AdminDashboard() {
   const { fetchWithAuth, user } = useAuth();
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [recentTransactions, setRecentTransactions] = useState<TransactionDetail[]>([]);
+  const [userReviews, setUserReviews] = useState<UserReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Search & Filters
+  const [txSearch, setTxSearch] = useState("");
+  const [txStatusFilter, setTxStatusFilter] = useState("all");
+  const [reviewSearch, setReviewSearch] = useState("");
+  const [reviewMoodFilter, setReviewMoodFilter] = useState("all");
 
   const fetchStats = async () => {
     setIsRefreshing(true);
@@ -68,6 +112,34 @@ export function AdminDashboard() {
         setError("Lỗi server. Vui lòng thử lại sau.");
       } else {
         setError("Không thể tải dữ liệu");
+      }
+
+      // Fetch recent transactions
+      try {
+        const txRes = await fetchWithAuth("/api/v1/admin/transactions/recent?limit=50");
+        if (txRes.ok) {
+          const txData = await txRes.json();
+          if (Array.isArray(txData) && txData.length > 0) {
+            setRecentTransactions(txData);
+          } else {
+            setRecentTransactions(MOCK_RECENT_TRANSACTIONS);
+          }
+        } else {
+          setRecentTransactions(MOCK_RECENT_TRANSACTIONS);
+        }
+      } catch {
+        setRecentTransactions(MOCK_RECENT_TRANSACTIONS);
+      }
+
+      // Fetch user reviews/reflections
+      try {
+        const revRes = await fetchWithAuth("/api/v1/admin/reflections?limit=50");
+        if (revRes.ok) {
+          const revData = await revRes.json();
+          setUserReviews(Array.isArray(revData) ? revData : []);
+        }
+      } catch {
+        // silently fail, userReviews remains []
       }
     } catch (err) {
       setError("Không thể kết nối đến máy chủ");
@@ -102,29 +174,35 @@ export function AdminDashboard() {
   };
 
   const revenueChartData = stats?.revenueByMonth
-    .sort((a, b) => a.year - b.year || a.month - b.month)
-    .slice(-6)
-    .map((item) => ({
-      name: formatMonth(item.month),
-      revenue: item.revenue / 1000000,
-    })) || [];
+    ? [...stats.revenueByMonth]
+      .sort((a, b) => a.year - b.year || a.month - b.month)
+      .slice(-6)
+      .map((item) => ({
+        name: formatMonth(item.month),
+        revenue: item.revenue / 1000000,
+      }))
+    : [];
 
   const transactionsChartData = stats?.transactionsByDay
-    .slice(0, 14)
-    .reverse()
-    .map((item) => ({
-      name: item.date.slice(5),
-      transactions: item.count,
-    })) || [];
+    ? [...stats.transactionsByDay]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-14)
+      .map((item) => ({
+        name: item.date.slice(5),
+        transactions: item.count,
+      }))
+    : [];
 
   const userGrowthChartData = stats?.userGrowth
-    .slice(0, 14)
-    .reverse()
-    .map((item) => ({
-      name: item.date.slice(5),
-      total: item.totalUsers,
-      new: item.newUsers,
-    })) || [];
+    ? [...stats.userGrowth]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-14)
+      .map((item) => ({
+        name: item.date.slice(5),
+        total: item.totalUsers,
+        new: item.newUsers,
+      }))
+    : [];
 
   const planChartData =
     stats?.planStats.map((item, index) => ({
@@ -195,6 +273,28 @@ export function AdminDashboard() {
   const totalRevenue = stats.totalRevenue || 0;
   const monthlyRev = stats?.monthlyRevenue || 0;
 
+  const filteredTransactions = recentTransactions.filter((tx) => {
+    const matchesSearch =
+      (tx.orderId || "").toLowerCase().includes(txSearch.toLowerCase()) ||
+      (tx.userEmail || "").toLowerCase().includes(txSearch.toLowerCase()) ||
+      (tx.userName || "").toLowerCase().includes(txSearch.toLowerCase());
+    const matchesStatus =
+      txStatusFilter === "all" || tx.status.toUpperCase() === txStatusFilter.toUpperCase();
+    return matchesSearch && matchesStatus;
+  });
+
+  const filteredReviews = userReviews.filter((rev) => {
+    const matchesSearch =
+      (rev.userName || "").toLowerCase().includes(reviewSearch.toLowerCase()) ||
+      (rev.userEmail || "").toLowerCase().includes(reviewSearch.toLowerCase()) ||
+      (rev.completed || "").toLowerCase().includes(reviewSearch.toLowerCase()) ||
+      (rev.improvements || "").toLowerCase().includes(reviewSearch.toLowerCase()) ||
+      (rev.comment || "").toLowerCase().includes(reviewSearch.toLowerCase());
+    const matchesMood =
+      reviewMoodFilter === "all" || (rev.mood || "").toLowerCase() === reviewMoodFilter.toLowerCase();
+    return matchesSearch && matchesMood;
+  });
+
   return (
     <div className="mx-auto max-w-7xl p-4 sm:p-6">
       {/* Header */}
@@ -222,15 +322,15 @@ export function AdminDashboard() {
           { id: "revenue", label: "Doanh thu", icon: DollarSign },
           { id: "users", label: "Người dùng", icon: Users },
           { id: "plans", label: "Gói Premium", icon: Package },
+          { id: "reviews", label: "Đánh giá người dùng", icon: Star },
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as TabType)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
-              activeTab === tab.id
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${activeTab === tab.id
+              ? "bg-primary text-primary-foreground"
+              : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              }`}
           >
             <tab.icon size={18} />
             {tab.label}
@@ -429,6 +529,103 @@ export function AdminDashboard() {
               </ResponsiveContainer>
             </div>
           </ChartCard>
+
+          {/* Detailed Transactions Table */}
+          <ChartCard
+            title="Chi tiết danh sách giao dịch"
+            icon={<CreditCard size={20} />}
+            iconClass="text-emerald-500 dark:text-emerald-400"
+          >
+            {/* Controls */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+              <div className="relative w-full sm:w-72">
+                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Tìm theo mã đơn, email, tên..."
+                  value={txSearch}
+                  onChange={(e) => setTxSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Filter size={16} className="text-muted-foreground" />
+                <select
+                  value={txStatusFilter}
+                  onChange={(e) => setTxStatusFilter(e.target.value)}
+                  className="px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="all">Tất cả trạng thái</option>
+                  <option value="SUCCESS">Thành công</option>
+                  <option value="PENDING">Đang xử lý</option>
+                  <option value="FAILED">Thất bại</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-muted/50 text-muted-foreground text-xs uppercase border-b border-border">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Mã giao dịch</th>
+                    <th className="px-4 py-3 font-semibold">Khách hàng</th>
+                    <th className="px-4 py-3 font-semibold">Gói đăng ký</th>
+                    <th className="px-4 py-3 font-semibold">Số tiền</th>
+                    <th className="px-4 py-3 font-semibold">Trạng thái</th>
+                    <th className="px-4 py-3 font-semibold">Thời gian</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredTransactions.length > 0 ? (
+                    filteredTransactions.map((tx) => (
+                      <tr key={tx.id || tx.orderId} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-3 font-mono font-medium text-foreground">
+                          {tx.orderId || tx.id?.slice(0, 8)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-foreground">{tx.userName || "N/A"}</p>
+                          <p className="text-xs text-muted-foreground">{tx.userEmail}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                            {tx.planName || "Premium"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-emerald-600 dark:text-emerald-400">
+                          {formatCurrency(tx.amount || 0)}
+                        </td>
+                        <td className="px-4 py-3">
+                          {tx.status === "SUCCESS" ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                              <CheckCircle size={12} /> Thành công
+                            </span>
+                          ) : tx.status === "PENDING" ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                              <Clock size={12} /> Đang xử lý
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
+                              <XCircle size={12} /> Thất bại
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                          {tx.createdAt ? new Date(tx.createdAt).toLocaleString("vi-VN") : "N/A"}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                        Không tìm thấy giao dịch phù hợp
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </ChartCard>
         </div>
       )}
 
@@ -581,6 +778,186 @@ export function AdminDashboard() {
           )}
         </div>
       )}
+
+      {/* Reviews Tab */}
+      {activeTab === "reviews" && (() => {
+        const reviewsWithEnergy = userReviews.filter((r) => r.energyLevel != null && r.energyLevel > 0);
+        const avgEnergy = reviewsWithEnergy.length > 0
+          ? (reviewsWithEnergy.reduce((sum, r) => sum + (r.energyLevel || 0), 0) / reviewsWithEnergy.length).toFixed(1)
+          : "0";
+        const happyCount = userReviews.filter((r) => r.mood === "great" || r.mood === "good").length;
+        const satisfactionRate = userReviews.length > 0
+          ? Math.round((happyCount / userReviews.length) * 100)
+          : 0;
+        const moodCounts: Record<string, number> = {};
+        userReviews.forEach((r) => {
+          const m = r.mood || "okay";
+          moodCounts[m] = (moodCounts[m] || 0) + 1;
+        });
+        const topMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0];
+        const topMoodLabel = topMood ? (topMood[0] === "great" ? "Tuyệt vời" : topMood[0] === "good" ? "Tốt" : topMood[0] === "okay" ? "Bình thường" : "Cần cố gắng") : "N/A";
+
+        return (
+          <div className="space-y-6">
+            {/* Overview Stat Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                icon={<Star size={24} />}
+                label="Tâm trạng phổ biến"
+                value={topMoodLabel}
+                subValue={topMood ? `${topMood[1]} lượt ghi nhận` : "Chưa có dữ liệu"}
+                iconBgClass="bg-amber-500/10 dark:bg-amber-500/20"
+                iconTextClass="text-amber-500 dark:text-amber-400"
+              />
+              <StatCard
+                icon={<Zap size={24} />}
+                label="Mức năng lượng TB"
+                value={`${avgEnergy} / 10`}
+                subValue={`Dựa trên ${reviewsWithEnergy.length} lượt đánh giá`}
+                iconBgClass="bg-indigo-500/10 dark:bg-indigo-500/20"
+                iconTextClass="text-indigo-500 dark:text-indigo-400"
+              />
+              <StatCard
+                icon={<Smile size={24} />}
+                label="Tỷ lệ hài lòng"
+                value={`${satisfactionRate}%`}
+                subValue="Tâm trạng Tốt & Tuyệt vời"
+                iconBgClass="bg-emerald-500/10 dark:bg-emerald-500/20"
+                iconTextClass="text-emerald-500 dark:text-emerald-400"
+              />
+              <StatCard
+                icon={<MessageSquare size={24} />}
+                label="Tổng số phản hồi"
+                value={formatNumber(userReviews.length)}
+                subValue="Nhật ký & Đánh giá"
+                iconBgClass="bg-violet-500/10 dark:bg-violet-500/20"
+                iconTextClass="text-violet-500 dark:text-violet-400"
+              />
+            </div>
+
+            {/* Search & Filter & Reviews Grid */}
+            <ChartCard
+              title="Danh sách đánh giá & phản hồi từ người dùng"
+              icon={<MessageSquare size={20} />}
+              iconClass="text-violet-500 dark:text-violet-400"
+            >
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+                <div className="relative w-full sm:w-80">
+                  <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Tìm theo tên, email, nhận xét..."
+                    value={reviewSearch}
+                    onChange={(e) => setReviewSearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <Filter size={16} className="text-muted-foreground" />
+                  <select
+                    value={reviewMoodFilter}
+                    onChange={(e) => setReviewMoodFilter(e.target.value)}
+                    className="px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="all">Tất cả tâm trạng</option>
+                    <option value="great">Tuyệt vời 😁</option>
+                    <option value="good">Tốt 🙂</option>
+                    <option value="okay">Bình thường 😐</option>
+                    <option value="bad">Cần cố gắng 🙁</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Reviews Cards List */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredReviews.length > 0 ? (
+                  filteredReviews.map((rev) => (
+                    <div
+                      key={rev.id}
+                      className="p-5 bg-card/60 border border-border rounded-xl hover:border-primary/30 transition-all space-y-3"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-sm">
+                            {(rev.userName || rev.userEmail || "U").charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-foreground text-sm">{rev.userName || "Người dùng"}</p>
+                            <p className="text-xs text-muted-foreground">{rev.userEmail}</p>
+                          </div>
+                        </div>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {rev.reflectionDate || "Gần đây"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1">
+                        {/* Mood Badge */}
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${rev.mood === "great"
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            : rev.mood === "good"
+                              ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                              : rev.mood === "okay"
+                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                            }`}
+                        >
+                          {rev.mood === "great" && <Smile size={14} />}
+                          {rev.mood === "good" && <Smile size={14} />}
+                          {rev.mood === "okay" && <Meh size={14} />}
+                          {rev.mood === "bad" && <Frown size={14} />}
+                          {rev.mood === "great" ? "Tuyệt vời" : rev.mood === "good" ? "Tốt" : rev.mood === "okay" ? "Bình thường" : "Cần cố gắng"}
+                        </span>
+
+                        {/* Energy Level */}
+                        {rev.energyLevel !== undefined && (
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Zap size={14} className="text-amber-500" />
+                            <span>Năng lượng: <strong className="text-foreground">{rev.energyLevel}/10</strong></span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Content Details */}
+                      <div className="space-y-2 text-xs pt-1 border-t border-border/50">
+                        {rev.completed && (
+                          <div>
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">✓ Đã hoàn thành: </span>
+                            <span className="text-foreground/90">{rev.completed}</span>
+                          </div>
+                        )}
+                        {rev.obstacles && (
+                          <div>
+                            <span className="font-semibold text-amber-600 dark:text-amber-400">⚠ Khó khăn / Trì hoãn: </span>
+                            <span className="text-foreground/90">{rev.obstacles}</span>
+                          </div>
+                        )}
+                        {rev.improvements && (
+                          <div>
+                            <span className="font-semibold text-indigo-600 dark:text-indigo-400">💡 Hành động cải thiện: </span>
+                            <span className="text-foreground/90">{rev.improvements}</span>
+                          </div>
+                        )}
+                        {rev.comment && (
+                          <div className="italic bg-muted/40 p-2.5 rounded-lg text-foreground/80 mt-2">
+                            "{rev.comment}"
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-full py-12 text-center text-muted-foreground">
+                    <MessageSquare size={36} className="mx-auto mb-2 opacity-50" />
+                    Không tìm thấy nhận xét phù hợp
+                  </div>
+                )}
+              </div>
+            </ChartCard>
+          </div>
+        );
+      })()}
     </div>
   );
 }

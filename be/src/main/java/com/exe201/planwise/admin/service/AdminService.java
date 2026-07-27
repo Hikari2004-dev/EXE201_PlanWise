@@ -6,6 +6,8 @@ import com.exe201.planwise.user.entity.PaymentTransaction;
 import com.exe201.planwise.user.repository.UserRepository;
 import com.exe201.planwise.user.repository.UserSubscriptionRepository;
 import com.exe201.planwise.user.repository.PaymentTransactionRepository;
+import com.exe201.planwise.reflection.entity.DailyReflection;
+import com.exe201.planwise.reflection.repository.DailyReflectionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,7 @@ public class AdminService {
     private final UserRepository userRepository;
     private final UserSubscriptionRepository userSubscriptionRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
+    private final DailyReflectionRepository dailyReflectionRepository;
 
     @Transactional(readOnly = true)
     public AdminStatsResponse getStats() {
@@ -192,6 +195,28 @@ public class AdminService {
                 map.put("isPremium", user.isPremium());
                 map.put("createdAt", user.getCreatedAt());
                 map.put("lastLoginAt", user.getLastLoginAt());
+                return map;
+            })
+            .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getUserReflections(int limit) {
+        return dailyReflectionRepository.findAll().stream()
+            .sorted(Comparator.comparing(DailyReflection::getReflectionDate).reversed())
+            .limit(limit)
+            .map(r -> {
+                Map<String, Object> map = new LinkedHashMap<>();
+                map.put("id", r.getId());
+                map.put("userEmail", r.getUser() != null ? r.getUser().getEmail() : "N/A");
+                map.put("userName", r.getUser() != null ? r.getUser().getFullName() : "N/A");
+                map.put("reflectionDate", r.getReflectionDate());
+                map.put("completed", r.getCompleted());
+                map.put("obstacles", r.getObstacles());
+                map.put("improvements", r.getImprovements());
+                map.put("energyLevel", r.getEnergyLevel());
+                map.put("mood", r.getMood() != null ? r.getMood().name() : "okay");
+                map.put("createdAt", r.getCreatedAt());
                 return map;
             })
             .collect(Collectors.toList());
