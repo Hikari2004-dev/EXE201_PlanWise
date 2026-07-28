@@ -61,19 +61,13 @@ interface TransactionDetail {
   createdAt: string;
 }
 
-interface UserReview {
+interface Feedback {
   id: string;
   userName: string;
   userEmail: string;
-  reflectionDate: string;
-  mood?: string;
-  energyLevel?: number;
-  rating?: number;
-  completed?: string;
-  obstacles?: string;
-  improvements?: string;
-  comment?: string;
-  createdAt?: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
 }
 
 const COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981"];
@@ -86,7 +80,7 @@ export function AdminDashboard() {
   const { fetchWithAuth, user } = useAuth();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<TransactionDetail[]>([]);
-  const [userReviews, setUserReviews] = useState<UserReview[]>([]);
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("overview");
@@ -96,7 +90,7 @@ export function AdminDashboard() {
   const [txSearch, setTxSearch] = useState("");
   const [txStatusFilter, setTxStatusFilter] = useState("all");
   const [reviewSearch, setReviewSearch] = useState("");
-  const [reviewMoodFilter, setReviewMoodFilter] = useState("all");
+  const [reviewRatingFilter, setReviewRatingFilter] = useState("all");
 
   const fetchStats = async () => {
     setIsRefreshing(true);
@@ -131,15 +125,15 @@ export function AdminDashboard() {
         setRecentTransactions([]);
       }
 
-      // Fetch user reviews/reflections
+      // Fetch app feedbacks
       try {
-        const revRes = await fetchWithAuth("/api/v1/admin/reflections?limit=50");
+        const revRes = await fetchWithAuth("/api/v1/admin/feedbacks?limit=50");
         if (revRes.ok) {
           const revData = await revRes.json();
-          setUserReviews(Array.isArray(revData) ? revData : []);
+          setFeedbacks(Array.isArray(revData) ? revData : []);
         }
       } catch {
-        // silently fail, userReviews remains []
+        // silently fail, feedbacks remains []
       }
     } catch (err) {
       setError("Không thể kết nối đến máy chủ");
@@ -283,16 +277,14 @@ export function AdminDashboard() {
     return matchesSearch && matchesStatus;
   });
 
-  const filteredReviews = userReviews.filter((rev) => {
+  const filteredReviews = feedbacks.filter((rev) => {
     const matchesSearch =
       (rev.userName || "").toLowerCase().includes(reviewSearch.toLowerCase()) ||
       (rev.userEmail || "").toLowerCase().includes(reviewSearch.toLowerCase()) ||
-      (rev.completed || "").toLowerCase().includes(reviewSearch.toLowerCase()) ||
-      (rev.improvements || "").toLowerCase().includes(reviewSearch.toLowerCase()) ||
       (rev.comment || "").toLowerCase().includes(reviewSearch.toLowerCase());
-    const matchesMood =
-      reviewMoodFilter === "all" || (rev.mood || "").toLowerCase() === reviewMoodFilter.toLowerCase();
-    return matchesSearch && matchesMood;
+    const matchesRating =
+      reviewRatingFilter === "all" || rev.rating.toString() === reviewRatingFilter;
+    return matchesSearch && matchesRating;
   });
 
   return (
@@ -781,21 +773,13 @@ export function AdminDashboard() {
 
       {/* Reviews Tab */}
       {activeTab === "reviews" && (() => {
-        const reviewsWithEnergy = userReviews.filter((r) => r.energyLevel != null && r.energyLevel > 0);
-        const avgEnergy = reviewsWithEnergy.length > 0
-          ? (reviewsWithEnergy.reduce((sum, r) => sum + (r.energyLevel || 0), 0) / reviewsWithEnergy.length).toFixed(1)
+        const avgRating = feedbacks.length > 0
+          ? (feedbacks.reduce((sum, r) => sum + r.rating, 0) / feedbacks.length).toFixed(1)
           : "0";
-        const happyCount = userReviews.filter((r) => r.mood === "great" || r.mood === "good").length;
-        const satisfactionRate = userReviews.length > 0
-          ? Math.round((happyCount / userReviews.length) * 100)
+        const happyCount = feedbacks.filter((r) => r.rating >= 4).length;
+        const satisfactionRate = feedbacks.length > 0
+          ? Math.round((happyCount / feedbacks.length) * 100)
           : 0;
-        const moodCounts: Record<string, number> = {};
-        userReviews.forEach((r) => {
-          const m = r.mood || "okay";
-          moodCounts[m] = (moodCounts[m] || 0) + 1;
-        });
-        const topMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0];
-        const topMoodLabel = topMood ? (topMood[0] === "great" ? "Tuyệt vời" : topMood[0] === "good" ? "Tốt" : topMood[0] === "okay" ? "Bình thường" : "Cần cố gắng") : "N/A";
 
         return (
           <div className="space-y-6">
@@ -803,33 +787,25 @@ export function AdminDashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard
                 icon={<Star size={24} />}
-                label="Tâm trạng phổ biến"
-                value={topMoodLabel}
-                subValue={topMood ? `${topMood[1]} lượt ghi nhận` : "Chưa có dữ liệu"}
+                label="Đánh giá trung bình"
+                value={`${avgRating} / 5`}
+                subValue={`Từ ${feedbacks.length} lượt đánh giá`}
                 iconBgClass="bg-amber-500/10 dark:bg-amber-500/20"
                 iconTextClass="text-amber-500 dark:text-amber-400"
-              />
-              <StatCard
-                icon={<Zap size={24} />}
-                label="Mức năng lượng TB"
-                value={`${avgEnergy} / 10`}
-                subValue={`Dựa trên ${reviewsWithEnergy.length} lượt đánh giá`}
-                iconBgClass="bg-indigo-500/10 dark:bg-indigo-500/20"
-                iconTextClass="text-indigo-500 dark:text-indigo-400"
               />
               <StatCard
                 icon={<Smile size={24} />}
                 label="Tỷ lệ hài lòng"
                 value={`${satisfactionRate}%`}
-                subValue="Tâm trạng Tốt & Tuyệt vời"
+                subValue="Đánh giá 4 & 5 sao"
                 iconBgClass="bg-emerald-500/10 dark:bg-emerald-500/20"
                 iconTextClass="text-emerald-500 dark:text-emerald-400"
               />
               <StatCard
                 icon={<MessageSquare size={24} />}
                 label="Tổng số phản hồi"
-                value={formatNumber(userReviews.length)}
-                subValue="Nhật ký & Đánh giá"
+                value={formatNumber(feedbacks.length)}
+                subValue="Đánh giá website"
                 iconBgClass="bg-violet-500/10 dark:bg-violet-500/20"
                 iconTextClass="text-violet-500 dark:text-violet-400"
               />
@@ -837,7 +813,7 @@ export function AdminDashboard() {
 
             {/* Search & Filter & Reviews Grid */}
             <ChartCard
-              title="Danh sách đánh giá & phản hồi từ người dùng"
+              title="Danh sách đánh giá & phản hồi website"
               icon={<MessageSquare size={20} />}
               iconClass="text-violet-500 dark:text-violet-400"
             >
@@ -855,15 +831,16 @@ export function AdminDashboard() {
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                   <Filter size={16} className="text-muted-foreground" />
                   <select
-                    value={reviewMoodFilter}
-                    onChange={(e) => setReviewMoodFilter(e.target.value)}
+                    value={reviewRatingFilter}
+                    onChange={(e) => setReviewRatingFilter(e.target.value)}
                     className="px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   >
-                    <option value="all">Tất cả tâm trạng</option>
-                    <option value="great">Tuyệt vời 😁</option>
-                    <option value="good">Tốt 🙂</option>
-                    <option value="okay">Bình thường 😐</option>
-                    <option value="bad">Cần cố gắng 🙁</option>
+                    <option value="all">Tất cả số sao</option>
+                    <option value="5">5 sao ⭐⭐⭐⭐⭐</option>
+                    <option value="4">4 sao ⭐⭐⭐⭐</option>
+                    <option value="3">3 sao ⭐⭐⭐</option>
+                    <option value="2">2 sao ⭐⭐</option>
+                    <option value="1">1 sao ⭐</option>
                   </select>
                 </div>
               </div>
@@ -887,61 +864,26 @@ export function AdminDashboard() {
                           </div>
                         </div>
                         <span className="text-xs text-muted-foreground font-mono">
-                          {rev.reflectionDate || "Gần đây"}
+                          {rev.createdAt ? new Date(rev.createdAt).toLocaleDateString("vi-VN") : "Gần đây"}
                         </span>
                       </div>
 
                       <div className="flex items-center justify-between pt-1">
-                        {/* Mood Badge */}
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${rev.mood === "great"
-                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                            : rev.mood === "good"
-                              ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                              : rev.mood === "okay"
-                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                                : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                            }`}
-                        >
-                          {rev.mood === "great" && <Smile size={14} />}
-                          {rev.mood === "good" && <Smile size={14} />}
-                          {rev.mood === "okay" && <Meh size={14} />}
-                          {rev.mood === "bad" && <Frown size={14} />}
-                          {rev.mood === "great" ? "Tuyệt vời" : rev.mood === "good" ? "Tốt" : rev.mood === "okay" ? "Bình thường" : "Cần cố gắng"}
-                        </span>
-
-                        {/* Energy Level */}
-                        {rev.energyLevel !== undefined && (
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Zap size={14} className="text-amber-500" />
-                            <span>Năng lượng: <strong className="text-foreground">{rev.energyLevel}/10</strong></span>
-                          </div>
-                        )}
+                        <div className="flex text-amber-400">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star key={i} size={16} fill={i < rev.rating ? "currentColor" : "none"} className={i < rev.rating ? "text-amber-400" : "text-muted-foreground/30"} />
+                          ))}
+                        </div>
                       </div>
 
-                      {/* Content Details */}
-                      <div className="space-y-2 text-xs pt-1 border-t border-border/50">
-                        {rev.completed && (
-                          <div>
-                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">✓ Đã hoàn thành: </span>
-                            <span className="text-foreground/90">{rev.completed}</span>
-                          </div>
-                        )}
-                        {rev.obstacles && (
-                          <div>
-                            <span className="font-semibold text-amber-600 dark:text-amber-400">⚠ Khó khăn / Trì hoãn: </span>
-                            <span className="text-foreground/90">{rev.obstacles}</span>
-                          </div>
-                        )}
-                        {rev.improvements && (
-                          <div>
-                            <span className="font-semibold text-indigo-600 dark:text-indigo-400">💡 Hành động cải thiện: </span>
-                            <span className="text-foreground/90">{rev.improvements}</span>
-                          </div>
-                        )}
-                        {rev.comment && (
-                          <div className="italic bg-muted/40 p-2.5 rounded-lg text-foreground/80 mt-2">
+                      <div className="space-y-2 text-sm pt-1 border-t border-border/50">
+                        {rev.comment ? (
+                          <div className="text-foreground/90 mt-2">
                             "{rev.comment}"
+                          </div>
+                        ) : (
+                          <div className="text-muted-foreground italic mt-2">
+                            (Không để lại nhận xét)
                           </div>
                         )}
                       </div>

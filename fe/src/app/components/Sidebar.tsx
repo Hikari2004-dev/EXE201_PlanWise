@@ -25,6 +25,7 @@ import { useState } from "react";
 import { useData } from "../context/DataContext";
 import { COLOR_MAP, type EventColor } from "../data/mockData";
 import { CategoryModal } from "./CategoryModal";
+import { FeedbackModal } from "./FeedbackModal";
 import { useTheme } from "next-themes";
 import { useAuth } from "../context/AuthContext";
 
@@ -100,6 +101,7 @@ export function Sidebar({
   const toggleLanguage = () => setLanguage(language === "vi" ? "en" : "vi");
   const { theme, setTheme } = useTheme();
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const { user, logout } = useAuth();
 
   // On mobile, sidebar is always "open" (expanded) when visible
@@ -341,6 +343,19 @@ export function Sidebar({
             </div>
           </div>
         )}
+
+        {/* ── App Feedback Button ── */}
+        {effectiveOpen && (
+          <div className="px-4 py-2 mt-auto">
+            <button
+              onClick={() => setShowFeedbackModal(true)}
+              className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 font-medium transition-colors border border-indigo-500/20 text-xs shadow-sm shadow-indigo-900/20 group"
+            >
+              <Sparkles size={14} className="group-hover:rotate-12 transition-transform" />
+              {language === "vi" ? "Đánh giá ứng dụng" : "App Feedback"}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── User profile (always at bottom) ── */}
@@ -429,6 +444,9 @@ export function Sidebar({
 
       {showCategoryModal && (
         <CategoryModal onClose={() => setShowCategoryModal(false)} />
+      )}
+      {showFeedbackModal && (
+        <FeedbackModal onClose={() => setShowFeedbackModal(false)} />
       )}
     </div>
   );

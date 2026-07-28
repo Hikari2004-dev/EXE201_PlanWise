@@ -14,7 +14,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate            # Tạm cho local/dev tự tạo bảng thiếu, có thể đổi lại validate sau khi sync schema
+      ddl-auto: update            # Tạm cho local/dev tự tạo bảng thiếu, có thể đổi lại validate sau khi sync schema
     show-sql: false
     properties:
       hibernate:
