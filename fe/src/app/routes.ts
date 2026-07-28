@@ -13,7 +13,6 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { PricingPage } from "./components/PricingPage";
 import { PaymentResultPage } from "./components/PaymentResultPage";
 import { AdminDashboard } from "./components/AdminDashboard";
-import { ReviewView } from "./components/ReviewView";
 import HomePage from "./components/Homepage";
 import { LoginPage } from "./components/LoginPage";
 import { VerifyEmailPage } from "./components/VerifyEmailPage";
@@ -60,7 +59,6 @@ export const router = createBrowserRouter([
       { path: "goals", Component: GoalsView },
       { path: "habits", Component: HabitsView },
       { path: "analytics", Component: AnalyticsView },
-      { path: "review", Component: ReviewView },
       { path: "pricing", Component: PricingPage },
       { path: "admin", Component: AdminDashboard },
     ],

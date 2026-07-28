@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import {
   TrendingUp, Clock, ArrowRight, Flame, MapPin, History, XCircle,
-  CalendarDays, CheckCircle2, AlertTriangle, Zap, BookOpen,
+  CalendarDays, CheckCircle2, AlertTriangle, Zap,
 } from "lucide-react";
 import { HintBubble } from "./HintBubble";
 import { NotificationCenter } from "./NotificationCenter";
@@ -309,13 +309,6 @@ export function DashboardView() {
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          <Link
-            to="/dashboard/review"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 rounded-full text-xs font-semibold transition-colors"
-          >
-            <BookOpen size={14} />
-            <span>{language === "vi" ? "Đánh giá hôm nay" : "Daily Review"}</span>
-          </Link>
           <PlannerAssistantButton />
           <NotificationCenter />
           <CurrentTimeIndicator />

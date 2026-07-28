@@ -19,7 +19,6 @@ import {
   LogOut,
   X,
   Shield,
-  BookOpen,
 } from "lucide-react";
 import { useState } from "react";
 import { useData } from "../context/DataContext";
@@ -142,12 +141,6 @@ export function Sidebar({
       path: "/dashboard/analytics",
       label: language === "vi" ? "Phân tích" : "Analytics",
       icon: BarChart2,
-    },
-
-    {
-      path: "/dashboard/review",
-      label: language === "vi" ? "Đánh giá & Nhật ký" : "Review & Journal",
-      icon: BookOpen,
     },
 
     {
