@@ -107,9 +107,10 @@ export function PricingPage() {
     featuresTitle: language === "vi" ? "Tính năng độc quyền Premium" : "Exclusive Premium Features",
     featureGoal: language === "vi" ? "Không giới hạn Mục tiêu (Bản miễn phí giới hạn 3)" : "Unlimited Goals (Free limited to 3)",
     featureHabit: language === "vi" ? "Không giới hạn Thói quen (Bản miễn phí giới hạn 3)" : "Unlimited Habits (Free limited to 3)",
-    featureAnalytics: language === "vi" ? "Biểu đồ Phân tích Tiến độ nâng cao" : "Advanced Progress & Analytics Charts",
-    featureAI: language === "vi" ? "Trợ lý AI tư vấn lộ trình thông minh không giới hạn" : "Unlimited interactions with AI Coach",
+    featuerAIGoalPlanner: language === "vi" ? "Lập kế hoạch phân rã mục tiêu thông minh không giới hạn" : "Unlimited interactions with AI Goal Planner for smart goal setting",
+    featureAIAssistant: language === "vi" ? "Trợ lý AI sắp xếp lịch trình thông minh không giới hạn" : "Unlimited interactions with AI Assistant for smart scheduling",
     featureCategories: language === "vi" ? "Tự do tạo danh mục & màu sắc tùy biến" : "Custom categories & color personalization",
+    featureEarlyAccess: language === "vi" ? "Truy cập sớm các tính năng mới" : "Early access to new features",
     featuresComparison: language === "vi" ? "So sánh các gói" : "Compare Plans",
     featureName: language === "vi" ? "Tính năng" : "Feature",
     freePlan: language === "vi" ? "Miễn phí" : "Free Plan",
@@ -267,9 +268,10 @@ export function PricingPage() {
             {[
               { text: t.featureGoal, desc: language === "vi" ? "Không lo giới hạn số lượng mục tiêu, thoải mái lập kế hoạch dài hạn." : "No limits on goal setting, design long-term plans freely." },
               { text: t.featureHabit, desc: language === "vi" ? "Tạo thói quen buổi sáng, tối và công việc mà không bị giới hạn." : "Track custom habits for routine building without constraint." },
-              { text: t.featureAnalytics, desc: language === "vi" ? "Mở khóa toàn bộ biểu đồ xu hướng, tỉ lệ hoàn thành thói quen nâng cao." : "Unlock standard graphs, calendar heatmap, and habit success rates." },
-              { text: t.featureAI, desc: language === "vi" ? "Hỏi đáp không giới hạn với AI Mentor về cách tối ưu hóa thời gian biểu." : "Chat with AI coach for personal advice on scheduling and productivity." },
+              { text: t.featuerAIGoalPlanner, desc: language === "vi" ? "không giới hạn số lần tạo kế hoạch với AI Goal Planner." : "Unlimited planning with the AI Goal Planner." },
+              { text: t.featureAIAssistant, desc: language === "vi" ? "Tương tác không giới hạn với AI Assistant." : "Unlimited interactions with the AI Assistant." },
               { text: t.featureCategories, desc: language === "vi" ? "Phân loại công việc theo danh mục riêng với màu sắc cá nhân hóa." : "Define custom categories and choose palette accents for calendar visual cues." },
+              { text: t.featureEarlyAccess, desc: language === "vi" ? "Được thử nghiệm các tính năng mới trước người dùng khác." : "Early access to new features before they are released to the public." },
             ].map((f, index) => (
               <div key={index} className="p-5 rounded-2xl bg-slate-900/20 border border-white/[0.04] hover:border-indigo-500/20 transition-all flex gap-3.5">
                 <div className="w-6 h-6 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 shrink-0">
@@ -311,12 +313,12 @@ export function PricingPage() {
                   <td className="p-4 text-center font-bold text-indigo-300">{t.unlimited}</td>
                 </tr>
                 <tr>
-                  <td className="p-4 font-medium text-slate-300">{language === "vi" ? "Biểu đồ Phân tích" : "Analytics & Trends"}</td>
-                  <td className="p-4 text-center text-slate-500">{language === "vi" ? "Khóa" : "Locked"}</td>
-                  <td className="p-4 text-center font-bold text-indigo-300">{language === "vi" ? "Mở khóa toàn bộ" : "Fully Unlocked"}</td>
+                  <td className="p-4 font-medium text-slate-300">{language === "vi" ? "Giới hạn AI Goal Planner" : "AI Goal Planner Limit"}</td>
+                  <td className="p-4 text-center text-slate-500">{language === "vi" ? "Giới hạn" : "Limited Context"}</td>
+                  <td className="p-4 text-center font-bold text-indigo-300">{t.unlimited}</td>
                 </tr>
                 <tr>
-                  <td className="p-4 font-medium text-slate-300">{language === "vi" ? "Hỏi đáp Trợ lý AI" : "AI Mentor Interactions"}</td>
+                  <td className="p-4 font-medium text-slate-300">{language === "vi" ? "Giới hạn Trợ lý AI" : "AI Assistant Limit"}</td>
                   <td className="p-4 text-center text-slate-500">{language === "vi" ? "Giới hạn" : "Limited Context"}</td>
                   <td className="p-4 text-center font-bold text-indigo-300">{t.unlimited}</td>
                 </tr>

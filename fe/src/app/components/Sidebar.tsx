@@ -12,7 +12,6 @@ import {
   Target,
   Activity,
   Globe,
-  BarChart2,
   Sparkles,
   Moon,
   Sun,
@@ -135,12 +134,6 @@ export function Sidebar({
       path: "/dashboard/habits",
       label: language === "vi" ? "Theo dõi thói quen" : "Habits",
       icon: Activity,
-    },
-
-    {
-      path: "/dashboard/analytics",
-      label: language === "vi" ? "Phân tích" : "Analytics",
-      icon: BarChart2,
     },
 
     {

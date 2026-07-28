@@ -8,11 +8,10 @@ Tài liệu này chi tiết hóa sự khác biệt về tính năng, quyền h�
 
 | Tính Năng | Tài Khoản Thường (FREE) | Tài Khoản Hội Viên (PREMIUM) |
 | :--- | :--- | :--- |
-| **Giới hạn Mục tiêu (Goals)** | Tối đa **3** mục tiêu (Tổng số mục tiêu tuần, tháng, năm) | **Không giới hạn** (Unlimited) |
-| **Giới hạn Thói quen (Habits)** | Tối đa **3** thói quen | **Không giới hạn** (Unlimited) |
-| **Giao diện Phân tích (Analytics)** | **Bị khóa** (Làm mờ bằng bộ lọc blur & hiển thị panel yêu cầu nâng cấp) | **Mở khóa 100%** (Biểu đồ tiến độ tuần, biến động năng lượng, phân bổ thời gian, chuỗi thói quen) |
-| **Gợi ý thông minh (AI Recap)** | Bị ẩn / làm mờ | **Mở khóa** gợi ý tối ưu lịch trình chi tiết hàng tuần/tháng từ AI Mentor |
-| **Trợ lý ảo AI Chatbot Coach** | Bị giới hạn số lượt chat và ngữ cảnh | **Trò chuyện không giới hạn** với AI Coach |
+| **Quản lí Mục tiêu (Goals)** | Tối đa 3 mục tiêu (Tổng số mục tiêu tuần, tháng, năm) | **Không giới hạn** (Unlimited) |
+| **Quản lí Thói quen (Habits)** | Tối đa 3 thói quen | **Không giới hạn** (Unlimited) |
+| **Tạo kế hoạch thông minh (AI Goal Planner)** | Bị giới hạn | Lập kế hoạch phân rã mục tiêu **Không giới hạn** với AI Goal Planner |
+| **Trợ lý ảo AI Assistant** | Bị giới hạn số lượt chat và ngữ cảnh | Sắp xếp lịch trình hàng tuần/tháng **không giới hạn** với AI Assistant |
 | **Danh mục Cá nhân hóa** | Chỉ sử dụng 6 danh mục mặc định | **Tự do tạo danh mục mới** với bộ màu sắc tùy biến tùy chọn |
 | **Huy hiệu VIP** | Không có | Có huy hiệu **PRO** màu vàng kim nổi bật ở Sidebar |
 
@@ -72,16 +71,3 @@ Trong file [HabitsView.tsx](file:///d:/learning/EXE201/EXE201_PlanWise/fe/src/ap
    Form tạo thói quen mới (`renderAddModal`) cho phép tùy chọn tên thói quen, mô tả ngắn, tần suất (hàng ngày, tuần, tháng) và bộ 8 màu sắc chủ đề cá nhân hóa (`indigo`, `blue`, `emerald`, `amber`, `rose`, `purple`, `teal`, `orange`).
 
 ---
-
-### D. Cơ chế làm mờ Báo cáo Phân tích (Analytics Blur Lock)
-Trong file [AnalyticsView.tsx](file:///d:/learning/EXE201/EXE201_PlanWise/fe/src/app/components/AnalyticsView.tsx):
-
-Thay vì ẩn hoàn toàn trang hoặc chặn truy cập (gây cảm giác hụt hẫng cho người dùng), hệ thống sử dụng phương án **"Teasing" (Kích thích thị giác)**:
-1. **Lớp phủ làm mờ nội dung:**
-   Nếu `!user?.isPremium`, toàn bộ lưới biểu đồ Recharts và khung AI Recap sẽ bị thêm các class Tailwind:
-   ```css
-   blur-md pointer-events-none select-none
-   ```
-   Hiệu ứng này làm mờ các biểu đồ nhưng vẫn để người dùng nhìn thấy thấp thoáng hình ảnh của các biểu đồ xu hướng chuyên nghiệp phía sau.
-2. **Hộp thoại Khóa ở trung tâm:**
-   Một tấm card tuyệt đẹp với thiết kế dark theme phát sáng màu chàm/tím nằm đè lên lớp làm mờ, giải thích rõ các quyền lợi phân tích chuyên sâu nhận được khi lên VIP và nút CTA **"Nâng cấp Premium để Mở Khóa"** đưa trực tiếp tới trang bảng giá.

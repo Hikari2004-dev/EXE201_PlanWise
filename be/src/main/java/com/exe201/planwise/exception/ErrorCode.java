@@ -36,7 +36,6 @@ public enum ErrorCode {
     GOAL_LIMIT_EXCEEDED      (HttpStatus.FORBIDDEN,            "Bạn đã đạt giới hạn 3 mục tiêu. Vui lòng nâng cấp Premium để thêm mục tiêu không giới hạn."),
     HABIT_LIMIT_EXCEEDED      (HttpStatus.FORBIDDEN,            "Bạn đã đạt giới hạn 3 thói quen. Vui lòng nâng cấp Premium để thêm thói quen không giới hạn."),
     CATEGORY_LIMIT_EXCEEDED   (HttpStatus.FORBIDDEN,            "Bạn chỉ có thể sử dụng 6 danh mục mặc định. Vui lòng nâng cấp Premium để tạo danh mục tùy chỉnh."),
-    ANALYTICS_PREMIUM_ONLY    (HttpStatus.FORBIDDEN,            "Tính năng phân tích chỉ dành cho thành viên Premium."),
 
     // Resource
     GOAL_NOT_FOUND            (HttpStatus.NOT_FOUND,            "Không tìm thấy mục tiêu"),

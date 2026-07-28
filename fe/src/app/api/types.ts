@@ -652,47 +652,6 @@ export interface CategoryListResponse {
   freeLimit?: number;
 }
 
-export interface AnalyticsResponse {
-  isPremium?: boolean;
-  message?: string;
-  weeklyProgress?: WeeklyProgressStats;
-  energyFluctuations?: EnergyFluctuation[];
-  categoryAllocations?: CategoryTimeAllocation[];
-  habitStreaks?: HabitStreakData[];
-}
-
-export interface CategoryTimeAllocation {
-  categoryId?: string;
-  categoryName?: string;
-  color?: string;
-  minutes?: number;
-  percentage?: number;
-}
-
-export interface EnergyFluctuation {
-  date?: string;
-  level?: number;
-  mood?: string;
-}
-
-export interface HabitStreakData {
-  habitId?: string;
-  title?: string;
-  color?: string;
-  currentStreak?: number;
-  bestStreak?: number;
-  completionsThisWeek?: number;
-}
-
-export interface WeeklyProgressStats {
-  totalTasks?: number;
-  completedTasks?: number;
-  completionRate?: number;
-  totalFocusMinutes?: number;
-  averageEnergyLevel?: number;
-}
-
-
 export interface ApiDailyFocusTask {
   id: string;
   title: string;

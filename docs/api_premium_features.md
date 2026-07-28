@@ -1,7 +1,7 @@
 # PlanWise API Documentation
 
 ## Giới thiệu
-API này cung cấp các endpoints cho ứng dụng PlanWise, bao gồm quản lý Mục tiêu (Goals), Thói quen (Habits), Danh mục (Categories), và Phân tích (Analytics).
+API này cung cấp các endpoints cho ứng dụng PlanWise, bao gồm quản lý Mục tiêu (Goals), Thói quen (Habits), Danh mục (Categories),...
 
 ## Base URL
 ```
@@ -199,48 +199,6 @@ Authorization: Bearer <access_token>
 
 ---
 
-## Analytics APIs (`/api/v1/analytics`)
-
-### Giới hạn
-- **FREE**: Không có quyền truy cập (response với `isPremium: false`)
-- **PREMIUM**: Truy cập đầy đủ dữ liệu phân tích
-
-### Endpoints
-
-| Method | Endpoint | Mô tả | Auth |
-|--------|----------|--------|------|
-| GET | `/` | Lấy dữ liệu phân tích | Yes |
-
-### Response Examples
-
-**FREE User Response:**
-```json
-{
-  "isPremium": false,
-  "message": "Vui lòng nâng cấp Premium để truy cập phân tích chi tiết"
-}
-```
-
-**PREMIUM User Response:**
-```json
-{
-  "isPremium": true,
-  "message": "Dữ liệu phân tích của bạn",
-  "weeklyProgress": {
-    "totalTasks": 25,
-    "completedTasks": 18,
-    "completionRate": 72,
-    "totalFocusMinutes": 450,
-    "averageEnergyLevel": 7
-  },
-  "energyFluctuations": [...],
-  "categoryAllocations": [...],
-  "habitStreaks": [...]
-}
-```
-
----
-
 ## Error Codes
 
 | Code | HTTP Status | Mô tả |
@@ -248,7 +206,6 @@ Authorization: Bearer <access_token>
 | GOAL_LIMIT_EXCEEDED | 403 | Đã đạt giới hạn 3 goals |
 | HABIT_LIMIT_EXCEEDED | 403 | Đã đạt giới hạn 3 habits |
 | CATEGORY_LIMIT_EXCEEDED | 403 | Không thể tạo thêm danh mục |
-| ANALYTICS_PREMIUM_ONLY | 403 | Analytics chỉ dành cho Premium |
 | GOAL_NOT_FOUND | 404 | Không tìm thấy goal |
 | MILESTONE_NOT_FOUND | 404 | Không tìm thấy milestone |
 | HABIT_NOT_FOUND | 404 | Không tìm thấy habit |
@@ -281,6 +238,5 @@ Tất cả các entity hỗ trợ 8 màu sắc:
 | Goals | Tối đa 3 | Không giới hạn |
 | Habits | Tối đa 3 | Không giới hạn |
 | Custom Categories | Không | Không giới hạn |
-| Analytics | Không | Đầy đủ |
 | AI Chatbot | Giới hạn | Không giới hạn |
 | VIP Badge | Không | Có |

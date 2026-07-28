@@ -54,12 +54,6 @@ export default function HomePage() {
               Bắt đầu ngay
               <ArrowRight size={18} />
             </button>
-
-            <button
-              className="rounded-2xl border border-white/20 px-6 py-3 font-bold hover:bg-white/5 sm:px-8 sm:py-4"
-            >
-              Tìm hiểu thêm
-            </button>
           </div>
         </div>
       </section>
