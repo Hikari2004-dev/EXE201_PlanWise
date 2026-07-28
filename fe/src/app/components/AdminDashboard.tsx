@@ -122,13 +122,13 @@ export function AdminDashboard() {
           if (Array.isArray(txData) && txData.length > 0) {
             setRecentTransactions(txData);
           } else {
-            setRecentTransactions(MOCK_RECENT_TRANSACTIONS);
+            setRecentTransactions([]);
           }
         } else {
-          setRecentTransactions(MOCK_RECENT_TRANSACTIONS);
+          setRecentTransactions([]);
         }
       } catch {
-        setRecentTransactions(MOCK_RECENT_TRANSACTIONS);
+        setRecentTransactions([]);
       }
 
       // Fetch user reviews/reflections
