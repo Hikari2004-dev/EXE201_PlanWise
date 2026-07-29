@@ -25,6 +25,12 @@ type NotificationItem = {
   goalId?: string;
 };
 
+type HabitReminderData = {
+  frequency: "daily" | "weekly" | "monthly";
+  repeatDays: string[];
+  completedDates: string[];
+};
+
 const PLAN_TODAY = new Date(2026, 2, 12);
 const PLAN_TODAY_ISO = "2026-03-12";
 const TODAY_DAY = "Thu";
@@ -87,6 +93,54 @@ function getEventStatus(startHour: number, startMin: number, duration: number) {
   return "idle";
 }
 
+function toLocalDateString(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function startOfWeek(date: Date) {
+  const start = new Date(date);
+  const day = start.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  start.setDate(start.getDate() + diff);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function getHabitStreakUnit(frequency: string, count: number, language: string) {
+  if (language === "vi") {
+    return frequency === "weekly" ? "tuần" : frequency === "monthly" ? "tháng" : "ngày";
+  }
+
+  const unit = frequency === "weekly" ? "week" : frequency === "monthly" ? "month" : "day";
+  return count === 1 ? unit : `${unit}s`;
+}
+
+function isHabitDueForPeriod(habit: HabitReminderData, referenceDate: Date) {
+  const todayIso = toLocalDateString(referenceDate);
+
+  if (habit.repeatDays.length > 0) {
+    const todayCode = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][referenceDate.getDay()];
+    return habit.repeatDays.includes(todayCode) && !habit.completedDates.includes(todayIso);
+  }
+
+  if (habit.frequency === "daily") {
+    return !habit.completedDates.includes(todayIso);
+  }
+
+  if (habit.frequency === "weekly") {
+    const weekStart = startOfWeek(referenceDate);
+    const startKey = toLocalDateString(weekStart);
+    const endKey = toLocalDateString(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6));
+    return !habit.completedDates.some((date) => date >= startKey && date <= endKey);
+  }
+
+  const monthKey = todayIso.slice(0, 7);
+  return !habit.completedDates.some((date) => date.startsWith(monthKey));
+}
+
 export function NotificationCenter() {
   const { events, tasks, habits, goals, updateTask, completeHabitDate, updateGoal, language } = useData();
   const [isOpen, setIsOpen] = useState(false);
@@ -117,13 +171,7 @@ export function NotificationCenter() {
     const overdueTask = tasks
       .filter((task) => !task.completed && parseViDate(task.dueDate) < PLAN_TODAY)
       .sort((a, b) => parseViDate(a.dueDate).getTime() - parseViDate(b.dueDate).getTime())[0];
-    const habitReminder = habits.find((habit) => {
-      if (habit.repeatDays.length > 0) {
-        const todayCode = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][new Date(PLAN_TODAY_ISO).getDay()];
-        if (!habit.repeatDays.includes(todayCode)) return false;
-      }
-      return !habit.completedDates.includes(PLAN_TODAY_ISO);
-    });
+    const habitReminder = habits.find((habit) => isHabitDueForPeriod(habit, PLAN_TODAY));
     const progressReminder = tasks.find((task) => !task.completed && task.priority === "Cao");
     const goalReminder = goals
       .filter((goal) => goal.progress < 60)
@@ -194,8 +242,8 @@ export function NotificationCenter() {
         title: language === "vi" ? "Nhắc nhở thói quen" : "Habit reminder",
         message:
           language === "vi"
-            ? `🌱 Hôm nay bạn chưa đánh dấu "${habitReminder.title}". Hoàn thành ngay để giữ chuỗi ${habitReminder.currentStreak} ngày nhé.`
-            : `You haven't marked "${habitReminder.title}" today yet.`,
+            ? `🌱 Bạn chưa đánh dấu "${habitReminder.title}". Hoàn thành ngay để giữ chuỗi ${habitReminder.currentStreak} ${getHabitStreakUnit(habitReminder.frequency, habitReminder.currentStreak, language)} nhé.`
+            : `You haven't marked "${habitReminder.title}" for this period yet.`,
         habitId: habitReminder.id,
         cta: language === "vi" ? "Giữ chuỗi" : "Keep streak",
       });

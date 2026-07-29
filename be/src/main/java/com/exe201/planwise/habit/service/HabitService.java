@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.temporal.TemporalAdjusters;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -40,20 +41,20 @@ public class HabitService {
     public HabitListResponse getHabits(UUID userId) {
         User user = findUser(userId);
         List<Habit> habits = habitRepository.findByUserIdAndIsActiveTrueOrderBySortOrderAsc(userId);
-        List<HabitDto> habitDtos = habits.stream().map(HabitDto::from).toList();
+        List<HabitDto> habitDtos = habits.stream().map(this::toDto).toList();
         return HabitListResponse.of(habitDtos, user.isPremium());
     }
 
     @Transactional(readOnly = true)
     public List<HabitDto> getActiveHabits(UUID userId) {
         return habitRepository.findByUserIdAndIsActiveTrueOrderBySortOrderAsc(userId)
-                .stream().map(HabitDto::from).toList();
+                .stream().map(this::toDto).toList();
     }
 
     @Transactional(readOnly = true)
     public HabitDto getHabitById(UUID userId, UUID habitId) {
         Habit habit = findHabitAndValidateOwnership(habitId, userId);
-        return HabitDto.from(habit);
+        return toDto(habit);
     }
 
     @Transactional
@@ -80,7 +81,7 @@ public class HabitService {
         habit = habitRepository.save(habit);
         log.info("Created habit {} for user {}", habit.getId(), userId);
 
-        return HabitDto.from(habit);
+        return toDto(habit);
     }
 
     @Transactional
@@ -115,6 +116,7 @@ public class HabitService {
             habit.setSortOrder(request.sortOrder());
         }
 
+        refreshStreaks(habit, LocalDate.now());
         habit = habitRepository.save(habit);
         log.info("Updated habit {}", habitId);
 
@@ -135,12 +137,12 @@ public class HabitService {
 
         if (!habit.isCompletedOn(date)) {
             habit.markCompleted(date);
-            updateStreakAfterCompletion(habit, date);
+            refreshStreaks(habit, LocalDate.now());
             habit = habitRepository.save(habit);
             log.info("Completed habit {} for date {}", habitId, date);
         }
 
-        return HabitDto.from(habit);
+        return toDto(habit);
     }
 
     @Transactional
@@ -149,66 +151,154 @@ public class HabitService {
 
         if (!habit.isCompletedOn(date)) {
             habit.markCompleted(date);
-            updateStreakAfterCompletion(habit, date);
+            refreshStreaks(habit, LocalDate.now());
             habit = habitRepository.save(habit);
         }
 
+        return toDto(habit);
+    }
+
+    private HabitDto toDto(Habit habit) {
+        refreshStreaks(habit, LocalDate.now());
         return HabitDto.from(habit);
     }
 
-    private void updateStreakAfterCompletion(Habit habit, LocalDate date) {
-        short currentStreak = habit.getCurrentStreak();
+    private void refreshStreaks(Habit habit, LocalDate referenceDate) {
+        Set<LocalDate> completedDates = habit.getCompletedDates() != null ? habit.getCompletedDates() : Set.of();
+        HabitFrequency frequency = habit.getFrequency() != null ? habit.getFrequency() : HabitFrequency.daily;
 
-        if (!habit.getRepeatDays().isEmpty()) {
-            LocalDate previousScheduledDate = findPreviousScheduledDate(habit, date);
-            if (habit.isCompletedOn(previousScheduledDate) || currentStreak == 0) {
-                habit.setCurrentStreak((short) (currentStreak + 1));
-                if (habit.getCurrentStreak() > habit.getBestStreak()) {
-                    habit.setBestStreak(habit.getCurrentStreak());
-                }
-            }
-            return;
-        }
-
-        if (habit.getFrequency() == HabitFrequency.daily) {
-            LocalDate yesterday = date.minusDays(1);
-            if (habit.isCompletedOn(yesterday) || currentStreak == 0) {
-                habit.setCurrentStreak((short) (currentStreak + 1));
-                if (habit.getCurrentStreak() > habit.getBestStreak()) {
-                    habit.setBestStreak(habit.getCurrentStreak());
-                }
-            }
-        } else if (habit.getFrequency() == HabitFrequency.weekly) {
-            LocalDate lastWeekStart = date.minusWeeks(1).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-            if (habit.isCompletedOn(lastWeekStart) || currentStreak == 0) {
-                habit.setCurrentStreak((short) (currentStreak + 1));
-                if (habit.getCurrentStreak() > habit.getBestStreak()) {
-                    habit.setBestStreak(habit.getCurrentStreak());
-                }
-            }
-        }
-    }
-
-    private LocalDate findPreviousScheduledDate(Habit habit, LocalDate date) {
-        for (int i = 1; i <= 7; i++) {
-            LocalDate candidate = date.minusDays(i);
-            if (habit.getRepeatDays().contains(toDayCode(candidate))) {
-                return candidate;
-            }
-        }
-        return date.minusDays(1);
-    }
-
-    private String toDayCode(LocalDate date) {
-        return switch (date.getDayOfWeek()) {
-            case MONDAY -> "MON";
-            case TUESDAY -> "TUE";
-            case WEDNESDAY -> "WED";
-            case THURSDAY -> "THU";
-            case FRIDAY -> "FRI";
-            case SATURDAY -> "SAT";
-            case SUNDAY -> "SUN";
+        int currentStreak = switch (frequency) {
+            case weekly -> calculateCurrentWeeklyStreak(completedDates, referenceDate);
+            case monthly -> calculateCurrentMonthlyStreak(completedDates, referenceDate);
+            case daily -> calculateCurrentDailyStreak(completedDates, referenceDate);
         };
+        int bestStreak = switch (frequency) {
+            case weekly -> calculateBestWeeklyStreak(completedDates);
+            case monthly -> calculateBestMonthlyStreak(completedDates);
+            case daily -> calculateBestDailyStreak(completedDates);
+        };
+
+        habit.setCurrentStreak(toShortStreak(currentStreak));
+        habit.setBestStreak(toShortStreak(bestStreak));
+    }
+
+    private int calculateCurrentDailyStreak(Set<LocalDate> completedDates, LocalDate referenceDate) {
+        LocalDate cursor = completedDates.contains(referenceDate) ? referenceDate : referenceDate.minusDays(1);
+        int streak = 0;
+
+        while (completedDates.contains(cursor)) {
+            streak++;
+            cursor = cursor.minusDays(1);
+        }
+
+        return streak;
+    }
+
+    private int calculateBestDailyStreak(Set<LocalDate> completedDates) {
+        List<LocalDate> sortedDates = completedDates.stream().sorted().toList();
+        LocalDate previousDate = null;
+        int currentStreak = 0;
+        int bestStreak = 0;
+
+        for (LocalDate date : sortedDates) {
+            if (previousDate != null && date.equals(previousDate.plusDays(1))) {
+                currentStreak++;
+            } else {
+                currentStreak = 1;
+            }
+            bestStreak = Math.max(bestStreak, currentStreak);
+            previousDate = date;
+        }
+
+        return bestStreak;
+    }
+
+    private int calculateCurrentWeeklyStreak(Set<LocalDate> completedDates, LocalDate referenceDate) {
+        Set<LocalDate> completedWeeks = completedDates.stream()
+                .map(this::startOfWeek)
+                .collect(Collectors.toSet());
+
+        LocalDate currentWeek = startOfWeek(referenceDate);
+        LocalDate cursor = completedWeeks.contains(currentWeek) ? currentWeek : currentWeek.minusWeeks(1);
+        int streak = 0;
+
+        while (completedWeeks.contains(cursor)) {
+            streak++;
+            cursor = cursor.minusWeeks(1);
+        }
+
+        return streak;
+    }
+
+    private int calculateBestWeeklyStreak(Set<LocalDate> completedDates) {
+        List<LocalDate> sortedWeeks = completedDates.stream()
+                .map(this::startOfWeek)
+                .distinct()
+                .sorted()
+                .toList();
+        LocalDate previousWeek = null;
+        int currentStreak = 0;
+        int bestStreak = 0;
+
+        for (LocalDate week : sortedWeeks) {
+            if (previousWeek != null && week.equals(previousWeek.plusWeeks(1))) {
+                currentStreak++;
+            } else {
+                currentStreak = 1;
+            }
+            bestStreak = Math.max(bestStreak, currentStreak);
+            previousWeek = week;
+        }
+
+        return bestStreak;
+    }
+
+    private int calculateCurrentMonthlyStreak(Set<LocalDate> completedDates, LocalDate referenceDate) {
+        Set<YearMonth> completedMonths = completedDates.stream()
+                .map(YearMonth::from)
+                .collect(Collectors.toSet());
+
+        YearMonth currentMonth = YearMonth.from(referenceDate);
+        YearMonth cursor = completedMonths.contains(currentMonth) ? currentMonth : currentMonth.minusMonths(1);
+        int streak = 0;
+
+        while (completedMonths.contains(cursor)) {
+            streak++;
+            cursor = cursor.minusMonths(1);
+        }
+
+        return streak;
+    }
+
+    private int calculateBestMonthlyStreak(Set<LocalDate> completedDates) {
+        List<YearMonth> sortedMonths = completedDates.stream()
+                .map(YearMonth::from)
+                .distinct()
+                .sorted()
+                .toList();
+        YearMonth previousMonth = null;
+        int currentStreak = 0;
+        int bestStreak = 0;
+
+        for (YearMonth month : sortedMonths) {
+            if (previousMonth != null && month.equals(previousMonth.plusMonths(1))) {
+                currentStreak++;
+            } else {
+                currentStreak = 1;
+            }
+            bestStreak = Math.max(bestStreak, currentStreak);
+            previousMonth = month;
+        }
+
+        return bestStreak;
+    }
+
+    private LocalDate startOfWeek(LocalDate date) {
+        return date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+    }
+
+    private short toShortStreak(int value) {
+        return (short) Math.min(Math.max(value, 0), Short.MAX_VALUE);
     }
 
     private Set<String> normalizeRepeatDays(HabitFrequency frequency, Set<String> repeatDays) {

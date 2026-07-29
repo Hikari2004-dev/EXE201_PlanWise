@@ -93,6 +93,13 @@ function normalizeTaskDueDateForApi(dueDate?: string) {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 }
 
+function getLocalDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function mapApiTaskToTask(t: ApiTask): Task {
   const priorityMap: Record<string, "Cao" | "Trung bình" | "Thấp"> = {
     "HIGH": "Cao",
@@ -463,7 +470,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           bestStreak: h.bestStreak,
           color: h.color,
           completedDates: h.completedDates || [],
-          completedToday: h.completedDates ? h.completedDates.includes(new Date().toISOString().split('T')[0]) : false,
+          completedToday: h.completedDates ? h.completedDates.includes(getLocalDateKey()) : false,
         })));
       }
 
@@ -756,7 +763,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       bestStreak: created.bestStreak,
       color: created.color,
       completedDates: created.completedDates || [],
-      completedToday: created.completedDates ? created.completedDates.includes(new Date().toISOString().split('T')[0]) : false,
+      completedToday: created.completedDates ? created.completedDates.includes(getLocalDateKey()) : false,
     }]);
   };
 
@@ -781,7 +788,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       bestStreak: updated.bestStreak,
       color: updated.color,
       completedDates: updated.completedDates || [],
-      completedToday: updated.completedDates ? updated.completedDates.includes(new Date().toISOString().split('T')[0]) : false,
+      completedToday: updated.completedDates ? updated.completedDates.includes(getLocalDateKey()) : false,
     } : h));
   };
 
@@ -803,7 +810,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       bestStreak: updated.bestStreak,
       color: updated.color,
       completedDates: updated.completedDates || [],
-      completedToday: updated.completedDates ? updated.completedDates.includes(new Date().toISOString().split('T')[0]) : false,
+      completedToday: updated.completedDates ? updated.completedDates.includes(getLocalDateKey()) : false,
     } : h));
   };
 

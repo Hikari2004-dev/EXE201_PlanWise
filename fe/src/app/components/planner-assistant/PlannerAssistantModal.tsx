@@ -37,7 +37,6 @@ export function PlannerAssistantModal({ open, onOpenChange }: PlannerAssistantMo
   const [isGenerating, setIsGenerating] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
   const [applied, setApplied] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
 
   useEffect(() => {
@@ -66,7 +65,6 @@ export function PlannerAssistantModal({ open, onOpenChange }: PlannerAssistantMo
     setInput("");
     setIsGenerating(true);
     setApplied(false);
-    setError(null);
     setMessages((current) => [...current, { id: crypto.randomUUID(), role: "user", content: message }]);
 
     try {
@@ -83,14 +81,13 @@ export function PlannerAssistantModal({ open, onOpenChange }: PlannerAssistantMo
         },
       ]);
     } catch (err) {
-      const message = err instanceof Error ? err.message : language === "vi" ? "Không thể tạo kế hoạch." : "Could not build plan.";
-      setError(message);
       setMessages((current) => [
         ...current,
         {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: language === "vi" ? "Mình chưa tạo được bản nháp. Hãy thử mô tả hẹp hơn một chút." : "I could not create a draft yet. Try narrowing the request a bit.",
+          tone: "warning",
+          content: formatPlannerErrorMessage(err, language, "generate"),
         },
       ]);
     } finally {
@@ -101,7 +98,6 @@ export function PlannerAssistantModal({ open, onOpenChange }: PlannerAssistantMo
   const applyPlan = async () => {
     if (!draft || isApplying) return;
     setIsApplying(true);
-    setError(null);
     try {
       const editedPlan = normalizePlan(draftPlanRef.current || draft.plan);
       await aiPlannerAssistantApi.approve(draft.id, { plan: stripClientOnlyFields(editedPlan) });
@@ -116,7 +112,15 @@ export function PlannerAssistantModal({ open, onOpenChange }: PlannerAssistantMo
         },
       ]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : language === "vi" ? "Không thể áp dụng kế hoạch." : "Could not apply plan.");
+      setMessages((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          tone: "warning",
+          content: formatPlannerErrorMessage(err, language, "apply"),
+        },
+      ]);
     } finally {
       setIsApplying(false);
     }
@@ -191,7 +195,6 @@ export function PlannerAssistantModal({ open, onOpenChange }: PlannerAssistantMo
             language={language}
             isLoading={isGenerating}
             loadingText={loadingText}
-            error={error}
             isApplying={isApplying}
             applied={applied}
             onUpdateEvent={updateEventItem}
@@ -236,6 +239,15 @@ function buildAssistantSummary(plan: PlannerDraftPlan, language: "vi" | "en") {
     return `Mình đã dựng bản nháp gồm ${eventCount} sự kiện, ${taskCount} công việc và ${habitCount} thói quen.`;
   }
   return `I built a draft with ${eventCount} events, ${taskCount} tasks, and ${habitCount} habits.`;
+}
+
+function formatPlannerErrorMessage(err: unknown, language: "vi" | "en", action: "generate" | "apply") {
+  const detail = err instanceof Error ? err.message : "";
+  const fallback = action === "generate"
+    ? language === "vi" ? "Mình chưa tạo được bản nháp." : "I could not create a draft."
+    : language === "vi" ? "Mình chưa áp dụng được kế hoạch." : "I could not apply the plan.";
+  if (!detail) return fallback;
+  return `${fallback} ${detail}`;
 }
 
 function stripClientOnlyFields(plan: PlannerDraftPlan): PlannerDraftPlan {

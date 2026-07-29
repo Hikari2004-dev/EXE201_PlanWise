@@ -10,7 +10,6 @@ interface PreviewPanelProps {
   language: "vi" | "en";
   isLoading: boolean;
   loadingText: string;
-  error: string | null;
   isApplying: boolean;
   applied: boolean;
   onUpdateEvent: (index: number, item: PlannerEventDraft) => void;
@@ -26,7 +25,6 @@ export function PreviewPanel({
   language,
   isLoading,
   loadingText,
-  error,
   isApplying,
   applied,
   onUpdateEvent,
@@ -178,13 +176,6 @@ export function PreviewPanel({
           </div>
         )}
 
-        {error && (
-          <Alert variant="destructive" className="mt-4">
-            <AlertTriangle />
-            <AlertTitle>{language === "vi" ? "Không thể tạo kế hoạch" : "Could not build plan"}</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
       </div>
 
       <div className="flex flex-col-reverse gap-2 border-t border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950 sm:flex-row sm:items-center sm:justify-end">

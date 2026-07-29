@@ -128,7 +128,7 @@ export function PricingPage() {
             <Sparkles size={14} />
             <span>PlanWise Premium</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-200 via-white to-violet-200 bg-clip-text text-transparent" style={{ fontFamily: "'Outfit', sans-serif" }}>
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-200 via-white to-violet-200 bg-clip-text text-transparent" style={{height: "1.2em"}}>
             {t.title}
           </h1>
           <p className="text-slate-400 text-base md:text-lg max-w-2xl mx-auto font-medium">

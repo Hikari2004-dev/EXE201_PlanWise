@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import {
   TrendingUp, Clock, ArrowRight, Flame, MapPin, History, XCircle,
-  CalendarDays, CheckCircle2, AlertTriangle, Zap,
+  CalendarDays, CheckCircle2, AlertTriangle, Zap, Tag
 } from "lucide-react";
 import { HintBubble } from "./HintBubble";
 import { NotificationCenter } from "./NotificationCenter";
@@ -32,6 +32,15 @@ function toLocalDateString(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function getHabitStreakUnit(frequency: string, count: number, language: string) {
+  if (language === "vi") {
+    return frequency === "weekly" ? "tuần" : frequency === "monthly" ? "tháng" : "ngày";
+  }
+
+  const unit = frequency === "weekly" ? "week" : frequency === "monthly" ? "month" : "day";
+  return count === 1 ? unit : `${unit}s`;
 }
 
 function getTaskStatus(task: { status?: string; completed: boolean; dueDate?: string }) {
@@ -75,16 +84,6 @@ function formatTaskDueDateLabel(value?: string) {
   }).format(parsed).replace(",", "");
 }
 
-const WEEKDAY_TO_EVENT_DAY: Record<number, string> = {
-  0: "Sun",
-  1: "Mon",
-  2: "Tue",
-  3: "Wed",
-  4: "Thu",
-  5: "Fri",
-  6: "Sat",
-};
-
 function CurrentTimeIndicator() {
   const now = new Date();
   const h = now.getHours(), m = now.getMinutes();
@@ -101,10 +100,10 @@ function CurrentTimeIndicator() {
 }
 
 export function DashboardView() {
-  const { events, tasks, habits, categories, completeHabitDate, language } = useData();
+  const { events, tasks, habits, categories, updateTask, completeHabitDate, language } = useData();
   const [togglingHabitIds, setTogglingHabitIds] = useState<string[]>([]);
+  const [completingTaskIds, setCompletingTaskIds] = useState<string[]>([]);
   const now = new Date();
-  const todayDay = WEEKDAY_TO_EVENT_DAY[now.getDay()] || "";
 
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const todayDate = toLocalDateString(today);
@@ -112,6 +111,9 @@ export function DashboardView() {
   const startOfWeek = new Date(today);
   startOfWeek.setDate(today.getDate() - ((today.getDay() + 6) % 7));
   const startOfWeekDate = toLocalDateString(startOfWeek);
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  const endOfWeekDate = toLocalDateString(endOfWeek);
   const monthPrefix = todayDate.slice(0, 7);
 
   const habitReminders = habits
@@ -141,9 +143,21 @@ export function DashboardView() {
       setTogglingHabitIds(ids => ids.filter(id => id !== habitId));
     }
   };
-  const todayEvents = events.filter(e => e.day === todayDay).sort(
-    (a, b) => a.startHour - b.startHour || a.startMin - b.startMin
-  );
+
+  const completeUpcomingTask = async (taskId: string) => {
+    if (completingTaskIds.includes(taskId)) return;
+    setCompletingTaskIds(ids => [...ids, taskId]);
+    try {
+      await updateTask(taskId, { completed: true, status: "COMPLETED" });
+    } catch (error) {
+      console.error("Failed to complete task from dashboard:", error);
+    } finally {
+      setCompletingTaskIds(ids => ids.filter(id => id !== taskId));
+    }
+  };
+  const todayEvents = events
+    .filter((event) => event.eventDate?.slice(0, 10) === todayDate)
+    .sort((a, b) => a.startHour - b.startHour || a.startMin - b.startMin);
   const todayScheduledTasks = tasks
     .filter((task) => !task.completed && task.showOnCalendar !== false)
     .filter((task) => {
@@ -206,17 +220,16 @@ export function DashboardView() {
     }),
   ].sort((a, b) => a.startHour - b.startHour || a.startMin - b.startMin);
   const completedCount  = tasks.filter(t => getTaskStatus(t) === "COMPLETED").length;
-  const totalEvents     = events.length + todayScheduledTasks.length;
+  const weeklyEventCount = events.filter((event) => {
+    const eventDate = event.eventDate?.slice(0, 10);
+    return !!eventDate && eventDate >= startOfWeekDate && eventDate <= endOfWeekDate;
+  }).length;
   const highPriority    = tasks.filter(t => getTaskStatus(t) !== "COMPLETED" && t.priority === "Cao").length;
   const completionRate  = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
 
   const delayedTasks = tasks.filter(t => {
     const dueDate = parseTaskDueDate(t.dueDate);
     return !t.completed && !!dueDate && dueDate < now;
-  }).slice(0, 3);
-  const abandonedTasks = tasks.filter(t => {
-    const dueDate = parseTaskDueDate(t.dueDate);
-    return !t.completed && !!dueDate && dueDate < new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   }).slice(0, 3);
 
   const categoryStats = categories.map(cat => {
@@ -252,7 +265,7 @@ export function DashboardView() {
     {
       label:   language === "vi" ? "Hôm nay" : "Today",
       value:   todayEvents.length + todayScheduledTasks.length,
-      sub:     language === "vi" ? "lịch + task đã lên giờ" : "events + scheduled tasks",
+      sub:     language === "vi" ? "Sự kiện + công việc" : "events + tasks",
       icon:    Zap,
       from:    "from-amber-500", to: "to-orange-500",
       shadow:  "shadow-amber-200",
@@ -261,25 +274,25 @@ export function DashboardView() {
     {
       label:   language === "vi" ? "Ưu tiên cao" : "High Priority",
       value:   highPriority,
-      sub:     language === "vi" ? "Cần xử lý ngay" : "Needs action",
+      sub:     language === "vi" ? "Công việc ưu tiên cao" : "High priority tasks",
       icon:    AlertTriangle,
       from:    "from-rose-500", to: "to-pink-600",
       shadow:  "shadow-rose-200",
       badge:   "bg-rose-50 text-rose-600",
     },
     {
-      label:   language === "vi" ? "Sự kiện tuần" : "Events",
-      value:   totalEvents,
-      sub:     `${categories.length} ${language === "vi" ? "danh mục" : "categories"}`,
+      label:   language === "vi" ? "Sự kiện tuần" : "Events This Week",
+      value:   weeklyEventCount,
+      sub:     language === "vi" ? "Sự kiện" : "Events",
       icon:    CalendarDays,
       from:    "from-violet-500", to: "to-indigo-600",
       shadow:  "shadow-indigo-200",
       badge:   "bg-indigo-50 text-indigo-600",
     },
     {
-      label:   "Task bị trễ hạn",
+      label:   language === "vi" ? "Task bị trễ hạn" : "Overdue Tasks",
       value:   missingTaskCount,
-      sub:     language === "vi" ? "task bị trễ hạn" : "overdue tasks",
+      sub:     language === "vi" ? "Cần xử lý" : "Needs attention",
       icon:    XCircle,
       from:    "from-slate-500", to: "to-slate-700",
       shadow:  "shadow-slate-200",
@@ -309,15 +322,9 @@ export function DashboardView() {
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <CurrentTimeIndicator />
           <PlannerAssistantButton />
           <NotificationCenter />
-          <CurrentTimeIndicator />
-          <div className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-orange-50 to-amber-50 border border-amber-200 rounded-full px-3.5 py-1.5 shadow-sm dark:from-amber-500/15 dark:to-orange-500/15 dark:border-amber-400/30 dark:bg-slate-900">
-            <Flame size={14} className="text-orange-500" />
-            <span className="text-xs font-bold text-orange-700 dark:text-amber-200">
-              {language === "vi" ? "Chuỗi 7 ngày" : "7 Day Streak"}
-            </span>
-          </div>
         </div>
       </div>
 
@@ -457,67 +464,73 @@ export function DashboardView() {
               </div>
             </div>
 
-            {/* Alert cards */}
-            {(delayedTasks.length > 0 || abandonedTasks.length > 0) && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {delayedTasks.length > 0 && (
-                  <div className="bg-white rounded-2xl border border-rose-100 overflow-hidden shadow-sm dark:bg-slate-900 dark:border-rose-500/20">
-                    <div className="px-4 py-3 bg-gradient-to-r from-rose-50 to-pink-50 border-b border-rose-100 flex items-center justify-between dark:from-rose-500/12 dark:to-pink-500/10 dark:border-rose-500/20">
-                      <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 bg-rose-100 rounded-md flex items-center justify-center dark:bg-rose-500/15">
-                          <History size={12} className="text-rose-600" />
-                        </div>
-                        <h3 className="text-sm font-bold text-rose-800 dark:text-rose-200">
-                          {language === "vi" ? "Quá hạn" : "Overdue"}
-                        </h3>
-                      </div>
-                      <span className="text-xs font-bold text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full">{delayedTasks.length}</span>
+            {/* Category Progress */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 dark:bg-slate-900 dark:border-slate-800">
+              <div className="pb-4 border-b border-slate-100 flex items-center justify-between dark:border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center dark:bg-indigo-500/15">
+                      <Tag size={15} className="text-indigo-600" />
                     </div>
-                    <div className="divide-y divide-slate-50 dark:divide-slate-800">
-                      {delayedTasks.map(t => (
-                        <div key={t.id} className="px-4 py-3 flex items-start gap-3 hover:bg-rose-50/30 transition-colors dark:hover:bg-rose-500/5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-rose-400 mt-2 flex-shrink-0" />
-                          <div>
-                            <p className="text-[13px] font-semibold text-slate-800 line-clamp-1 dark:text-slate-100">{t.title}</p>
-                            <p className="text-[11px] text-rose-500 mt-0.5 font-medium">{formatTaskDueDateLabel(t.dueDate)}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {abandonedTasks.length > 0 && (
-                  <div className="bg-white rounded-2xl border border-orange-100 overflow-hidden shadow-sm dark:bg-slate-900 dark:border-orange-500/20">
-                    <div className="px-4 py-3 bg-gradient-to-r from-orange-50 to-amber-50 border-b border-orange-100 flex items-center justify-between dark:from-orange-500/12 dark:to-amber-500/10 dark:border-orange-500/20">
-                      <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 bg-orange-100 rounded-md flex items-center justify-center dark:bg-orange-500/15">
-                          <XCircle size={12} className="text-orange-600" />
-                        </div>
-                        <h3 className="text-sm font-bold text-orange-800 dark:text-orange-200">
-                          {language === "vi" ? "Bỏ dở" : "Abandoned"}
-                        </h3>
-                      </div>
-                      <span className="text-xs font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">{abandonedTasks.length}</span>
-                    </div>
-                    <div className="divide-y divide-slate-50 dark:divide-slate-800">
-                      {abandonedTasks.map(t => (
-                        <div key={t.id} className="px-4 py-3 flex items-start gap-3 hover:bg-orange-50/30 transition-colors dark:hover:bg-orange-500/5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-orange-400 mt-2 flex-shrink-0" />
-                          <div>
-                            <p className="text-[13px] font-semibold text-slate-800 line-clamp-1 dark:text-slate-100">{t.title}</p>
-                            <p className="text-[11px] text-orange-500 mt-0.5 font-medium">{formatTaskDueDateLabel(t.dueDate)}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                  <h3 className="text-[15px] font-bold text-slate-900 dark:text-slate-50">
+                    {language === "vi" ? "Tiến Độ Danh Mục" : "Category Progress"}
+                  </h3>
+                </div>
+                <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full dark:bg-slate-800 dark:text-slate-200">
+                  {categories.length}
+                </span>
               </div>
-            )}
+              <div className="space-y-4 mt-4">
+                {categoryStats.map((cat, idx) => {
+                  return (
+                    <div key={cat.id}>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${catProgressColor[idx % 6]}`} />
+                          <span className="text-xs font-semibold text-slate-700 dark:text-slate-100">{cat.name}</span>
+                        </div>
+                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-300">{cat.progress}%</span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden dark:bg-slate-800">
+                        <div
+                          className={`h-full rounded-full transition-all duration-700 ${catProgressColor[idx % 6]}`}
+                          style={{ width: `${cat.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           {/* Right Column */}
           <div className="space-y-5">
+
+            {/* Alert cards */}
+            {delayedTasks.length > 0 && (
+              <div className="bg-white rounded-2xl border border-rose-100 overflow-hidden shadow-sm dark:bg-slate-900 dark:border-rose-500/20">
+                <div className="px-4 py-3 bg-gradient-to-r from-rose-50 to-pink-50 border-b border-rose-100 flex items-center justify-between dark:from-rose-500/12 dark:to-pink-500/10 dark:border-rose-500/20">
+                  <div className="w-6 h-6 bg-rose-100 rounded-md flex items-center justify-center dark:bg-rose-500/15">
+                    <History size={12} className="text-rose-600" />
+                  </div>
+                  <h3 className="text-sm font-bold text-rose-800 dark:text-rose-200">
+                    {language === "vi" ? "Quá hạn" : "Overdue"}
+                  </h3>
+                  <span className="text-xs font-bold text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full">{delayedTasks.length}</span>
+                </div>
+                <div className="divide-y divide-slate-50 dark:divide-slate-800">
+                  {delayedTasks.map(t => (
+                    <div key={t.id} className="px-4 py-3 flex items-start gap-3 hover:bg-rose-50/30 transition-colors dark:hover:bg-rose-500/5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-rose-400 mt-2 flex-shrink-0" />
+                      <div>
+                        <p className="text-[13px] font-semibold text-slate-800 line-clamp-1 dark:text-slate-100">{t.title}</p>
+                        <p className="text-[11px] text-rose-500 mt-0.5 font-medium">{formatTaskDueDateLabel(t.dueDate)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Upcoming Tasks */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden dark:bg-slate-900 dark:border-slate-800">
@@ -538,10 +551,19 @@ export function DashboardView() {
                 {upcomingTasks.length === 0 ? (
                   <p className="text-sm text-slate-500 text-center py-6 dark:text-slate-300">{language === "vi" ? "Bạn đã hoàn thành mọi thứ!" : "All done!"}</p>
                 ) : upcomingTasks.map(t => (
-                  <div key={t.id} className="group px-4 py-3.5 flex items-start gap-3 hover:bg-slate-50/60 transition-colors cursor-pointer dark:hover:bg-slate-800/70">
-                    <div className="mt-0.5 w-4 h-4 rounded-full border-2 border-slate-300 group-hover:border-indigo-400 transition-colors flex-shrink-0 dark:border-slate-500" />
+                  <div key={t.id} className="group px-4 py-3.5 flex items-start gap-3 hover:bg-slate-50/60 transition-colors dark:hover:bg-slate-800/70">
+                    <button
+                      type="button"
+                      onClick={() => void completeUpcomingTask(t.id)}
+                      disabled={completingTaskIds.includes(t.id)}
+                      className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 border-slate-300 text-transparent transition-colors hover:border-emerald-500 hover:bg-emerald-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-wait disabled:border-emerald-400 disabled:bg-emerald-400 disabled:text-white dark:border-slate-500 dark:hover:border-emerald-400 dark:focus:ring-emerald-500/40"
+                      aria-label={language === "vi" ? `Hoàn thành task ${t.title}` : `Complete task ${t.title}`}
+                      title={language === "vi" ? "Đánh dấu hoàn thành" : "Mark complete"}
+                    >
+                      <CheckCircle2 size={13} className={completingTaskIds.includes(t.id) ? "animate-pulse" : ""} />
+                    </button>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold text-slate-800 line-clamp-1 group-hover:text-indigo-700 transition-colors dark:text-slate-100 dark:group-hover:text-indigo-200">{t.title}</p>
+                      <p className="text-[13px] font-semibold text-slate-800 line-clamp-1 transition-colors dark:text-slate-100">{t.title}</p>
                       <div className="flex items-center gap-2 mt-1.5">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${priorityChip[t.priority] || "bg-slate-50 text-slate-500"}`}>
                           {t.priority}
@@ -603,7 +625,7 @@ export function DashboardView() {
                         <span className="mt-1 flex items-center gap-1 text-[11px] font-medium text-orange-600 dark:text-orange-300">
                           <Flame size={11} />
                           {habit.currentStreak > 0
-                            ? `${language === "vi" ? "Chuỗi" : "Streak"} ${habit.currentStreak} ${language === "vi" ? "ngày" : "days"}`
+                            ? `${language === "vi" ? "Chuỗi" : "Streak"} ${habit.currentStreak} ${getHabitStreakUnit(habit.frequency, habit.currentStreak, language)}`
                             : (language === "vi" ? "Bắt đầu chuỗi hôm nay" : "Start a streak today")}
                         </span>
                       </span>
@@ -611,39 +633,6 @@ export function DashboardView() {
                         {language === "vi" ? "Đánh dấu" : "Complete"}
                       </span>
                     </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Category Progress */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 dark:bg-slate-900 dark:border-slate-800">
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-[15px] font-bold text-slate-900 dark:text-slate-50">
-                  {language === "vi" ? "Tiến Độ Danh Mục" : "Category Progress"}
-                </h3>
-                <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full dark:bg-slate-800 dark:text-slate-200">
-                  {categories.length}
-                </span>
-              </div>
-              <div className="space-y-4">
-                {categoryStats.map((cat, idx) => {
-                  return (
-                    <div key={cat.id}>
-                      <div className="flex justify-between items-center mb-1.5">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${catProgressColor[idx % 6]}`} />
-                          <span className="text-xs font-semibold text-slate-700 dark:text-slate-100">{cat.name}</span>
-                        </div>
-                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-300">{cat.progress}%</span>
-                      </div>
-                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden dark:bg-slate-800">
-                        <div
-                          className={`h-full rounded-full transition-all duration-700 ${catProgressColor[idx % 6]}`}
-                          style={{ width: `${cat.progress}%` }}
-                        />
-                      </div>
-                    </div>
                   );
                 })}
               </div>

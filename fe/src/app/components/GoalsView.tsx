@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { aiGoalPlannerApi } from "../api";
 import type { GoalDraftResponse, GoalMilestoneDraft, GoalRoadmapDraft, GoalTaskDraft } from "../api";
 import {
@@ -1388,7 +1389,11 @@ export function GoalsView() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-indigo-400">✓</span>
-                <span>{language === "vi" ? "Trợ lý AI lập kế hoạch thông minh" : "AI Coach scheduling mentor"}</span>
+                <span>{language === "vi" ? "Không giới hạn AI Goal Planner hỗ trợ phân rã mục tiêu và lập kế hoạch" : "AI Goal Planner for smart planning"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-indigo-400">✓</span>
+                <span>{language === "vi" ? "Không giới hạn Trợ lý AI sắp xếp lịch thông minh" : "AI Assistant for smart scheduling"}</span>
               </div>
             </div>
             <div className="flex gap-3 pt-2">
@@ -1401,7 +1406,7 @@ export function GoalsView() {
               <button
                 onClick={() => {
                   setShowUpgradeModal(false);
-                  navigate("/pricing");
+                  navigate("/dashboard/pricing");
                 }}
                 className="flex-1 rounded-xl border border-transparent bg-gradient-to-r from-indigo-500 to-violet-600 px-4 py-2.5 text-center text-xs font-bold text-white shadow-lg shadow-indigo-500/20 transition hover:from-indigo-600 hover:to-violet-700"
               >
@@ -1416,7 +1421,7 @@ export function GoalsView() {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <div className="sticky top-0 z-10 flex flex-shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 pb-5 pt-6 dark:border-slate-800 dark:bg-slate-950 sm:px-8 sm:pb-6 sm:pt-8">
+      <div className="sticky top-0 z-10 flex flex-shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-5 dark:border-slate-800 dark:bg-slate-950 sm:px-8">
         <div>
           <h1 className="text-[1.3rem] font-extrabold tracking-tight text-slate-900 dark:text-slate-50 sm:text-[1.6rem]">
             {language === "vi" ? "Mục tiêu & AI Planner" : "Goals & AI Planner"}
@@ -1428,7 +1433,7 @@ export function GoalsView() {
         <PlannerAssistantButton />
       </div>
 
-      <div className="mx-auto w-full max-w-[1440px] flex-1 space-y-8 px-4 pb-12 pt-4 sm:space-y-10 sm:px-8">
+      <div className="mx-auto w-full flex-1 space-y-8 px-4 pt-4 sm:space-y-10 sm:px-8">
         <HintBubble id="goals_intro" title={language === "vi" ? "Mục tiêu & AI Planner" : "Goals & AI Planner"} color="violet" persistent={false}>
           {language === "vi"
             ? "Nhập mô tả mục tiêu của bạn, và AI sẽ tự động tạo ra một lộ trình chi tiết với các cột mốc, nhiệm vụ và thời gian ước tính. Sau đó bạn có thể duyệt lại, chỉnh sửa hoặc phê duyệt để tạo goal thực."
@@ -1437,23 +1442,23 @@ export function GoalsView() {
 
         {renderAIPlanner()}
 
-        <div className="pb-8">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 <Calendar className="h-4 w-4 text-zinc-600 dark:text-slate-350" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold tracking-tight text-zinc-950 dark:text-slate-100">
-                  {language === "vi" ? "Phân Rã Mục Tiêu" : "Goal Breakdown"}
+                  {language === "vi" ? "Mục Tiêu" : "Goals"}
                 </h2>
         
               </div>
             </div>
           </div>
 
-          <div className="-mx-4 overflow-x-auto px-4 pb-3 sm:-mx-8 sm:px-8">
-            <div className="flex h-[min(78vh,900px)] min-h-[620px] min-w-max snap-x snap-mandatory gap-4 pb-2">
+          <div className="mx-4 overflow-x-auto px-4 sm:-mx-8 sm:px-8">
+            <div className="flex h-[min(78vh,900px)] min-h-[580px] min-w-max snap-x snap-mandatory gap-4 pb-2">
               {goals.length ? goals.map(renderGoalCard) : (
                 <div className="flex h-full w-[calc(100vw-2rem)] max-w-[420px] flex-none items-center justify-center rounded-lg border border-dashed border-zinc-200 bg-white px-6 text-center text-sm text-zinc-500 dark:border-slate-800 dark:bg-slate-900 sm:w-[400px]">
                   {language === "vi" ? "Chưa có goal nào. Tạo goal đầu tiên ở cột bên cạnh." : "No goals yet. Create your first goal in the next column."}

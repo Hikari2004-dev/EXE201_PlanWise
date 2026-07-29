@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Flame, Calendar, CheckCircle2, Sparkles, X, Pencil, Trash2 } from "lucide-react";
-import { COLOR_MAP, EventColor } from "../data/mockData";
+import { COLOR_MAP, type EventColor } from "../data/mockData";
 import { useData } from "../context/DataContext";
 import { HintBubble } from "./HintBubble";
 import { useAuth } from "../context/AuthContext";
@@ -15,6 +15,18 @@ const toLocalDateString = (date = new Date()) => {
 };
 
 type HabitFrequency = "daily" | "weekly" | "monthly";
+type HabitPeriodData = {
+  frequency: HabitFrequency;
+  completedDates: string[];
+};
+type RecentActivityItem = {
+  key: string;
+  label: string;
+  title: string;
+  completed: boolean;
+};
+
+const EVENT_COLORS: EventColor[] = ["indigo", "blue", "emerald", "amber", "rose", "purple", "teal", "orange"];
 
 const WEEK_DAYS = [
   { code: "MON", vi: "T2", en: "Mon" },
@@ -27,6 +39,132 @@ const WEEK_DAYS = [
 ] as const;
 
 const getCurrentDayCode = () => WEEK_DAYS[(new Date().getDay() + 6) % 7].code;
+
+function normalizeEventColor(color?: string): EventColor {
+  const normalized = (color || "indigo").toLowerCase();
+  return EVENT_COLORS.includes(normalized as EventColor) ? (normalized as EventColor) : "indigo";
+}
+
+function addDays(date: Date, amount: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + amount);
+  return next;
+}
+
+function addMonths(date: Date, amount: number) {
+  const next = new Date(date.getFullYear(), date.getMonth() + amount, 1);
+  return next;
+}
+
+function startOfWeek(date: Date) {
+  const start = new Date(date);
+  const day = start.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  start.setDate(start.getDate() + diff);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function getMonthKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function isCompletedInWeek(completedDates: string[], weekStart: Date) {
+  const startKey = toLocalDateString(weekStart);
+  const endKey = toLocalDateString(addDays(weekStart, 6));
+  return completedDates.some((date) => date >= startKey && date <= endKey);
+}
+
+function isCompletedInCurrentPeriod(habit: HabitPeriodData, referenceDate = new Date()) {
+  if (habit.frequency === "daily") {
+    return habit.completedDates.includes(toLocalDateString(referenceDate));
+  }
+
+  if (habit.frequency === "weekly") {
+    return isCompletedInWeek(habit.completedDates, startOfWeek(referenceDate));
+  }
+
+  return habit.completedDates.some((date) => date.startsWith(getMonthKey(referenceDate)));
+}
+
+function getStreakUnit(frequency: HabitFrequency, count: number, language: string) {
+  if (language === "vi") {
+    return frequency === "daily" ? "ngày" : frequency === "weekly" ? "tuần" : "tháng";
+  }
+
+  const unit = frequency === "daily" ? "day" : frequency === "weekly" ? "week" : "month";
+  return count === 1 ? unit : `${unit}s`;
+}
+
+function getPeriodStatusLabel(frequency: HabitFrequency, language: string) {
+  if (language === "vi") {
+    return frequency === "daily" ? "Hôm nay" : frequency === "weekly" ? "Tuần này" : "Tháng này";
+  }
+
+  return frequency === "daily" ? "Today" : frequency === "weekly" ? "This week" : "This month";
+}
+
+function getRecentActivityTitle(frequency: HabitFrequency, language: string) {
+  if (language === "vi") {
+    return frequency === "daily" ? "7 ngày gần đây" : frequency === "weekly" ? "7 tuần gần đây" : "6 tháng gần đây";
+  }
+
+  return frequency === "daily" ? "Last 7 days" : frequency === "weekly" ? "Last 7 weeks" : "Last 6 months";
+}
+
+function getRecentActivityItems(habit: HabitPeriodData, language: string): RecentActivityItem[] {
+  const locale = language === "vi" ? "vi-VN" : "en-US";
+  const today = new Date();
+
+  if (habit.frequency === "weekly") {
+    const currentWeekStart = startOfWeek(today);
+    return Array.from({ length: 7 }, (_, i) => {
+      const weekStart = addDays(currentWeekStart, -7 * (6 - i));
+      const weekEnd = addDays(weekStart, 6);
+      const title = `${weekStart.toLocaleDateString(locale)} - ${weekEnd.toLocaleDateString(locale)}`;
+
+      return {
+        key: toLocalDateString(weekStart),
+        label: `${weekStart.getDate()}/${weekStart.getMonth() + 1}`,
+        title,
+        completed: isCompletedInWeek(habit.completedDates, weekStart),
+      };
+    });
+  }
+
+  if (habit.frequency === "monthly") {
+    const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    return Array.from({ length: 6 }, (_, i) => {
+      const month = addMonths(currentMonth, -(5 - i));
+      const monthKey = getMonthKey(month);
+
+      return {
+        key: monthKey,
+        label: language === "vi"
+          ? `T${month.getMonth() + 1}`
+          : month.toLocaleDateString("en-US", { month: "short" }),
+        title: month.toLocaleDateString(locale, { month: "long", year: "numeric" }),
+        completed: habit.completedDates.some((date) => date.startsWith(monthKey)),
+      };
+    });
+  }
+
+  const dayLabels = language === "vi"
+    ? ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
+    : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  return Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(today, -(6 - i));
+    const dateStr = toLocalDateString(date);
+
+    return {
+      key: dateStr,
+      label: dayLabels[date.getDay() === 0 ? 6 : date.getDay() - 1],
+      title: date.toLocaleDateString(locale),
+      completed: habit.completedDates.includes(dateStr),
+    };
+  });
+}
 
 export function HabitsView() {
   const { habits, addHabit, updateHabit, deleteHabit, completeHabitDate, language } = useData();
@@ -62,11 +200,6 @@ export function HabitsView() {
     return labels[frequency as keyof typeof labels] || frequency;
   };
 
-  const isCompletedToday = (habit: { completedDates: string[] }) => {
-    const today = toLocalDateString();
-    return habit.completedDates.includes(today);
-  };
-
   const handleFrequencyChange = (nextFrequency: HabitFrequency) => {
     setFrequency(nextFrequency);
     setRepeatDays(currentDays => {
@@ -96,7 +229,7 @@ export function HabitsView() {
     setDescription(habit.description);
     setFrequency(habit.frequency);
     setRepeatDays(habit.repeatDays);
-    setColor(habit.color as EventColor);
+    setColor(normalizeEventColor(habit.color));
     setFormError("");
     setShowAddModal(true);
   };
@@ -176,9 +309,13 @@ export function HabitsView() {
               <span>{language === 'vi' ? "Không giới hạn Mục tiêu & Thói quen" : "Unlimited Goals & Habits"}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-indigo-400 font-bold">✓</span>
-              <span>{language === 'vi' ? "Trợ lý AI lập kế hoạch thông minh" : "AI Coach scheduling mentor"}</span>
+              <span className="font-bold text-indigo-400">✓</span>
+              <span>{language === "vi" ? "Không giới hạn AI Goal Planner hỗ trợ phân rã mục tiêu và lập kế hoạch" : "AI Goal Planner for smart planning"}</span>
             </div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-indigo-400">✓</span>
+              <span>{language === "vi" ? "Không giới hạn Trợ lý AI sắp xếp lịch thông minh" : "AI Assistant for smart scheduling"}</span>
+              </div>
           </div>
 
           <div className="flex gap-3 pt-2">
@@ -191,7 +328,7 @@ export function HabitsView() {
             <button
               onClick={() => {
                 setShowUpgradeModal(false);
-                navigate("/pricing");
+                navigate("/dashboard/pricing");
               }}
               className="flex-1 py-2.5 px-4 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-indigo-500/20 text-center flex items-center justify-center cursor-pointer border border-transparent"
             >
@@ -416,16 +553,18 @@ export function HabitsView() {
           persistent={false}
         >
           {language === "vi"
-            ? "Mục này giúp bạn giữ nhịp kỷ luật mỗi ngày. Bạn có thể theo dõi chuỗi hiện tại, đánh dấu hoàn thành hôm nay và quan sát thói quen nào đang bền vững hoặc dễ bị đứt quãng."
-            : "Track daily discipline, mark today's completion, and monitor which habits are building momentum."}
+            ? "Mục này giúp bạn giữ nhịp kỷ luật theo ngày, tuần hoặc tháng. Bạn có thể theo dõi chuỗi hiện tại, đánh dấu kỳ hiện tại và quan sát thói quen nào đang bền vững hoặc dễ bị đứt quãng."
+            : "Track daily, weekly, or monthly discipline, mark the current period, and monitor which habits are building momentum."}
         </HintBubble>
 
         {/* Habits Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {habits.map((habit) => {
-             const colors = COLOR_MAP[habit.color as EventColor];
-             return (
-              <div key={habit.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all relative flex flex-col group">
+              const colors = COLOR_MAP[normalizeEventColor(habit.color)];
+              const completedInCurrentPeriod = isCompletedInCurrentPeriod(habit);
+              const recentActivity = getRecentActivityItems(habit, language);
+              return (
+               <div key={habit.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all relative flex flex-col group">
                 <div className="flex items-start justify-between mb-3">
                   <div className="min-w-0 pr-3">
                     <h3 className="font-semibold text-zinc-950 dark:text-slate-100 text-base tracking-tight truncate group-hover:text-zinc-700 dark:group-hover:text-slate-350 transition-colors">{habit.title}</h3>
@@ -463,62 +602,57 @@ export function HabitsView() {
                   {/* Current Streak */}
                   <div className="flex items-center justify-between bg-zinc-50/50 dark:bg-slate-950/40 rounded-lg p-3 border border-zinc-200 dark:border-slate-800">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-md bg-white dark:bg-slate-900 border border-zinc-200 dark:border-slate-800 shadow-sm flex flex-shrink-0 items-center justify-center">
-                        <Flame className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                      </div>
-                      <div className="flex flex-col">
-                         <span className="text-[10px] font-medium text-zinc-555 dark:text-slate-400 uppercase tracking-wider">{language === 'vi' ? "Chuỗi hiện tại" : "Current Streak"}</span>
-                         <span className="font-bold text-sm text-zinc-950 dark:text-slate-100">{habit.currentStreak} {language === 'vi' ? "ngày" : "days"}</span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] font-medium text-zinc-555 dark:text-slate-400 uppercase tracking-wider block">{language === 'vi' ? "Tốt nhất" : "Best"}</span>
-                      <span className="font-bold text-sm text-zinc-700 dark:text-slate-300">{habit.bestStreak}</span>
-                    </div>
-                  </div>
+                       <div className="w-8 h-8 rounded-md bg-white dark:bg-slate-900 border border-zinc-200 dark:border-slate-800 shadow-sm flex flex-shrink-0 items-center justify-center">
+                         <Flame className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                       </div>
+                       <div className="flex flex-col">
+                          <span className="text-[10px] font-medium text-zinc-555 dark:text-slate-400 uppercase tracking-wider">{language === 'vi' ? "Chuỗi hiện tại" : "Current Streak"}</span>
+                         <span className="font-bold text-sm text-zinc-950 dark:text-slate-100">{habit.currentStreak} {getStreakUnit(habit.frequency, habit.currentStreak, language)}</span>
+                       </div>
+                     </div>
+                     <div className="text-right">
+                       <span className="text-[10px] font-medium text-zinc-555 dark:text-slate-400 uppercase tracking-wider block">{language === 'vi' ? "Tốt nhất" : "Best"}</span>
+                      <span className="font-bold text-sm text-zinc-700 dark:text-slate-300">{habit.bestStreak} {getStreakUnit(habit.frequency, habit.bestStreak, language)}</span>
+                     </div>
+                   </div>
 
-                  {/* Today's Status */}
+                  {/* Current period status */}
                   <div className="flex items-center justify-between pt-2">
-                    <span className="text-sm font-semibold text-zinc-705 dark:text-slate-300">{language === 'vi' ? "Hôm nay" : "Today"}</span>
+                    <span className="text-sm font-semibold text-zinc-705 dark:text-slate-300">{getPeriodStatusLabel(habit.frequency, language)}</span>
                     <button
                       type="button"
-                      disabled={isCompletedToday(habit)}
+                      disabled={completedInCurrentPeriod}
                       onClick={() => completeHabitDate(habit.id, toLocalDateString())}
                       className={`
                         text-xs font-semibold px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors border
-                        ${isCompletedToday(habit) 
+                        ${completedInCurrentPeriod 
                           ? `${colors.bg} ${colors.border} text-white shadow-sm cursor-default`
                           : "cursor-pointer bg-white dark:bg-slate-800 border-zinc-300 dark:border-slate-700 text-zinc-650 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-750 hover:text-zinc-900 dark:hover:text-white"}
                       `}
                     >
-                      <CheckCircle2 size={14} className={isCompletedToday(habit) ? "text-white" : "text-zinc-400 dark:text-slate-500"} />
-                      {isCompletedToday(habit) ? (language === 'vi' ? "Hoàn thành" : "Completed") : (language === 'vi' ? "Đánh dấu" : "Mark it")}
+                      <CheckCircle2 size={14} className={completedInCurrentPeriod ? "text-white" : "text-zinc-400 dark:text-slate-500"} />
+                      {completedInCurrentPeriod ? (language === 'vi' ? "Hoàn thành" : "Completed") : (language === 'vi' ? "Đánh dấu" : "Mark it")}
                     </button>
                   </div>
 
                   {/* Recent Activity */}
                   <div className="border-t border-zinc-100 dark:border-slate-800 pt-3 mt-3">
                     <h4 className="text-[11px] text-zinc-500 dark:text-slate-450 font-medium mb-3 flex items-center gap-1.5">
-                      <Calendar size={12} /> {language === 'vi' ? "7 ngày gần đây" : "Last 7 days"}
+                      <Calendar size={12} /> {getRecentActivityTitle(habit.frequency, language)}
                     </h4>
-                    <div className="flex justify-between items-center bg-zinc-50 dark:bg-slate-950/60 rounded-lg p-1.5 border border-zinc-100 dark:border-slate-800">
-                      {Array.from({ length: 7 }, (_, i) => {
-                        const date = new Date();
-                        date.setDate(date.getDate() - (6 - i));
-                        const dateStr = toLocalDateString(date);
-                        const completed = habit.completedDates.includes(dateStr);
-                        
+                    <div className={`grid gap-1.5 bg-zinc-50 dark:bg-slate-950/60 rounded-lg p-1.5 border border-zinc-100 dark:border-slate-800 ${habit.frequency === "monthly" ? "grid-cols-6" : "grid-cols-7"}`}>
+                      {recentActivity.map((item) => {
                         return (
                           <div
-                            key={i}
-                            className={`w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-bold transition-all ${
-                              completed 
+                            key={item.key}
+                            className={`h-7 min-w-0 rounded-md flex items-center justify-center text-[9px] font-bold transition-all ${
+                              item.completed 
                                 ? `${colors.bg} text-white shadow-sm ring-1 ring-black/5` 
                                 : 'bg-transparent text-zinc-400 dark:text-slate-500 hover:bg-zinc-200/50 dark:hover:bg-slate-800'
                             }`}
-                            title={date.toLocaleDateString('vi-VN')}
+                            title={item.title}
                           >
-                             {['T2','T3','T4','T5','T6','T7','CN'][date.getDay() === 0 ? 6 : date.getDay()-1]}
+                             {item.label}
                           </div>
                         );
                       })}

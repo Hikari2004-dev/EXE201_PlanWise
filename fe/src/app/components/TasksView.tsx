@@ -75,20 +75,6 @@ function getRelevantTaskDate(task: Task) {
   return getValidDate(task.scheduledAt) || getValidDate(task.dueDate);
 }
 
-function getTaskTimingRank(task: Task) {
-  if (task.completed) return 4;
-
-  const date = getRelevantTaskDate(task);
-  if (!date) return 3;
-
-  const today = startOfDay(new Date());
-  const taskDay = startOfDay(date);
-
-  if (taskDay.getTime() < today.getTime()) return 0;
-  if (taskDay.getTime() === today.getTime()) return 1;
-  return 2;
-}
-
 function getShortTaskDateLabel(task: Task, language: "vi" | "en") {
   const date = getRelevantTaskDate(task);
   if (!date) return language === "vi" ? "Không hạn" : "No date";
@@ -173,15 +159,18 @@ function getPriorityLabel(priority: Task["priority"], language: "vi" | "en") {
 function compareTasksForBoard(a: Task, b: Task) {
   if (a.completed !== b.completed) return a.completed ? 1 : -1;
 
+  const aScheduledAt = getValidDate(a.scheduledAt)?.getTime();
+  const bScheduledAt = getValidDate(b.scheduledAt)?.getTime();
+  const aDueDate = getValidDate(a.dueDate)?.getTime() ?? Number.POSITIVE_INFINITY;
+  const bDueDate = getValidDate(b.dueDate)?.getTime() ?? Number.POSITIVE_INFINITY;
+  const aPrimaryDate = aScheduledAt ?? aDueDate;
+  const bPrimaryDate = bScheduledAt ?? bDueDate;
+
+  if (aPrimaryDate !== bPrimaryDate) return aPrimaryDate - bPrimaryDate;
+  if (aDueDate !== bDueDate) return aDueDate - bDueDate;
+
   const priorityDiff = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
   if (priorityDiff !== 0) return priorityDiff;
-
-  const timingDiff = getTaskTimingRank(a) - getTaskTimingRank(b);
-  if (timingDiff !== 0) return timingDiff;
-
-  const aDate = getRelevantTaskDate(a)?.getTime() ?? Number.POSITIVE_INFINITY;
-  const bDate = getRelevantTaskDate(b)?.getTime() ?? Number.POSITIVE_INFINITY;
-  if (aDate !== bDate) return aDate - bDate;
 
   return a.sortOrder - b.sortOrder;
 }
@@ -929,9 +918,15 @@ export function TasksView() {
         tasks: tasksByGoal.get("__no_goal__") || [],
         dotClass: "bg-zinc-400",
         description: language === "vi" ? "Task chưa gắn mục tiêu" : "Tasks without an assigned goal",
+        completedTasks: null,
+        totalTasks: null,
+        progress: null,
       },
       ...goals.map((goal) => {
         const goalColor = COLOR_MAP[normalizeColor(goal.color)] || COLOR_MAP["indigo"];
+        const goalTasks = tasks.filter((task) => task.goalId === goal.id);
+        const completedTasks = goalTasks.filter((task) => task.completed).length;
+        const progress = goalTasks.length ? Math.round((completedTasks / goalTasks.length) * 100) : 0;
 
         return {
           id: goal.id,
@@ -939,10 +934,13 @@ export function TasksView() {
           tasks: tasksByGoal.get(goal.id) || [],
           dotClass: goalColor.dot,
           description: goal.description,
+          completedTasks,
+          totalTasks: goalTasks.length,
+          progress,
         };
       }),
     ];
-  }, [filtered, goals, language]);
+  }, [filtered, goals, language, tasks]);
   return (
     <div className="flex flex-col h-full bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* Header */}
@@ -1118,7 +1116,7 @@ export function TasksView() {
                     className="flex h-full w-[calc(100vw-2rem)] max-w-[420px] flex-none snap-start flex-col rounded-xl border border-zinc-200 bg-zinc-100/70 dark:border-slate-800 dark:bg-slate-900/60 sm:w-[400px]"
                   >
                     <div className="border-b border-zinc-200 p-3 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-t-xl">
-                      <div className="flex items-start justify-between gap-3 px-2 pt-1">
+                      <div className="px-2 pt-1">
                         <div className="min-w-0 px-1">
                           <div className="flex items-center gap-2">
                             <h3 className="truncate text-md font-bold text-zinc-900 dark:text-slate-50">
@@ -1129,9 +1127,17 @@ export function TasksView() {
                             {column.description}
                           </p>
                         </div>
-                        <span className="shrink-0 rounded-md border border-zinc-200 bg-white px-2 py-1 text-[10px] font-bold text-zinc-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
-                          {language === "vi" ? `${column.tasks.length} task` : `${column.tasks.length} tasks`}
-                        </span>
+                        {column.progress !== null && (
+                          <div className="mt-2 px-1">
+                            <div className="mb-2 flex items-center justify-between text-[11px] font-semibold text-zinc-500 dark:text-slate-400">
+                              <span>{column.completedTasks} / {column.totalTasks} {language === "vi" ? "task" : "tasks"}</span>
+                              <span>{column.progress}%</span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-slate-800">
+                              <div className="h-full rounded-full bg-blue-600 transition-all duration-500 dark:bg-blue-400" style={{ width: `${column.progress}%` }} />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
 

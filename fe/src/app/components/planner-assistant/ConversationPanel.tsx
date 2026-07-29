@@ -1,4 +1,4 @@
-import { Send, Sparkles } from "lucide-react";
+import { AlertTriangle, Send, Sparkles } from "lucide-react";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import { SuggestionChips } from "./SuggestionChips";
@@ -7,6 +7,7 @@ export interface ConversationMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  tone?: "default" | "warning";
 }
 
 interface ConversationPanelProps {
@@ -70,18 +71,28 @@ export function ConversationPanel({
           </div>
         ) : (
           <div className="space-y-3">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`rounded-lg px-3 py-2 text-sm leading-relaxed ${
-                  message.role === "user"
-                    ? "ml-8 bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
-                    : "mr-8 border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
-                }`}
-              >
-                {message.content}
-              </div>
-            ))}
+            {messages.map((message) => {
+              const isWarning = message.tone === "warning";
+              return (
+                <div
+                  key={message.id}
+                  className={`rounded-lg px-3 py-2 text-sm leading-relaxed ${
+                    message.role === "user"
+                      ? "ml-8 bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
+                      : isWarning
+                        ? "mr-8 border border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-100"
+                        : "mr-8 border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                  }`}
+                >
+                  {isWarning ? (
+                    <span className="flex gap-2">
+                      <AlertTriangle className="mt-0.5 shrink-0" size={15} />
+                      <span>{message.content}</span>
+                    </span>
+                  ) : message.content}
+                </div>
+              );
+            })}
             {isLoading && (
               <div className="mr-8 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 dark:border-indigo-500/25 dark:bg-indigo-500/10 dark:text-indigo-200">
                 {loadingText}
